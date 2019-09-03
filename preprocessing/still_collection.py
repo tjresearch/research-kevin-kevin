@@ -1,4 +1,8 @@
-import sys, termios
+"""
+cv2.waitKey() doesn't like the live video
+"""
+
+import sys, termios, time
 import cv2
 
 def get_key():
@@ -16,19 +20,23 @@ def get_key():
     return key
 
 def main():
-    print("input phone_ip")
-    phone_ip = input().strip()
+    phone_ip = sys.argv[1]
     url = "http://" + phone_ip + "/live?type=some.mp4"
-    # print(url)
+    print(url)
     cap = cv2.VideoCapture(url)
-    while True:
-        key = get_key()
-        if key == '\x1b': #escape to quit
-            return
-        if key == '\x20': #space to take pic
-            print("space")
-            ret, img = cap.read()
-            cv2.imshow("Frame "+frame_ct, img)
+    if (cap.isOpened()== False):
+        print("Usage: python3 video_feed.py phone.ip.addr")
+
+    while cap.isOpened(): #Joshua's doc says while True but I think that's a typo
+        ret, frame = cap.read()
+        if ret:
+            cv2.imshow('frame', frame)
+            if cv2.waitKey(1) & 0xFF == ord('q'): #doesn't work
+                break
+
+    cap.release()
+    cv2.destroyAllWindows()
+
 
 if __name__ == '__main__':
     main()
