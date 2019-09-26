@@ -4,6 +4,21 @@ from sklearn.cluster import dbscan
 from matplotlib import pyplot as plt
 
 
+def line_weight(line, canny):
+	m = -np.cos(line[1]) / np.sin(line[1])
+	b = line[0] / np.sin(line[1])
+	endpoints = [(0, b), (canny.shape[1] - 1, m * (canny.shape[1] - 1) + b),
+				 (-b / m, 0), ((canny.shape[0] - 1 - b) / m, canny.shape[0] - 1)]
+	endpoints = [p for p in endpoints if 0 <= p[0] < canny.shape[1] and 0 <= p[1] < canny.shape[0]]
+	mag = int(np.hypot(endpoints[0][0] - endpoints[1][0], endpoints[0][1] - endpoints[1][1]))
+	xlin = np.linspace(endpoints[0][0], endpoints[1][0], mag)
+	ylin = np.linspace(endpoints[0][1], endpoints[1][1], mag)
+	weight = 0
+	for i in range(mag):
+		weight += canny[int(ylin[i]), int(xlin[i])] // 255
+	return weight
+
+
 def rho_theta_distance(p1, p2):
 
 	rho_dist1 = (p1[0] - p2[0]) ** 2
@@ -23,6 +38,8 @@ def find_lines(img): # Will be implemented with more advanced algorithms later
 
 	canny = cv2.Canny(gray, 60, 120)
 
+	# cv2.imshow("canny", canny)
+
 	lines = cv2.HoughLines(canny, 1, np.pi/180, 100)
 
 	data = lines[:, 0].copy()
@@ -30,7 +47,7 @@ def find_lines(img): # Will be implemented with more advanced algorithms later
 	data[:, 0] = data[:, 0] / np.max(np.abs(data[:, 0]))
 	data[:, 1] = data[:, 1] / np.pi
 
-	indices, clusters = dbscan(data, 0.01, min_samples=3, metric=rho_theta_distance)
+	indices, clusters = dbscan(data, 0.01, min_samples=4, metric=rho_theta_distance)
 
 	lines = lines[indices]
 	clusters = clusters[indices]
@@ -60,31 +77,10 @@ def find_board_edges(img):
 		hor[np.argmax(np.abs(hor[:, 0]))], ver[np.argmax(np.abs(ver[:, 0]))]
 
 
-def find_intersection(l1, l2):
-	r1, t1 = l1
-	r2, t2 = l2
-
-	a = np.array([[np.cos(t1), np.sin(t1)], [np.cos(t2), np.sin(t2)]])
-	b = np.array([[r1], [r2]])
-
-	return np.matmul(np.linalg.inv(a), b)
-
-
 def find_chessboard(img):
 
 	edges = find_board_edges(img)
-	intersections = []
 
-	for i in range(4):
-		intersection = find_intersection(edges[i], edges[(i+1)%4]).reshape(2).tolist()
-		intersections.append((int(intersection[0]), int(intersection[1])))
+	return edges
 
-	margins = 20
-	dst_size = 800
-	dst_corners = [(margins, margins), (margins, dst_size + margins), (dst_size + margins, dst_size + margins), (dst_size + margins, margins)]
 
-	H, _ = cv2.findHomography(np.array(intersections), np.array(dst_corners))
-
-	warped = cv2.warpPerspective(img, H, (dst_size + margins * 2, dst_size + margins * 2))
-
-	return warped
