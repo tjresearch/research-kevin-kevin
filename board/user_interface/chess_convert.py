@@ -105,29 +105,31 @@ def alg_to_coords(alg):
 #other pieces can be hardcoded with lookup table
 
 #where to look for REL_STARTS for each piece, relative to cur pos
+#pawns handled in get_coords_of_move directly
 REL_STARTS = {
-    "N": {(1,2),(2,1),(-1,2),(-2,1),(1,-2),(2,-1),(-1,-2),(-2,-1)},
-    "R": ({(0,i) for i in range(-7, 8)} | {(i,0) for i in range(-7, 8)}) - {(0,0)},
-    "B": ({(i,i) for i in range(-7, 8)} | {(-i,i) for i in range(-7, 8)}) - {(0,0)},
-    "K": {(i,j) for i in range(-1, 2) for j in range(-1, 2)} - {(0,0)},
-    "P": {(1,0),(2,0)},
+    "N": [[(1,2),(2,1)],[(-1,2),(-2,1)],[(1,-2),(2,-1)],[(-1,-2),(-2,-1)]],
+    "R": [[(0,i) for i in range(-1, -8, -1)], [(0,i) for i in range(1, 8)], [(i,0) for i in range(-1, -8, -1)], [(i,0) for i in range(1, 8)]],
+    "B": [[(i,i) for i in range(-1, -8, -1)], [(i,i) for i in range(1, 8)], [(-i,i) for i in range(-1, -8, -1)], [(-i,i) for i in range(1, 8)]],
+    "K": [[t] for t in ({(i,j) for i in range(-1, 2) for j in range(-1, 2)} - {(0,0)})],
 }
-REL_STARTS["Q"] = REL_STARTS["R"]|REL_STARTS["B"] #add in queen moves
-
-pawn_caps = {(1,1),(1,-1)} #pawn captures diff from pawn moves
+REL_STARTS["Q"] = REL_STARTS["R"]+REL_STARTS["B"] #add in queen moves
+# print(REL_STARTS["Q"])
 
 def find_start(board, piece, end, diff=None):
     starts = REL_STARTS[piece.upper()]
-    search_sp = [(end[0]+p[0], end[1]+p[1]) for p in starts]
+    search_sp = [[(end[0]+p[0], end[1]+p[1]) for p in dir] for dir in starts]
     # print("sp", search_sp)
     poss = set()
-    # for dir in search_sp:
-    for pos in search_sp:
-        if pos[0]>=0 and pos[1]>=0 and pos[0]<8 and pos[1]<8:
-            if board[pos[0]][pos[1]] == piece:
-                poss.add(pos)
-                # break
-            # if board[pos[0]][pos[1]] != "-": break
+    for dir in search_sp:
+        # print(dir)
+        for pos in dir:
+            if pos[0]>=0 and pos[1]>=0 and pos[0]<8 and pos[1]<8:
+                # print(pos)
+                if board[pos[0]][pos[1]] == piece:
+                    poss.add(pos)
+                    # break
+                if piece.upper() != "N":
+                    if board[pos[0]][pos[1]] != "-": break
     if not poss:
         print("no poss")
         return None
@@ -163,7 +165,6 @@ def get_coords_of_move(board, move, wtm):
         return (r, 4), (r, 6) #treat as king move and handle rook move
     elif move == "O-O-O":
         print("queenside")
-    if "O" in move:
         print("\n\ncastling not handled yet\n\n")
         return
     if move[-1] == "#" or move[-1] == "+":
@@ -171,21 +172,27 @@ def get_coords_of_move(board, move, wtm):
         move = move[:-1] #ignore for now
     if "=" in move:
         print("pawn promo") #not handled
+        move = move.replace('=', '') #ignore for now
 
     if 'x' in move: #piece capture
         moves = move.split("x")
         end = alg_to_coords(moves[1])
+
         if len(moves[0]) == 1: #no collision
             piece = moves[0].upper() if wtm else moves[0].lower()
-            return find_start(board, piece, end), end
+            if piece.upper() in REL_STARTS: #not a pawn #doesn't handle b pawn correctly
+                return find_start(board, piece, end), end
+            c = ord(piece.upper())-65
+            pawn = "P" if wtm else "p"
+            start = (get_col(board, c).index(pawn), c)
+            return start, end
         else: #with collision
             piece = moves[0][0].upper() if wtm else moves[0][0].lower()
             return find_start(board, piece, end, moves[0][1]), end
 
     if len(move) == 2: #pawn moving fwd
         end = alg_to_coords(move)
-        pawn = "P"
-        if not wtm: pawn = "p"
+        pawn = "P" if wtm else "p"
         start = (get_col(board, end[1]).index(pawn), end[1])
         return start, end
 
@@ -209,7 +216,7 @@ def make_move(board, move, wtm):
     # print(start, end)
     moved = board[start[0]][start[1]]
     capt = board[end[0]][end[1]]
-    print(moved, capt)
+    # print(moved, capt)
     #error checking
     if (moved.isupper() and capt.isupper()) or (moved.islower() and capt.islower()): print("wrong color captured")
     if "x" not in move and capt != "-": print("piece capt when not supposed to")

@@ -16,8 +16,8 @@ for FEN in sample_FEN:
     print(f)
     f_board = FEN_to_board(f)
     display(f_board)
+exit(0)
 """
-
 """
 takes pgn file input
 returns list of white/black moves by num, strips other input
@@ -32,6 +32,7 @@ def clean_pgn(filename):
     game_info = []
     comments = []
     num_move_list = []
+    no_com = []
     for l in range(len(lines)):
         line = lines[l]
         # print("g", game_info)
@@ -53,19 +54,19 @@ def clean_pgn(filename):
             return
         if "{" in line:
             comments.append(line[line.index("{")+1:line.index("}")])
-            lines[l] = lines[l][:line.index("{")]
+            lines[l] = lines[l][:line.index("{")-1]
 
-        line = lines[l] #reformatted line
-        for c in range(len(line)):
-            if line[c] == ".": #indicator of move #
-                next = line.find(".", c+1)
-                if next == -1:
-                    next = len(line)
-                #could maybe hardcode space after ., so c+2 above
-                #two moves max, currently accidentally parses comments
-                moves = line[c+1:next].strip().split(" ")[:2]
-                print(moves)
-                num_move_list.append(moves)
+        no_com.append(lines[l].replace('\n', '')) #reformatted line
+    move_txt = ' '.join(no_com)
+    # print(move_txt)
+    for c in range(len(move_txt)):
+        if move_txt[c] == ".": #indicator of move #
+            next = move_txt.find(".", c+1)
+            if next == -1:
+                next = len(move_txt)
+            moves = move_txt[c+1:next].strip().split(" ")[:2]
+            # print(moves)
+            num_move_list.append(moves)
     return num_move_list
 
 def flatten_move_list(num_move_list):
@@ -76,12 +77,11 @@ def flatten_move_list(num_move_list):
 
 pgn_file = sys.argv[1]
 num_move_list = clean_pgn(pgn_file)
-# print(num_move_list)
 for i in range(len(num_move_list)):
     print(i, end=". ")
     print(num_move_list[i])
 move_list = flatten_move_list(num_move_list)
-print(move_list)
+# print(move_list)
 
 # move_list = ["e4", "e6", "Nc3", "Qh4", "Bb5", "Ke7", "a3", "Na6", "Ra2"]
 # move_list = ["Nc3", "e6", "Nf3", "Ne7", "Nb5", "Nbc6", "Nbd4", "Nxd4", "Nxd4"]
