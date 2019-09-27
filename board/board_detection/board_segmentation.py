@@ -85,8 +85,11 @@ def segment_board(img, edges):
 	H, _ = cv2.findHomography(np.array(intersections), np.array(dst_corners))
 
 	chunks = []
+
 	for i in range(8):
 		for j in range(8):
+			square = []
+
 			corners = [(i * square_size, j * square_size),
 					   (i * square_size, (j + 1) * square_size),
 					   ((i + 1) * square_size, (j + 1) * square_size),
@@ -94,7 +97,15 @@ def segment_board(img, edges):
 			for k in range(4):
 				corners[k] = inverse_warp_point(corners[k], H)
 
-			chunks.append(corners)
+			square.append(np.array(corners))
+
+			center = ((i + 0.5) * square_size, (j + 0.5) * square_size)
+
+			center = inverse_warp_point(center, H)
+
+			square.append(center)
+
+			chunks.append(square)
 
 	return chunks
 
@@ -124,8 +135,14 @@ chunks = segment_board(img, edges)
 chunk_disp = img.copy()
 
 for chunk in chunks:
+	corners, center = chunk
+	top = np.min(corners[:, 1])
+	bottom = np.max(corners[:, 1])
+	left = np.min(corners[:, 0])
+	right = np.max(corners[:, 0])
+	box = ((left, bottom), (right, bottom), (right, bottom - 150), (left, bottom - 150))
 	for i in range(4):
-		cv2.line(chunk_disp, (int(chunk[i][0]), int(chunk[i][1])), (int(chunk[(i+1)%4][0]), int(chunk[(i+1)%4][1])), (0, 0, 255), 2)
+		cv2.line(chunk_disp, (int(box[i][0]), int(box[i][1])), (int(box[(i+1)%4][0]), int(box[(i+1)%4][1])), (255, 0, 0), 2)
 
 cv2.imshow("chunks", chunk_disp)
 
