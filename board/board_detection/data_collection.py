@@ -53,6 +53,8 @@ for i in range(len(chunks)):
 	corners, center = chunks[i]
 	bottom = np.max(corners[:, 1])
 	top = bottom - 150
+	if top < 0:
+		top = 0
 	left = np.min(corners[:, 0])
 	right = np.max(corners[:, 0])
 
