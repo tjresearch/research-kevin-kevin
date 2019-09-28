@@ -67,20 +67,15 @@ def find_lines(img): # Will be implemented with more advanced algorithms later
 	return best_lines
 
 
-def find_board_edges(img):
+def find_chessboard(img):
 	lines = find_lines(img)
 
-	hor = np.array([line for line in lines if np.pi / 4 < line[1] < 3 * np.pi / 4])
-	ver = np.array([line for line in lines if line not in hor])
+	
 
-	return hor[np.argmin(np.abs(hor[:, 0]))], ver[np.argmin(np.abs(ver[:, 0]))], \
-		hor[np.argmax(np.abs(hor[:, 0]))], ver[np.argmax(np.abs(ver[:, 0]))]
-
-
-def find_chessboard(img):
-
-	edges = find_board_edges(img)
-
-	return edges
+	# hor = np.array([line for line in lines if np.pi / 4 < line[1] < 3 * np.pi / 4])
+	# ver = np.array([line for line in lines if line not in hor])
+	#
+	# return hor[np.argmin(np.abs(hor[:, 0]))], ver[np.argmin(np.abs(ver[:, 0]))], \
+	# 	   hor[np.argmax(np.abs(hor[:, 0]))], ver[np.argmax(np.abs(ver[:, 0]))]
 
 
