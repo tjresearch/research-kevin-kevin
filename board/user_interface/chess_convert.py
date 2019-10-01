@@ -1,9 +1,9 @@
 import sys
 
-COL_HEADS = {chr(i+97): i for i in range(8)} #ltrs a-h
 #rows are 1-8
 #assumed 8x8 2d array
 #flipped means display w/ black pieces on bottom
+COL_HEADS = {chr(i+97): i for i in range(8)} #ltrs a-h
 def display(board, flipped=False):
     if flipped:
         board = board[::-1]
@@ -28,15 +28,17 @@ def display(board, flipped=False):
     print(output)
     return output
 
+#useful helper
 def get_col(array, i):
     return [r[i] for r in array]
 
+#for FEN methods
 valid_pieces = {*'rnbqkpRNBQKP'}
 valid_spaces = {*'12345678'}
 """
 convert FEN to 2d array of board
 black is lowercase, white is capitals, spaces are #
-https://en.wikipedia.org/wiki/Forsyth%E2%80%93Edwards_Notation
+default is std chess start board
 """
 def FEN_to_board(f_str="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"):
     args = f_str.split(" ")
@@ -66,8 +68,7 @@ def FEN_to_board(f_str="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
 
     return board
 """
-turns 2d array board to string FEN
-(w/out adtl FEN tags)
+turns 2d array board to string FEN (w/out adtl FEN tags)
 assumed valid 2d array
 """
 def board_to_half_FEN(board):
@@ -89,23 +90,20 @@ def board_to_half_FEN(board):
     return half_FEN[:-1]
 
 """
-input: lowercase ltr+num from 1-8, eg: e4, c6
-output: pos in (r, c)
-black on top, white on bottom:
+turns lowercase SAN ltr+num (c, r) to pos in (r, c)
+if board has black on top, white on bottom:
 a1 -> (7, 0), a8 -> (0, 0), h1 -> (7, 7), h8 -> (0, 7)
 """
 def alg_to_coords(alg):
     chars = [*alg]
     return (8-int(chars[1]), COL_HEADS[chars[0]]) #ord('a') = 97
 
-#search smaller areas depending on piece
-#eg, pawn, search 3x3 square with end pos being (0, 1) of square
-#knight (N) search only the eight relative pos needed
-#will need to hardcode Knight in
-#other pieces can be hardcoded with lookup table
-
-#where to look for REL_STARTS for each piece, relative to cur pos
-#pawns handled in get_coords_of_move directly
+"""
+helper for get_coords_of_move()
+finds start coords for all pieces besides pawns with REL_STARTS for each piece
+pawns handled in get_coords_of_move() directly
+"""
+#lookup table for find_start()
 REL_STARTS = {
     "N": [[(1,2),(2,1)],[(-1,2),(-2,1)],[(1,-2),(2,-1)],[(-1,-2),(-2,-1)]],
     "R": [[(0,i) for i in range(-1, -8, -1)], [(0,i) for i in range(1, 8)], [(i,0) for i in range(-1, -8, -1)], [(i,0) for i in range(1, 8)]],
@@ -113,21 +111,17 @@ REL_STARTS = {
     "K": [[t] for t in ({(i,j) for i in range(-1, 2) for j in range(-1, 2)} - {(0,0)})],
 }
 REL_STARTS["Q"] = REL_STARTS["R"]+REL_STARTS["B"] #add in queen moves
-# print(REL_STARTS["Q"])
 
 def find_start(board, piece, end, diff=None):
     starts = REL_STARTS[piece.upper()]
     search_sp = [[(end[0]+p[0], end[1]+p[1]) for p in dir] for dir in starts]
-    # print("sp", search_sp)
+
     poss = set()
     for dir in search_sp:
-        # print(dir)
         for pos in dir:
             if pos[0]>=0 and pos[1]>=0 and pos[0]<8 and pos[1]<8:
-                # print(pos)
                 if board[pos[0]][pos[1]] == piece:
                     poss.add(pos)
-                    # break
                 if piece.upper() != "N":
                     if board[pos[0]][pos[1]] != "-": break
     if not poss:
@@ -136,45 +130,86 @@ def find_start(board, piece, end, diff=None):
 
     if len(poss) == 1: return poss.pop()
     if not diff:
-        print("two poss pieces", poss)
-        return None
+        print(poss)
+        exit("two poss start pieces")
 
     col = COL_HEADS[diff]
     for pos in poss:
         if col == pos[1]:
             return pos
 
-    print("piece not found")
-    return None
+    exit("start piece not found")
 
 """
-finds coords for halfmove
+finds coords for halfmove for make_move()
+normal move logic largely in find_start()
+special cases: end of game, castling, checks/checkmates, pawn promo, piece capt
+returns (start, end) tuple
 """
 def get_coords_of_move(board, move, wtm):
-    move = move.replace("0", "O") #common error
+    #print move info
     print("white" if wtm else "black")
     print(move)
+
+    #game end handler
+    if move in {"1-0", "0-1", "1/2-1/2", "*"}:
+        print("GAME END")
+        if move == "1-0":
+            print("white wins")
+        elif move == "0-1":
+            print("black wins")
+        elif move == "1/2-1/2":
+            print("tie")
+        else:
+            print("undecided/ongoing")
+        return (-1, -1), (-1, -1)
+
+    move = move.replace("0", "O") #common error
+
+    #castle check doesn't check if rook or king has moved
     if move == "O-O":
         print("kingside")
         r = 7 if wtm else 0
-        if board[r][-2] != "-" or board[r][-3] != "-":
-            print("castling error")
-            return
-        board[r][-3] = board[r][-1]
-        board[r][-1] = "-"
+        if {board[r][-2], board[r][-3]}-{"-"}:
+            exit("kcastling error")
+        board[r][-3], board[r][-1] = board[r][-1], "-"
         return (r, 4), (r, 6) #treat as king move and handle rook move
     elif move == "O-O-O":
         print("queenside")
-        print("\n\ncastling not handled yet\n\n")
-        return
+        r = 7 if wtm else 0
+        if {board[r][1], board[r][2], board[r][3]}-{"-"}:
+            exit("qcastling error")
+        board[r][3], board[r][0] = board[r][0], "-"
+        return (r, 4), (r, 2) #like kingside
+
+    #check/checkmate
     if move[-1] == "#" or move[-1] == "+":
         print("check")
         move = move[:-1] #ignore for now
-    if "=" in move:
-        print("pawn promo") #not handled
-        move = move.replace('=', '') #ignore for now
 
-    if 'x' in move: #piece capture
+    #pawn promotion
+    if "=" in move:
+        print("PAWN PROMOTION")
+        temp = move.split('=')
+        move, promo = temp[0], temp[1]
+        print(move, promo)
+        if "x" in move:
+            if len(move) != 4: #no clue when this would arise
+                print(move, end="")
+                exit("???")
+            end = alg_to_coords(move[-2:])
+            start_col = COL_HEADS[move[0]]
+        else:
+            end = alg_to_coords(move)
+            start_col = end[1]
+
+        start_row = 1 if wtm else 6 #second-to-back rows for each player
+        start = (start_row, start_col)
+        board[start[0]][start[1]] = promo.upper() if wtm else promo.lower()
+        return start, end
+
+    #piece capture
+    if 'x' in move:
         moves = move.split("x")
         end = alg_to_coords(moves[1])
 
@@ -185,41 +220,59 @@ def get_coords_of_move(board, move, wtm):
             c = ord(piece.upper())-65
             pawn = "P" if wtm else "p"
             start = (get_col(board, c).index(pawn), c)
+            if board[end[0]][end[1]] == "-": #en passant handler
+                opp_pawn = "p" if wtm else "P"
+                r = 3 if wtm else 4 #if wtm, black en passant pawn should be in rank 5 (row 3), else rank 4 (row 4)
+                if board[r][end[1]] == opp_pawn:
+                    print("EN PASSANT CAPTURE")
+                    #move pawn back a square for make_move()
+                    board[r][end[1]] = "-"
+                    board[end[0]][end[1]] = opp_pawn
             return start, end
         else: #with collision
             piece = moves[0][0].upper() if wtm else moves[0][0].lower()
             return find_start(board, piece, end, moves[0][1]), end
 
-    if len(move) == 2: #pawn moving fwd
+    #pawn moving fwd
+    if len(move) == 2:
         end = alg_to_coords(move)
         pawn = "P" if wtm else "p"
         start = (get_col(board, end[1]).index(pawn), end[1])
         return start, end
 
-    if len(move) == 3: #piece moving, no collision
+    #non-pawn moving, no collision
+    if len(move) == 3:
         end = alg_to_coords(move[-2:])
         piece = move[0].upper() if wtm else move[0].lower()
         return find_start(board, piece, end), end
 
-    if len(move) == 4: #piece moving with collision
+    #non-pawn moving, with collision
+    if len(move) == 4:
         end = alg_to_coords(move[-2:])
         piece = move[0].upper() if wtm else move[0].lower()
         return find_start(board, piece, end, move[1]), end
 
 """
 applies halfmove in alg notation to 2d array of board
-wtm = white_to_move
-true if white to move, false if black to move
+wtm = white_to_move bool (true if white's turn, false if black's turn)
 """
 def make_move(board, move, wtm):
     start, end = get_coords_of_move(board, move, wtm)
-    # print(start, end)
+    if start == end: #end of game: start = end = (-1, -1)
+        if start != (-1, -1): print(start, end)
+        return board
     moved = board[start[0]][start[1]]
     capt = board[end[0]][end[1]]
-    # print(moved, capt)
     #error checking
-    if (moved.isupper() and capt.isupper()) or (moved.islower() and capt.islower()): print("wrong color captured")
-    if "x" not in move and capt != "-": print("piece capt when not supposed to")
+    if (moved.isupper() and capt.isupper()) or (moved.islower() and capt.islower()):
+        print(moved, capt)
+        exit("wrong color captured")
+    if "x" not in move and capt != "-":
+        print(moved, capt)
+        exit("false piece capture")
+    if "x" in move and capt == "-":
+        print(moved, capt)
+        exit("no piece captured")
     #make move
     board[end[0]][end[1]] = board[start[0]][start[1]]
     board[start[0]][start[1]] = "-"
