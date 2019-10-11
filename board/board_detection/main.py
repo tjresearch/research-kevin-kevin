@@ -7,6 +7,8 @@ import board_segmentation
 filename = "chessboard4.jpg"
 img = cv2.imread(os.path.join("images", filename))
 
+# img = cv2.resize(img, (1280, 720))
+
 lines = board_locator.find_lines(img)
 line_disp = img.copy()
 
@@ -24,10 +26,21 @@ for line in lines:
 
 cv2.imshow("lines", line_disp)
 
-edges = board_locator.find_chessboard(img)
-chunks = board_segmentation.segment_board_from_edges(img, edges)
+cv2.waitKey()
+
+corners = board_locator.find_chessboard(img)
+
+corner_disp = img.copy()
+
+for i in range(4):
+	cv2.line(corner_disp, (int(corners[i][0]), int(corners[i][1])), (int(corners[(i+1)%4][0]), int(corners[(i+1)%4][1])), (255, 0, 0), 2)
+
+cv2.imshow("corners", corner_disp)
+
+chunks = board_segmentation.segment_board(img, corners)
 
 chunk_disp = img.copy()
+composite_disp = img.copy()
 
 for chunk in chunks:
 	corners, center = chunk
@@ -38,7 +51,9 @@ for chunk in chunks:
 	box = ((left, bottom), (right, bottom), (right, bottom - 150), (left, bottom - 150))
 	for i in range(4):
 		cv2.line(chunk_disp, (int(box[i][0]), int(box[i][1])), (int(box[(i+1)%4][0]), int(box[(i+1)%4][1])), (255, 0, 0), 2)
+		cv2.line(composite_disp, (int(corners[i][0]), int(corners[i][1])), (int(corners[(i+1)%4][0]), int(corners[(i+1)%4][1])), (0, 0, 255), 2)
 
+cv2.imshow("composite", composite_disp)
 cv2.imshow("chunks", chunk_disp)
 
 cv2.waitKey()
