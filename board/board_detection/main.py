@@ -9,7 +9,7 @@ img = cv2.imread(os.path.join("images", filename))
 
 # img = cv2.resize(img, (1280, 720))
 
-lines = board_locator.find_lines(img)
+lines = board_locator.find_lines_improved(img)
 line_disp = img.copy()
 
 for line in lines:

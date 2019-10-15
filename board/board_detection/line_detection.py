@@ -74,68 +74,76 @@ def union(index1, index2, lines):
 		lines[root1][2] += 1
 
 
-img = cv2.imread("images/chessimgs1010/low_angle/IMG_7898.jpeg")
+def find_lines(img):
+	gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+	i = 0
+	lines = []
 
-i = 0
-lines = []
+	for arr in CLAHE_PARAMS:
+		temp = clahe(gray, limit=arr[0], grid=arr[1], iters=arr[2])
+		new_lines = line_detector(canny(gray))
+		for line in new_lines:
+			if line not in lines:
+				lines.append(line)
 
-for arr in CLAHE_PARAMS:
-	temp = clahe(gray, limit=arr[0], grid=arr[1], iters=arr[2])
-	new_lines = line_detector(canny(gray))
-	for line in new_lines:
-		if line not in lines:
-			lines.append(line)
+	line_disp = img.copy()
 
-print(len(lines))
+	for line in lines:
+		cv2.line(line_disp, tuple(line[0]), tuple(line[1]), (255, 0, 0), 2)
 
-line_disp = img.copy()
+	for i in range(len(lines)):
+		lines[i] = [lines[i], i, 0]  # Line, parent, rank
 
-for line in lines:
-	cv2.line(line_disp, tuple(line[0]), tuple(line[1]), (255, 0, 0), 2)
+	for i in range(len(lines)):
+		for j in range(i + 1, len(lines)):
+			if line_linking.linkable(lines[i][0], lines[j][0], img):
+				union(i, j, lines)
 
-for i in range(len(lines)):
-	lines[i] = [lines[i], i, 0] # Line, parent, rank
+	groups = {}
 
-for i in range(len(lines)):
-	for j in range(i+1, len(lines)):
-		if line_linking.linkable(lines[i][0], lines[j][0], img):
-			union(i, j, lines)
+	for i in range(len(lines)):
+		if lines[i][1] in groups:
+			groups[lines[i][1]].append(lines[i][0])
+		else:
+			groups[lines[i][1]] = [lines[i][0]]
 
-groups = {}
+	linked_lines = []
+	for group in groups.values():
+		linked_lines.append(line_linking.link(group))
 
-for i in range(len(lines)):
-	if lines[i][1] in groups:
-		groups[lines[i][1]].append(lines[i][0])
-	else:
-		groups[lines[i][1]] = [lines[i][0]]
+	# cv2.imshow("board", line_disp)
 
-linked_disp = img.copy()
+	return linked_lines
 
-linked_lines = []
-for group in groups.values():
-	linked_lines.append(line_linking.link(group))
 
-print(len(linked_lines))
+def disp_lines_ab(lines, img):
+	disp = img.copy()
+	for line in lines:
+		a, b = line
+		if a == 0:
+			endpoints = [(0, 1 / b), (img.shape[1], (1 - img.shape[1] * a) / b)]
+		elif b == 0:
+			endpoints = [(1 / a, 0), ((1 - img.shape[0] * b) / a, img.shape[0])]
+		else:
+			intercepts = [(1 / a, 0),
+						  ((1 - img.shape[0] * b) / a, img.shape[0]),
+						  (0, 1 / b),
+						  (img.shape[1], (1 - img.shape[1] * a) / b)]
+			endpoints = []
+			for intercept in intercepts:
+				if 0 <= intercept[0] <= img.shape[1] and 0 <= intercept[1] <= img.shape[0]:
+					endpoints.append(intercept)
+		cv2.line(disp, (int(endpoints[0][0]), int(endpoints[0][1])),
+				 (int(endpoints[1][0]), int(endpoints[1][1])), (255, 0, 0), 2)
 
-for line in linked_lines:
-	a, b = line
-	if a == 0:
-		endpoints = [(0, 1 / b), (img.shape[1], (1 - img.shape[1] * a) / b)]
-	elif b == 0:
-		endpoints = [(1 / a, 0), ((1 - img.shape[0] * b) / a, img.shape[0])]
-	else:
-		intercepts = [(1 / a, 0),
-					  ((1 - img.shape[0] * b) / a, img.shape[0]),
-					  (0, 1 / b),
-					  (img.shape[1], (1 - img.shape[1] * a) / b)]
-		endpoints = []
-		for intercept in intercepts:
-			if 0 <= intercept[0] <= img.shape[1] and 0 <= intercept[1] <= img.shape[0]:
-				endpoints.append(intercept)
-	cv2.line(linked_disp, (int(endpoints[0][0]), int(endpoints[0][1])), (int(endpoints[1][0]), int(endpoints[1][1])), (255, 0, 0), 2)
-
-cv2.imshow("linked", linked_disp)
-cv2.imshow("board", line_disp)
-cv2.waitKey()
+# img = cv2.imread("images/chessboard1.jpg")
+# lines = find_lines(img)
+#
+# print(len(linked_lines))
+#
+#
+#
+# cv2.imshow("linked", linked_disp)
+# cv2.imshow("board", line_disp)
+# cv2.waitKey()

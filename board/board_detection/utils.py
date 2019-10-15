@@ -103,3 +103,13 @@ def line_of_best_fit(points):
 		a = 1 / xmean
 		b = 0
 	return a, b
+
+
+def convert_ab_to_rho_theta(line):
+	a, b = line
+	theta = np.arctan2(b, a)
+	rho = 1 / np.hypot(a, b)
+	if theta < 0:
+		theta += np.pi
+		rho = -rho
+	return rho, theta

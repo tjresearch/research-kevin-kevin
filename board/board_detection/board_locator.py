@@ -3,6 +3,7 @@ import numpy as np
 import itertools
 import utils
 import math
+import line_detection
 from sklearn.cluster import dbscan
 from matplotlib import pyplot as plt
 
@@ -25,7 +26,7 @@ def line_weight(line, canny):
 def rho_theta_distance(p1, p2):
 
 	rho_dist1 = (p1[0] - p2[0]) ** 2
-	theta_dist1 =(p1[1]-p2[1]) ** 2
+	theta_dist1 = (p1[1] - p2[1]) ** 2
 	rho_dist2 = (p1[0] + p2[0]) ** 2
 	if p1[1] < p2[1]:
 		theta_dist2 = (p1[1] - p2[1] + 1) ** 2
@@ -45,12 +46,26 @@ def find_lines(img): # Will be implemented with more advanced algorithms later
 
 	lines = cv2.HoughLines(canny, 1, np.pi/180, 90)
 
-	data = lines[:, 0].copy()
+	lines = lines[:, 0]
+
+	return filter_lines(lines)
+
+
+def find_lines_improved(img):
+	lines = line_detection.find_lines(img)
+	rho_theta_lines = []
+	for line in lines:
+		rho_theta_lines.append(utils.convert_ab_to_rho_theta(line))
+	return filter_lines(np.array(rho_theta_lines))
+
+
+def filter_lines(lines):
+	data = lines.copy()
 
 	data[:, 0] = data[:, 0] / np.max(np.abs(data[:, 0]))
 	data[:, 1] = data[:, 1] / np.pi
 
-	indices, clusters = dbscan(data, 0.01, min_samples=4, metric=rho_theta_distance)
+	indices, clusters = dbscan(data, 0.02, min_samples=1, metric=rho_theta_distance)
 
 	lines = lines[indices]
 	clusters = clusters[indices]
@@ -65,7 +80,7 @@ def find_lines(img): # Will be implemented with more advanced algorithms later
 	# plt.ylabel("Theta")
 	# plt.show()
 
-	best_lines = [list(lines[i][0]) for i in firsts]
+	best_lines = [list(lines[i]) for i in firsts]
 
 	return best_lines
 
@@ -84,7 +99,7 @@ def get_intersections(lines):
 
 
 def find_chessboard(img):
-	lines = find_lines(img)
+	lines = find_lines_improved(img)
 
 	lattice_points = [p for p in get_intersections(lines) if 0 <= p[0] < img.shape[1] and 0 <= p[1] < img.shape[0]]
 
