@@ -23,7 +23,7 @@ def find_intersection(l1, l2):
 
 	return np.matmul(A, B)[:, 0].tolist()
 
-def dist(p1, p2):
+def dist(p1, p2): #repeat?
 	return np.hypot(p1[0] - p2[0], p1[1] - p2[1])
 
 def angle(l1, l2):

@@ -39,14 +39,12 @@ def save_squares(file, outer_dir):
 				corners = []
 				print("corners cleared")
 
-		cv2.destroyWindow("image")
-
 		disp = img.copy()
 
 		for i in range(4):
 			cv2.line(disp, corners[i], corners[(i+1)%4], (255, 0, 0), 2)
 
-		cv2.imshow("check", disp)
+		cv2.imshow("image", disp)
 		print("space to confirm board, any other to redo")
 
 		c = chr(cv2.waitKey())
@@ -57,7 +55,7 @@ def save_squares(file, outer_dir):
 		else:
 			corners = []
 			print("corners cleared")
-		cv2.destroyWindow("check")
+		cv2.destroyWindow("image")
 
 	cv2.destroyWindow("check")
 	chunks = board_segmentation.segment_board(img, corners)
@@ -133,7 +131,8 @@ def main():
 	#make dir of current time for subimgs
 	now = datetime.now()
 	today_dir = now.strftime("%Y%m%d%H%M%S")
-	save_dir = os.path.join("squares", today_dir)
+	head = sys.argv[2] #"squares"
+	save_dir = os.path.join(head, today_dir)
 	os.mkdir(save_dir)
 	print("save dir: {}".format(save_dir))
 

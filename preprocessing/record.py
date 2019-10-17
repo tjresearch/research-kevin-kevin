@@ -9,7 +9,7 @@ output vid and .jpgs saved to local folder /assets
 """
 
 phone_ip = sys.argv[1]
-url = "http://" + phone_ip + "/live?type=some.mp4"
+url = "http://" + phone_ip + "/live"
 print(url)
 cap = cv2.VideoCapture(url)
 if (cap.isOpened()== False):

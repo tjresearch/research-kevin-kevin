@@ -56,7 +56,8 @@ def find_lines_improved(img):
 	rho_theta_lines = []
 	for line in lines:
 		rho_theta_lines.append(utils.convert_ab_to_rho_theta(line))
-	return filter_lines(np.array(rho_theta_lines))
+	return rho_theta_lines
+	# return filter_lines(np.array(rho_theta_lines))
 
 
 def filter_lines(lines):
@@ -158,5 +159,3 @@ def find_chessboard(img):
 	#
 	# return hor[np.argmin(np.abs(hor[:, 0]))], ver[np.argmin(np.abs(ver[:, 0]))], \
 	# 	   hor[np.argmax(np.abs(hor[:, 0]))], ver[np.argmax(np.abs(ver[:, 0]))]
-
-
