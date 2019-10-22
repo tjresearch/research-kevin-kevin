@@ -46,24 +46,31 @@ def segment_board(img, corners):
 
 	for i in range(8):
 		for j in range(8):
-			square = []
-
-			corners = [(i * square_size, j * square_size),
+			raw_corners = ((i * square_size, j * square_size),
 					   (i * square_size, (j + 1) * square_size),
 					   ((i + 1) * square_size, (j + 1) * square_size),
-					   ((i + 1) * square_size, j * square_size)]
-			for k in range(4):
-				corners[k] = utils.inverse_warp_point(corners[k], H)
+					   ((i + 1) * square_size, j * square_size))
 
-			square.append(np.array(corners))
+			warped_corners = [utils.inverse_warp_point(raw_corners[k], H) for k in range(4)]
+
+			margin = int(0.1*square_size)
+			region_corners = (
+				(raw_corners[0][0]+margin, raw_corners[0][1]+margin),
+				(raw_corners[1][0]+margin, raw_corners[1][1]-margin),
+				(raw_corners[2][0]-int(square_size/2)-margin, raw_corners[2][1]-margin),
+				(raw_corners[3][0]-int(square_size/2)-margin, raw_corners[3][1]+margin)
+			)
+			warped_region_corners = [utils.inverse_warp_point(region_corners[k], H) for k in range(4)]
+
+			print("half",region_corners)
+			print("full",raw_corners)
 
 			center = ((i + 0.5) * square_size, (j + 0.5) * square_size)
-
 			center = utils.inverse_warp_point(center, H)
 
-			square.append(center)
+			piece = False
 
+			square = (np.array(warped_corners), center, np.array(warped_region_corners))
 			chunks.append(square)
 
-	return chunks
-
+	return chunks, H
