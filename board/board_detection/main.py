@@ -2,14 +2,16 @@ import cv2
 import os
 import numpy as np
 import board_locator
+import line_detection
 import board_segmentation
 
-filename = "chessboard4.jpg"
+filename = "chessimgs1010/glare/IMG_7892_1.jpg"
 img = cv2.imread(os.path.join("images", filename))
 
 # img = cv2.resize(img, (1280, 720))
 
-lines = board_locator.find_lines_improved(img)
+lines = line_detection.find_lines_improved(img)
+hor, vert = board_locator.separate_lines(lines)
 line_disp = img.copy()
 
 for line in lines:
@@ -22,7 +24,12 @@ for line in lines:
 	y1 = int(y0 + 1000 * a)
 	x2 = int(x0 - 1000 * -b)
 	y2 = int(y0 - 1000 * a)
-	cv2.line(line_disp, (x1, y1), (x2, y2), (255, 0, 0), 2)
+	if line in hor:
+		cv2.line(line_disp, (x1, y1), (x2, y2), (255, 0, 0), 2)
+	elif line in vert:
+		cv2.line(line_disp, (x1, y1), (x2, y2), (0, 255, 0), 2)
+	else:
+		cv2.line(line_disp, (x1, y1), (x2, y2), (0, 0, 255), 2)
 
 cv2.imshow("lines", line_disp)
 
