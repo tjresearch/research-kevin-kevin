@@ -137,13 +137,9 @@ def find_board(img):
 	cv2.destroyWindow("image")
 
 def label_subimgs(img, chunks, file, save_dir):
-	region_bounds = []
 	#label subimgs
 	for i in range(len(chunks)):
 		corners, center, region = chunks[i]
-
-		region_bounds.append(region)
-		continue
 
 		bottom = np.max(corners[:, 1])
 		top = bottom - 150
@@ -207,22 +203,40 @@ def label_subimgs(img, chunks, file, save_dir):
 		cv2.imwrite(full_path, subimg)
 		print("subimg_{} saved to {}\n".format(i, full_path))
 
-	disp = img.copy()
-	for region in region_bounds:
-		r = order_points(region)
-		print(r)
+def find_poss_pieces(img, chunks, H, SQ_SIZE):
+	region_bounds = [c[2] for c in chunks]
+
+	dims = (SQ_SIZE*8, SQ_SIZE*8)
+
+	#same as canny() in line_detection.py but
+	#no lower hysteresis thresh and no medianBlur
+	#to find black pieces
+	sigma = 0.25
+	v = np.median(img)
+
+	img = cv2.GaussianBlur(img, (3, 3), 2)
+
+	# lower = int(max(0, (1.0 - sigma) * v))
+	lower = 0
+	upper = int(min(255, (1.0 + sigma) * v))
+
+	warped = cv2.warpPerspective(cv2.Canny(img, lower, upper), H, dims)
+	"""visualization, haven't actually searched regions"""
+	warped = cv2.cvtColor(warped, cv2.COLOR_GRAY2BGR)
+	for r in region_bounds:
+		# r = order_points(region)
+		# print(r)
 		for i in range(4):
 			pt_1 = (int(r[i][0]), int(r[i][1]))
 			pt_2 = (int(r[(i+1)%4][0]), int(r[(i+1)%4][1]))
-			print(pt_1, pt_2)
-			cv2.line(disp, pt_1, pt_2, (0, 255, 0), 2)
-	while True:
-		cv2.imshow("regions", disp)
-		cv2.waitKey()
-	"""
-	take region_subimgs, analyze color
-	kmeans?
-	"""
+			# print(pt_1, pt_2)
+			cv2.line(warped, pt_1, pt_2, (0, 255, 0), 2)
+
+	warped = cv2.transpose(warped)
+
+	# while True:
+	cv2.imshow("regions", warped)
+	cv2.waitKey()
 
 def save_squares(file, outer_dir):
 	global corners
@@ -234,21 +248,12 @@ def save_squares(file, outer_dir):
 
 	#fill and order global list corners
 	find_board(img)
-	#warp for piece detection
-	"""
-	warp_dims = (400, 400) #r, c
-	print(warp_dims)
-	if warp_dims[0]%8 or warp_dims[1]%8:
-		exit("warp dims not div by 8")
-	warped = homography_transform(img, corners, warp_dims)
-	cv2.imshow("warped", warped)
-	target = ortho_corners(warp_dims)
-	for r in target:
-		print(r)
-	"""
-
-	#chunks have to go in consistent order for this to work
-	chunks, H = board_segmentation.roi_segment_board(img, corners)
+	#segment board
+	SQ_SIZE = 100
+	chunks, H = board_segmentation.regioned_segment_board(img, corners, SQ_SIZE)
+	#use orthophoto to find poss piece locations
+	poss_pieces = find_poss_pieces(img, chunks, H, SQ_SIZE)
+	#label poss piece locations
 	label_subimgs(img, chunks, file, save_dir)
 
 def main():

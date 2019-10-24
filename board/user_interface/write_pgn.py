@@ -3,7 +3,9 @@ converts given PGN to board states and back again
 to test find_pgn_move(), which in reality will be called elsewhere
 """
 import sys
-from chess_convert import *
+import pgn_reader as reader
+import pgn_writer as writer
+import pgn_helper
 
 if len(sys.argv) < 3:
     print("\nusage: write_pgn.py pgnfile.pgn result_ltr")
@@ -12,19 +14,19 @@ if len(sys.argv) < 3:
 
 #read input file
 pgn_file = sys.argv[1] #will only work if pgn file is in directory
-num_move_list = clean_pgn(pgn_file)
+num_move_list = reader.clean_pgn(pgn_file)
 print("input pgn:")
 for i in range(len(num_move_list)):
     print(i, end=". ")
     print(num_move_list[i])
-move_list = flatten_move_list(num_move_list)
+move_list = reader.flatten_move_list(num_move_list)
 # print(move_list)
 
 #create list of board states
-boards = [FEN_to_board()]
-board = FEN_to_board()
+boards = [reader.FEN_to_board()]
+board = reader.FEN_to_board()
 for i in range(len(move_list)):
-    board = make_move(board, move_list[i], (i+1)%2)
+    board = reader.make_move(board, move_list[i], (i+1)%2)
     boards.append(board)
 
 # for i in range(len(boards)):
@@ -35,7 +37,7 @@ print("-"*64+"\n")
 my_moves = []
 for i in range(len(boards)-1):
     # print(i)
-    my_moves.append(find_pgn_move(boards[i], boards[i+1]))
+    my_moves.append(writer.find_pgn_move(boards[i], boards[i+1]))
     # print(my_moves)
     # print("-" * 64)
 
@@ -43,7 +45,7 @@ for i in range(len(boards)-1):
 print(my_moves[-1])
 if "{" in my_moves[-1] and "}" in my_moves[-1]:
     print("adding manually inputted game result")
-    result = end_handler(sys.argv[2])
+    result = writer.end_handler(sys.argv[2])
     print(result)
     if result:
         my_moves[-1] = result

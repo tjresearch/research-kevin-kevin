@@ -1,41 +1,4 @@
-"""
-methods for write_pgn.py and show_game.py
-"""
-#rows are 1-8
-#assumed 8x8 2d array
-#flipped means display w/ black pieces on bottom
-COL_HEADS = {chr(i+97): i for i in range(8)} #ltrs a-h
-def display(board, flipped=False):
-    if flipped:
-        board = board[::-1]
-
-    left_margin = " "*3
-    output = "\n"+left_margin
-    for k in COL_HEADS:
-        output += "  {} ".format(k)
-    line = left_margin + '-'*33
-    output += "\n" + line
-    for r in range(8):
-        row_head = " "+str(r+1)+" " if flipped else " "+str(8-r)+" "
-        output += "\n{}| ".format(row_head)
-        for c in range(7):
-            output += board[r][c]+' | '
-        output += board[r][-1]+ ' |{}\n'.format(row_head)
-        output += line
-    output += "\n"+left_margin
-    for k in COL_HEADS:
-        output += "  {} ".format(k)
-    output += "\n"
-    print(output)
-    return output
-
-#useful helpers
-def get_col(array, i):
-    return [r[i] for r in array]
-
-def in_bounds(pos): #checking against negative coords or coords > 8
-    return pos[0]>=0 and pos[1]>=0 and pos[0]<8 and pos[1]<8
-
+import pgn_helper as ph
 """
 takes pgn file input
 returns list of white/black moves by num, strips other input
@@ -159,31 +122,22 @@ a1 -> (7, 0), a8 -> (0, 0), h1 -> (7, 7), h8 -> (0, 7)
 """
 def alg_to_coords(alg):
     chars = [*alg]
-    return (8-int(chars[1]), COL_HEADS[chars[0]]) #ord('a') = 97
+    return (8-int(chars[1]), ph.COL_HEADS[chars[0]]) #ord('a') = 97
 
 """
 helper for get_coords_of_move()
-finds start coords for all pieces besides pawns with REL_STARTS for each piece
+finds start coords for all pieces besides pawns with ph.REL_STARTS for each piece
 pawns handled in get_coords_of_move() directly
 """
-#lookup table for find_start()
-REL_STARTS = {
-    "N": [[(1,2),(2,1)],[(-1,2),(-2,1)],[(1,-2),(2,-1)],[(-1,-2),(-2,-1)]],
-    "R": [[(0,i) for i in range(-1, -8, -1)], [(0,i) for i in range(1, 8)], [(i,0) for i in range(-1, -8, -1)], [(i,0) for i in range(1, 8)]],
-    "B": [[(i,i) for i in range(-1, -8, -1)], [(i,i) for i in range(1, 8)], [(-i,i) for i in range(-1, -8, -1)], [(-i,i) for i in range(1, 8)]],
-    "K": [[t] for t in ({(i,j) for i in range(-1, 2) for j in range(-1, 2)} - {(0,0)})],
-}
-REL_STARTS["Q"] = REL_STARTS["R"]+REL_STARTS["B"] #add in queen moves
-
 def find_start(board, piece, end, diff=None):
     # print(piece, end, diff)
-    starts = REL_STARTS[piece.upper()]
+    starts = ph.REL_STARTS[piece.upper()]
     search_sp = [[(end[0]+p[0], end[1]+p[1]) for p in dir] for dir in starts]
 
     poss = set()
     for dir in search_sp:
         for pos in dir:
-            if in_bounds(pos):
+            if ph.in_bounds(pos):
                 # print(pos, board[pos[0]][pos[1]])
                 if board[pos[0]][pos[1]] == piece:
                     poss.add(pos)
@@ -197,7 +151,7 @@ def find_start(board, piece, end, diff=None):
         print(poss)
         exit("two poss start pieces")
 
-    col = COL_HEADS[diff]
+    col = ph.COL_HEADS[diff]
     for pos in poss:
         if col == pos[1]:
             return pos
@@ -262,7 +216,7 @@ def get_coords_of_move(board, move, wtm):
                 print(move, end="")
                 exit("???")
             end = alg_to_coords(move[-2:])
-            start_col = COL_HEADS[move[0]]
+            start_col = ph.COL_HEADS[move[0]]
         else:
             end = alg_to_coords(move)
             start_col = end[1]
@@ -280,7 +234,7 @@ def get_coords_of_move(board, move, wtm):
         if len(moves[0]) == 1: #no collision
             piece = moves[0].upper() if wtm else moves[0].lower()
             # print(board[end[0]][end[1]])
-            if (moves[0] != 'b') and (piece.upper() in REL_STARTS): #doesn't handle b pawn correctly
+            if (moves[0] != 'b') and (piece.upper() in ph.REL_STARTS): #doesn't handle b pawn correctly
                 return find_start(board, piece, end), end
             pawn = "P" if wtm else "p"
             bck = 1 if wtm else -1
@@ -351,177 +305,3 @@ def make_move(b, move, wtm):
     board[end[0]][end[1]] = board[start[0]][start[1]]
     board[start[0]][start[1]] = "-"
     return board
-
-"""
-boards to pgn
-"""
-"""
-reverse of alg_to_coords, returns string from tuple
-"""
-def coords_to_alg(coords): #ord('a') = 97
-     return str(chr(coords[1]+97))+str(8-coords[0])
-
-def find_pgn_move(st_board, board):
-    diffs = set()
-    for r in range(8): #assumed 8x8
-        for c in range(8):
-            if st_board[r][c] != board[r][c]:
-                diffs.add((r,c))
-
-    if not diffs: #could tell game win off mate
-        return "{game end, manual input required}"
-
-    #special cases
-    #castling
-    if len(diffs) == 4:
-        # print("4 diffs = castling")
-        # print(diffs)
-        if (0, 6) in diffs:
-            if "k" == board[0][6]: #black
-                return "O-O"
-        elif (7, 6) in diffs:
-            if "K" == board[7][6]: #white
-                return "O-O"
-        elif (0, 2) in diffs:
-            if "k" == board[0][2]:
-                return "O-O-O"
-        elif (7, 2) in diffs:
-            if "K" == board[7][2]:
-                return "O-O-O"
-
-    #en passant
-    if len(diffs) == 3:
-        # print("3 diffs = en passant")
-        # display(st_board)
-        # print(diffs)
-        # display(board)
-        st_pieces = {st_board[d[0]][d[1]] for d in diffs}
-        end_pieces = {board[d[0]][d[1]] for d in diffs}
-        if (st_pieces | end_pieces) != {"P", "p", "-"}:
-            print(st_pieces|end_pieces)
-            exit("three diffs not en passant")
-        cap_pawn = (st_pieces-end_pieces).pop() #this will give capt pawn
-        end = ""
-        st_col = ""
-        if cap_pawn == "p": #white captured
-            for d in diffs:
-                if board[d[0]][d[1]] == "P":
-                    end = d
-                if st_board[d[0]][d[1]] == "P":
-                    st_col = str(chr(d[1]+97))
-            return st_col+"x"+coords_to_alg(end)
-        elif cap_pawn == "P": #black captured
-            for d in diffs:
-                if board[d[0]][d[1]] == "p":
-                    end = d
-                if st_board[d[0]][d[1]] == "p":
-                    st_col = str(chr(d[1]+97))
-            return st_col+"x"+coords_to_alg(end)
-        else:
-            exit(cap_pawn)
-        exit("multiple diffs, en passant")
-
-    #error
-    if len(diffs) == 1:
-        display(st_board)
-        print(diffs)
-        display(board)
-        for d in diffs:
-            print(board[d[0]][d[1]])
-        exit("too few diffs")
-
-    # print(diffs)
-    #values to be filled
-    start = ()
-    end = ()
-    piece = ""
-    capt = False
-    diff_col = "" #filled if neccessary to diff
-    pawn = ""
-    promo = ""
-    for d in diffs: #def two diffs by this pt
-        if board[d[0]][d[1]] == "-":
-            start = d
-            piece = st_board[d[0]][d[1]]
-            # print(piece, start)
-            # display(board)
-        else:
-            end = d
-            capt = st_board[d[0]][d[1]] != "-" #if end sq wasn't blank, capt happened
-
-    # print(end, piece)
-
-    if piece.upper() == "P": #pawns are different, only need ltr if capt
-        pawn = str(chr(start[1]+97)) if capt else ""
-        piece = ""
-        if board[end[0]][end[1]].upper() != "P":
-            promo = "="+board[end[0]][end[1]].upper()
-    else:
-        starts = REL_STARTS[piece.upper()]
-        search_sp = [[(end[0]+p[0], end[1]+p[1]) for p in dir] for dir in starts]
-
-        st_poss = set()
-        for dir in search_sp:
-            for pos in dir:
-                if in_bounds(pos):
-                    if st_board[pos[0]][pos[1]] == piece:
-                        # print(st_board[pos[0]][pos[1]], pos)
-                        st_poss.add(pos)
-                    if piece.upper() != "N": #not sure if in {"N", "n"} is faster
-                        if board[pos[0]][pos[1]] != "-": break
-
-        # print(st_poss)
-        if len(st_poss) > 1:
-            # print("COLLISION")
-            # print(st_poss)
-            #figure out which st piece is correct one
-            for pos in st_poss:
-                if board[pos[0]][pos[1]] == "-":
-                    # print("st_poss",pos)
-                    diff_col = coords_to_alg(pos)[0]
-                    break #maybe not needed
-
-    # print(pawn, piece, diff_col, capt, start, end, promo)
-    pgn_move = pawn+piece.upper()+diff_col+"x"+coords_to_alg(end)+promo
-    if not capt:
-        pgn_move = pgn_move.replace("x","")
-        # if pgn_move[0] in COL_HEADS:
-        #     pgn_move = pgn_move[1:]
-    # print(pgn_move)
-
-    #check handler
-    if promo: piece = promo[-1] #update promoted pawns
-    if piece: #not pawn
-        starts = REL_STARTS[piece.upper()]
-        search_sp = [[(end[0]+p[0], end[1]+p[1]) for p in dir] for dir in starts]
-        for dir in search_sp:
-            for pos in dir:
-                if in_bounds(pos):
-                    if (piece.islower() and board[pos[0]][pos[1]] == "K") or (piece.isupper() and board[pos[0]][pos[1]] == "k"):
-                        pgn_move += "+" #check
-                    if piece.upper() != "N": #not sure if in {"N", "n"} is faster
-                        if board[pos[0]][pos[1]] != "-": break
-    else: #pawn
-        if board[end[0]][end[1]].isupper(): #white moved
-            for c in {(end[0]-1, end[1]-1), (end[0]-1, end[1]+1)}:
-                if in_bounds(c):
-                    if board[c[0]][c[1]] == "k":
-                        pgn_move += "+"
-        else: #black moved
-            for c in {(end[0]+1, end[1]-1), (end[0]+1, end[1]+1)}:
-                if in_bounds(c):
-                    if board[c[0]][c[1]] == "K":
-                        pgn_move += "+"
-    return pgn_move
-
-def end_handler(ch):
-    if ch == "w": #white win
-        return "1-0"
-    if ch == "b": #black win
-        return "0-1"
-    if ch == "t": #tie
-        return "1/2-1/2"
-    if ch == "i": #incomplete
-        return "*"
-    print("incorrect key entered")
-    return ""
