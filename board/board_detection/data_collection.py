@@ -5,6 +5,11 @@ import sys
 import os
 import numpy as np
 
+if len(sys.argv) < 3:
+	print("usage: python data_collection.py input_dir output_dir")
+	print("-> input_dir (of imgs), output_dir (to store subimgs)")
+	exit(0)
+
 corners = []
 def mark_point(event, x, y, flags, params):
 	global corners
