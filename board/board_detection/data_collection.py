@@ -144,6 +144,7 @@ def label_subimgs(img, chunks, file, save_dir):
 
 		region_bounds.append(region)
 		continue
+
 		bottom = np.max(corners[:, 1])
 		top = bottom - 150
 		if top < 0:
@@ -209,13 +210,15 @@ def label_subimgs(img, chunks, file, save_dir):
 	disp = img.copy()
 	for region in region_bounds:
 		r = order_points(region)
-		# print(r)
+		print(r)
 		for i in range(4):
 			pt_1 = (int(r[i][0]), int(r[i][1]))
 			pt_2 = (int(r[(i+1)%4][0]), int(r[(i+1)%4][1]))
-			# print(pt_1, pt_2)
+			print(pt_1, pt_2)
 			cv2.line(disp, pt_1, pt_2, (0, 255, 0), 2)
-	cv2.imshow("regions", disp)
+	while True:
+		cv2.imshow("regions", disp)
+		cv2.waitKey()
 	"""
 	take region_subimgs, analyze color
 	kmeans?
@@ -231,7 +234,6 @@ def save_squares(file, outer_dir):
 
 	#fill and order global list corners
 	find_board(img)
-
 	#warp for piece detection
 	"""
 	warp_dims = (400, 400) #r, c
@@ -246,7 +248,7 @@ def save_squares(file, outer_dir):
 	"""
 
 	#chunks have to go in consistent order for this to work
-	chunks, H = board_segmentation.segment_board(img, corners)
+	chunks, H = board_segmentation.roi_segment_board(img, corners)
 	label_subimgs(img, chunks, file, save_dir)
 
 def main():

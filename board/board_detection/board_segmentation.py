@@ -35,9 +35,37 @@ def segment_board_from_edges(img, edges):
 
 	return segment_board(img, intersections)
 
-
-
 def segment_board(img, corners):
+	square_size = 100
+
+	H = utils.find_homography(corners, square_size)
+
+	chunks = []
+
+	for i in range(8):
+		for j in range(8):
+			square = []
+
+			corners = [(i * square_size, j * square_size),
+					   (i * square_size, (j + 1) * square_size),
+					   ((i + 1) * square_size, (j + 1) * square_size),
+					   ((i + 1) * square_size, j * square_size)]
+			for k in range(4):
+				corners[k] = utils.inverse_warp_point(corners[k], H)
+
+			square.append(np.array(corners))
+
+			center = ((i + 0.5) * square_size, (j + 0.5) * square_size)
+
+			center = utils.inverse_warp_point(center, H)
+
+			square.append(center)
+
+			chunks.append(square)
+
+	return chunks
+
+def roi_segment_board(img, corners):
 	square_size = 100
 
 	H = utils.find_homography(corners, square_size)
@@ -62,8 +90,8 @@ def segment_board(img, corners):
 			)
 			warped_region_corners = [utils.inverse_warp_point(region_corners[k], H) for k in range(4)]
 
-			print("half",region_corners)
-			print("full",raw_corners)
+			# print("half",region_corners)
+			# print("full",raw_corners)
 
 			center = ((i + 0.5) * square_size, (j + 0.5) * square_size)
 			center = utils.inverse_warp_point(center, H)
