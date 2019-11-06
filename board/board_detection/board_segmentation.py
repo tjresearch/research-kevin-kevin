@@ -83,7 +83,7 @@ def regioned_segment_board(img, corners, SQ_SIZE):
 
 			#square tucked in by margins
 			#top right bot left
-			margin = [int(SQ_SIZE*pct) for pct in (0.1, 0.1, 0.5, 0.1)]
+			margin = [int(SQ_SIZE*pct) for pct in (0.15, 0.15, 0.5, 0.15)]
 			region_corners = (
 				(raw_corners[0][0]+margin[0], raw_corners[0][1]+margin[1]),
 				(raw_corners[1][0]+margin[0], raw_corners[1][1]-margin[1]),

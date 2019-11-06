@@ -78,10 +78,10 @@ def four_point_transform(image, pts):
 
 	# compute the perspective transform matrix and then apply it
 	M = cv2.getPerspectiveTransform(rect, dst)
-	warped = cv2.warpPerspective(image, M, (maxWidth, maxHeight))
+	topdown = cv2.warpPerspective(image, M, (maxWidth, maxHeight))
 
-	# return the warped image
-	return warped
+	# return the topdown image
+	return topdown
 
 def homography_transform(img, pts, dims):
 	src_pts = order_points(pts)
@@ -98,8 +98,8 @@ def homography_transform(img, pts, dims):
 	# out = cv2.perspectiveTransform(src_pts, H)
 	# print(out)
 
-	warped = cv2.warpPerspective(img, H, dims)
-	return warped
+	topdown = cv2.warpPerspective(img, H, dims)
+	return topdown
 
 def find_board(img):
 	global corners
@@ -108,7 +108,13 @@ def find_board(img):
 	while True:
 		cv2.namedWindow("image")
 		cv2.setMouseCallback("image", mark_point)
-		print(len(corners))
+		# print(len(corners))
+		# corners = [
+		# 	(231, 75),
+		# 	(121, 602),
+		# 	(733, 95),
+		# 	(837, 615)
+		# ]
 		while True:
 			cv2.imshow("image", img)
 			print("pick four corners, space to finish, any other to redo")
@@ -141,13 +147,63 @@ def find_board(img):
 			print("corners cleared")
 	cv2.destroyWindow("image")
 
-def label_subimgs(img, chunks, file, save_dir):
+def find_poss_pieces(img, region_bounds, H, SQ_SIZE):
+	dims = (SQ_SIZE*8, SQ_SIZE*8)
+
+	#same as canny() in line_detection.py but
+	#no lower hysteresis thresh and no medianBlur
+	#to find black pieces
+	sigma = 0.25
+	v = np.median(img)
+
+	img = cv2.GaussianBlur(img, (3, 3), 2)
+
+	# lower = int(max(0, (1.0 - sigma) * v))
+	lower = 0
+	upper = int(min(255, (1.0 + sigma) * v))
+
+	canny_edge_img = cv2.Canny(img, lower, upper)
+	narr = np.asarray(canny_edge_img[:,:])
+	# print("non_zero", np.count_nonzero(narr))
+
+	topdown = cv2.transpose(cv2.warpPerspective(canny_edge_img, H, dims))
+
+	# cv2.imshow("canny", canny_edge_img)
+	# cv2.waitKey()
+	cv2.imshow("topdowncanny", topdown)
+	cv2.waitKey()
+
+	canny_cts = []
+	#will take upper half of canny pix
+	white_pix_thresh = topdown[topdown!=0].mean()
+	for reg in region_bounds: #bounds are transposed
+		subimg = topdown[int(reg[0][0]):int(reg[3][0]), int(reg[0][1]):int(reg[1][1])]
+
+		ct = 0
+		for c in range(reg[0][1], reg[1][1]):
+			for r in range(reg[0][0], reg[3][0]):
+				if topdown[r][c] > white_pix_thresh: #thresh set above
+					ct += 1
+		canny_cts.append(ct)
+
+	#intentionally low, aiming for perfect recall
+	#(capt all pieces at expense of accuracy)
+	canny_ct_thresh = 10
+	piece_binary = np.asarray([1 if n > canny_ct_thresh else 0 for n in canny_cts]).reshape(8, 8)
+	return piece_binary
+
+def estimate_pose():
+	pass
+
+def label_subimgs(img, chunks, poss_pieces, file, save_dir):
 	#label subimgs
 	for i in range(len(chunks)):
+		if not poss_pieces[i]: continue
+
 		corners, center, region = chunks[i]
 
 		bottom = np.max(corners[:, 1])
-		top = bottom - 150
+		top = bottom - 150 #should be based on homography_transform or pct of square_size
 		if top < 0:
 			top = 0
 		left = np.min(corners[:, 0])
@@ -208,44 +264,10 @@ def label_subimgs(img, chunks, file, save_dir):
 		cv2.imwrite(full_path, subimg)
 		print("subimg_{} saved to {}\n".format(i, full_path))
 
-def find_poss_pieces(img, chunks, H, SQ_SIZE):
-	region_bounds = [c[2] for c in chunks]
-
-	dims = (SQ_SIZE*8, SQ_SIZE*8)
-
-	#same as canny() in line_detection.py but
-	#no lower hysteresis thresh and no medianBlur
-	#to find black pieces
-	sigma = 0.25
-	v = np.median(img)
-
-	img = cv2.GaussianBlur(img, (3, 3), 2)
-
-	# lower = int(max(0, (1.0 - sigma) * v))
-	lower = 0
-	upper = int(min(255, (1.0 + sigma) * v))
-
-	warped = cv2.warpPerspective(cv2.Canny(img, lower, upper), H, dims)
-	"""visualization, haven't actually searched regions"""
-	warped = cv2.cvtColor(warped, cv2.COLOR_GRAY2BGR)
-	for r in region_bounds:
-		# r = order_points(region)
-		# print(r)
-		for i in range(4):
-			pt_1 = (int(r[i][0]), int(r[i][1]))
-			pt_2 = (int(r[(i+1)%4][0]), int(r[(i+1)%4][1]))
-			# print(pt_1, pt_2)
-			cv2.line(warped, pt_1, pt_2, (0, 255, 0), 2)
-
-	warped = cv2.transpose(warped)
-
-	# while True:
-	cv2.imshow("regions", warped)
-	cv2.waitKey()
-
 def save_squares(file, outer_dir):
 	global corners
 
+	#setup file IO
 	save_dir = os.path.join(outer_dir, file[file.rfind("/")+1:file.rfind(".")])
 	os.mkdir(save_dir)
 	print("output dir: {}".format(save_dir))
@@ -253,17 +275,25 @@ def save_squares(file, outer_dir):
 
 	#fill and order global list corners
 	find_board(img)
+
 	#segment board
 	SQ_SIZE = 100
 	chunks, H = board_segmentation.regioned_segment_board(img, corners, SQ_SIZE)
+
+	region_bounds = [c[2] for c in chunks]
+
 	#use orthophoto to find poss piece locations
-	poss_pieces = find_poss_pieces(img, chunks, H, SQ_SIZE)
+	poss_pieces = find_poss_pieces(img, region_bounds, H, SQ_SIZE)
+	print(poss_pieces)
+	poss_pieces = poss_pieces.flatten()
+
 	#label poss piece locations
-	label_subimgs(img, chunks, file, save_dir)
+	label_subimgs(img, chunks, poss_pieces, file, save_dir)
 
 def main():
 	global corners
 	img_dir = sys.argv[1]
+
 	#make dir of current time for subimgs
 	now = datetime.now()
 	today_dir = now.strftime("%Y%m%d%H%M%S")
@@ -272,6 +302,7 @@ def main():
 	os.mkdir(save_dir)
 	print("save dir: {}".format(save_dir))
 
+	#save squares of each file
 	for file in os.listdir(img_dir):
 		if file.endswith(".jpg") or file.endswith(".jpeg"):
 			filepath = os.path.join(img_dir, file)
