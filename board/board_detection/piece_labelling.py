@@ -108,13 +108,7 @@ def find_board(img):
 	while True:
 		cv2.namedWindow("image")
 		cv2.setMouseCallback("image", mark_point)
-		# print(len(corners))
-		# corners = [
-		# 	(231, 75),
-		# 	(121, 602),
-		# 	(733, 95),
-		# 	(837, 615)
-		# ]
+
 		while True:
 			cv2.imshow("image", img)
 			print("pick four corners, space to finish, any other to redo")
@@ -170,8 +164,8 @@ def find_poss_pieces(img, region_bounds, H, SQ_SIZE):
 
 	# cv2.imshow("canny", canny_edge_img)
 	# cv2.waitKey()
-	cv2.imshow("topdowncanny", topdown)
-	cv2.waitKey()
+	# cv2.imshow("topdowncanny", topdown)
+	# cv2.waitKey()
 
 	canny_cts = []
 	#will take upper half of canny pix
@@ -189,26 +183,95 @@ def find_poss_pieces(img, region_bounds, H, SQ_SIZE):
 	#intentionally low, aiming for perfect recall
 	#(capt all pieces at expense of accuracy)
 	canny_ct_thresh = 10
-	piece_binary = np.asarray([1 if n > canny_ct_thresh else 0 for n in canny_cts]).reshape(8, 8)
+	piece_binary = np.asarray([1 if n > canny_ct_thresh else 0 for n in canny_cts]).reshape(-1, 8)
 	return piece_binary
 
-def estimate_pose():
-	pass
+def estimate_tops(img, piece_height, square_bounds):
+	"""
+	top-left start
+	left to right, top to bottom
+	(row-col)
+	"""
+	board_corners = []
+	for r in range(8):
+		sqrs = square_bounds[r*8:(r+1)*8]
+		for sq in sqrs:
+			board_corners.append([sq[0][0],sq[0][1]])
+		board_corners.append([sqrs[-1][1][0],sqrs[-1][1][1]])
 
-def label_subimgs(img, chunks, poss_pieces, file, save_dir):
+	last_row = square_bounds[-8:]
+	for sq in last_row:
+		board_corners.append([sq[3][0], sq[3][1]])
+	board_corners.append([last_row[-1][2][0],last_row[-1][2][1]])
+
+	# print(len(board_corners))
+	board_corners = np.asarray(board_corners) #81x2
+	# print(board_corners.shape)
+
+	# for dot in board_corners:
+	# 	cv2.circle(img, tuple([int(i) for i in dot]), 5, (255, 0, 0), thickness=5)
+
+	# cv2.imshow("corners", img)
+	# cv2.waitKey()
+
+	objp = np.zeros((81,3), np.float32)
+	coords = np.mgrid[0:9,0:9].T
+	coords[:,:,[1,0]] = coords[:,:,[0,1]]
+	objp[:,:2] = coords.reshape(-1,2)
+
+	# print(objp)
+	# print(board_corners)
+
+	img_r, img_c = img.shape[:-1]
+	camera_matrix = np.asarray([[img_c, 0, img_c/2],[0, img_c, img_r/2],[0, 0, 1]])
+	dist_coeffs = np.zeros((4,1))
+	# print(camera_matrix)
+	# print(dist_coeffs)
+	#imagePoints = board_corners
+	retval, rvec, tvec, inliers = cv2.solvePnPRansac(objp, board_corners, camera_matrix, dist_coeffs)
+
+	to_draw = []
+	for r in range(8):
+		for c in range(8):
+			# for pt in [[r,c,0],[r,c+1,0],[r+1,c,0],[r,c,1]]:
+			for pt in [[r+0.5,c+0.5,0],[r+0.5,c+0.5,piece_height]]:
+				to_draw.append(pt)
+	to_draw = np.asarray(to_draw).astype(np.float32)
+	# print(to_draw)
+	# print(to_draw.shape)
+	# to_draw = np.float32([[7,7,0], [7,8,0], [8,7,0], [7,7,1]]).reshape(-1,3)
+	proj_pts, jac = cv2.projectPoints(to_draw, rvec, tvec, camera_matrix, dist_coeffs)
+	proj_pts = proj_pts.astype(int)
+	tops = []
+	for i in range(1,len(proj_pts),2):
+		tops.append(proj_pts[i][0])
+		# cv2.line(img, tuple(proj_pts[i-1][0]), tuple(proj_pts[i][0]), (0, 255, 0), 2)
+	tops = np.asarray(tops)
+	# print(tops)
+	# print(tops.shape)
+	# cv2.imshow("axes",img)
+	# cv2.waitKey()
+
+	return tops
+
+def label_subimgs(img, square_bounds, poss_pieces, tops, file, save_dir):
 	#label subimgs
-	for i in range(len(chunks)):
+	for i in range(len(square_bounds)):
 		if not poss_pieces[i]: continue
 
-		corners, center, region = chunks[i]
-
+		corners = square_bounds[i]
+		bottom = np.max(corners[:, 1])
+		top = tops[i][1] if tops[i][1] > 0 else 0
+		left = np.min(corners[:, 0])
+		right = np.max(corners[:, 0])
+		"""
 		bottom = np.max(corners[:, 1])
 		top = bottom - 150 #should be based on homography_transform or pct of square_size
 		if top < 0:
 			top = 0
 		left = np.min(corners[:, 0])
 		right = np.max(corners[:, 0])
-
+		"""
 		subimg = img[int(top):int(bottom), int(left):int(right)]
 
 		window_name = file+"_subimg_"+str(i)
@@ -280,6 +343,11 @@ def save_squares(file, outer_dir):
 	SQ_SIZE = 100
 	chunks, H = board_segmentation.regioned_segment_board(img, corners, SQ_SIZE)
 
+	"""
+	chunks[0] = corners (squares defined by four corners)
+	chunks[1] = centers (squares defined by four corners)
+	chunks[2] = region_bounds (search regions of orthophoto, defined by four corners)
+	"""
 	region_bounds = [c[2] for c in chunks]
 
 	#use orthophoto to find poss piece locations
@@ -287,8 +355,12 @@ def save_squares(file, outer_dir):
 	print(poss_pieces)
 	poss_pieces = poss_pieces.flatten()
 
+	piece_height = 2 #squares tall
+	square_bounds = [c[0] for c in chunks]
+	tops = estimate_tops(img, piece_height, square_bounds)
+
 	#label poss piece locations
-	label_subimgs(img, chunks, poss_pieces, file, save_dir)
+	label_subimgs(img, square_bounds, poss_pieces, tops, file, save_dir)
 
 def main():
 	global corners
@@ -309,6 +381,8 @@ def main():
 			print("file: {}".format(filepath))
 			save_squares(filepath, save_dir)
 			corners = [] #clear for next board
+			print("file {} done".format(filepath))
+
 
 if __name__ == '__main__':
 	main()
