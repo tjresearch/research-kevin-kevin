@@ -139,7 +139,7 @@ def find_board(img):
 		else:
 			corners = []
 			print("corners cleared")
-	cv2.destroyWindow("image")
+	# cv2.destroyWindow("image")
 
 def find_poss_pieces(img, region_bounds, H, SQ_SIZE):
 	dims = (SQ_SIZE*8, SQ_SIZE*8)
@@ -150,7 +150,7 @@ def find_poss_pieces(img, region_bounds, H, SQ_SIZE):
 	sigma = 0.25
 	v = np.median(img)
 
-	img = cv2.GaussianBlur(img, (3, 3), 2)
+	# img = cv2.GaussianBlur(img, (3, 3), 2)
 
 	# lower = int(max(0, (1.0 - sigma) * v))
 	lower = 0
@@ -181,7 +181,7 @@ def find_poss_pieces(img, region_bounds, H, SQ_SIZE):
 		canny_cts.append(ct)
 
 	#intentionally low, aiming for perfect recall
-	#(capt all pieces at expense of accuracy)
+	#(mark all pieces at expense of accuracy)
 	canny_ct_thresh = 10
 	piece_binary = np.asarray([1 if n > canny_ct_thresh else 0 for n in canny_cts]).reshape(-1, 8)
 	return piece_binary
@@ -275,7 +275,7 @@ def label_subimgs(img, square_bounds, poss_pieces, tops, file, save_dir):
 		subimg = img[int(top):int(bottom), int(left):int(right)]
 
 		window_name = file+"_subimg_"+str(i)
-		cv2.namedWindow(window_name)
+		cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
 
 		while True:
 			cv2.imshow(window_name, subimg)
@@ -318,14 +318,33 @@ def label_subimgs(img, square_bounds, poss_pieces, tops, file, save_dir):
 		if color == "w":
 			piece = piece.upper()
 
+		if not piece: #blank sq
+			piece = "x"
+
 		#save each subimg by SAN
 		#lowercase for black, uppercase for white
 		# N = KNIGHT !!!
-		filename = "{}_{}.jpg".format(i, piece)
+		filename = "{}-{}.jpg".format(i, piece)
 		full_path = os.path.join(save_dir, filename)
 		print(full_path)
 		cv2.imwrite(full_path, subimg)
 		print("subimg_{} saved to {}\n".format(i, full_path))
+
+# https://stackoverflow.com/questions/35180764/opencv-python-image-too-big-to-display
+def ResizeWithAspectRatio(image, width=None, height=None, inter=cv2.INTER_AREA):
+    dim = None
+    (h, w) = image.shape[:2]
+
+    if width is None and height is None:
+        return image
+    if width is None:
+        r = height / float(h)
+        dim = (int(w * r), height)
+    else:
+        r = width / float(w)
+        dim = (width, int(h * r))
+
+    return cv2.resize(image, dim, interpolation=inter)
 
 def save_squares(file, outer_dir):
 	global corners
@@ -335,6 +354,11 @@ def save_squares(file, outer_dir):
 	os.mkdir(save_dir)
 	print("output dir: {}".format(save_dir))
 	img = cv2.imread(file)
+
+	#downsize large resolutions
+	scale_to = (960, 720)
+	if img.size > scale_to[0]*scale_to[1]:
+		img = ResizeWithAspectRatio(img, width=scale_to[1])
 
 	#fill and order global list corners
 	find_board(img)
@@ -369,20 +393,19 @@ def main():
 	#make dir of current time for subimgs
 	now = datetime.now()
 	today_dir = now.strftime("%Y%m%d%H%M%S")
-	head = sys.argv[2] #"squares"
+	head = sys.argv[2] #output dir
 	save_dir = os.path.join(head, today_dir)
 	os.mkdir(save_dir)
 	print("save dir: {}".format(save_dir))
 
 	#save squares of each file
 	for file in os.listdir(img_dir):
-		if file.endswith(".jpg") or file.endswith(".jpeg"):
+		if file.endswith(".jpg") or file.endswith(".jpeg") or file.endswith(".png"):
 			filepath = os.path.join(img_dir, file)
 			print("file: {}".format(filepath))
 			save_squares(filepath, save_dir)
 			corners = [] #clear for next board
 			print("file {} done".format(filepath))
-
 
 if __name__ == '__main__':
 	main()
