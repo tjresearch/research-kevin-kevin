@@ -1,7 +1,7 @@
 # AutoPGN
 ## An automatic chess-move transcriber.
 
-`preprocessing` has ipCamera to openCV links
+`preprocessing`: ipCamera-to-openCV links
 
 `board` has two subfolders:
 
