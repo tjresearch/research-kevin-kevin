@@ -1,6 +1,4 @@
 import sys, time
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
-# from matplotlib.pyplot import imread, imshow, subplots, show
 import cv2
 import os
 import numpy as np
