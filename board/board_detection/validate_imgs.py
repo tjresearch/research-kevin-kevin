@@ -15,7 +15,7 @@ def get_human_label(filename):
     ext = filename[dot+1:]
 
     if piece == "x":
-        return "blank square"
+        return sq_num, "empty", ext
 
     label = "black " if piece.islower() else "white "
 
@@ -47,7 +47,6 @@ then rename image files in place based on user input
 """
 def main():
     outer_dir = sys.argv[1]
-    print(outer_dir)
     for dir in os.listdir(outer_dir):
         img_dir = os.path.join(outer_dir, dir)
         print("img_dir:",img_dir)
