@@ -5,15 +5,17 @@ import numpy as np
 from validate_imgs import get_human_label
 
 """
-take folder of folders of images as input
-    outer_dir
-    |_ img_dir
-        |_ 0-x.jpg
+take folder of folder of folders of images as input
+    labelled_squares
+    |_outer_dir
+        |_ img_dir
+            |_ 0-x.jpg
+            ...
         ...
     ...
 (as produced by board/board_detection/piece_labelling.py)
 
-then tally piece/color types
+then rename image files in place based on user input
 """
 def main():
     stats = {
@@ -28,19 +30,23 @@ def main():
         "black":0,
     } #totals calculated later
 
-    outer_dir = sys.argv[1]
-    for dir in os.listdir(outer_dir):
-        img_dir = os.path.join(outer_dir, dir)
-        print("img_dir:",img_dir)
-        for filename in os.listdir(img_dir):
-            if filename.endswith(".jpg") or filename.endswith(".jpeg") or filename.endswith(".png"):
-                filepath = os.path.join(img_dir, filename)
-                # print("file: {}".format(filepath))
-                img = cv2.imread(filepath)
+    data_dir = sys.argv[1]
+    for file in os.listdir(data_dir):
+        outer_dir = os.path.join(data_dir, file)
+        if not os.path.isdir(outer_dir): continue
+        print(outer_dir)
+        for dir in os.listdir(outer_dir):
+            img_dir = os.path.join(outer_dir, dir)
+            for filename in os.listdir(img_dir):
+                if filename.endswith(".jpg") or filename.endswith(".jpeg") or filename.endswith(".png"):
+                    filepath = os.path.join(img_dir, filename)
+                    # print("file: {}".format(filepath))
+                    img = cv2.imread(filepath)
 
-                sq_num, label, ext = get_human_label(filename)
-                for word in label.split(" "):
-                    stats[word] += 1
+                    sq_num, label, ext = get_human_label(filename)
+                    for word in label.split(" "):
+                        if word != "?":
+                            stats[word] += 1
 
     stats["total_pieces"] = stats["white"]+stats["black"]
     stats["total_squares"] = stats["empty"]+stats["total_pieces"]

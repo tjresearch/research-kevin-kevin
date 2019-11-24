@@ -16,6 +16,8 @@ def get_human_label(filename):
 
     if piece == "x":
         return sq_num, "empty", ext
+    elif piece == "?":
+        return sq_num, "?", ext
 
     label = "black " if piece.islower() else "white "
 
