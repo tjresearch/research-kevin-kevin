@@ -5,11 +5,9 @@ import sys
 import os
 import numpy as np
 
-if len(sys.argv) < 3:
-	print("usage: python data_collection.py input_dir output_dir")
-	print("-> input_dir (of imgs), output_dir (to store subimgs)")
-	exit(0)
-
+"""
+mouse callback for find_board()
+"""
 corners = []
 def mark_point(event, x, y, flags, params):
 	global corners
@@ -17,7 +15,11 @@ def mark_point(event, x, y, flags, params):
 		print("Marked: {}, {}".format(x, y))
 		corners.append((x, y))
 
-# https://www.pyimagesearch.com/2014/08/25/4-point-opencv-getperspective-transform-example/
+"""
+order four points in top-left, top-right, bottom-left, bottom-right order
+return np array of points
+https://www.pyimagesearch.com/2014/08/25/4-point-opencv-getperspective-transform-example/
+"""
 def order_points(pts):
 	if type(pts) == list:
 		pts = np.array(pts)
@@ -44,63 +46,10 @@ def order_points(pts):
 	# return the ordered coordinates
 	return rect
 
-"""not used"""
-def four_point_transform(image, pts):
-	# obtain a consistent order of the points and unpack them
-	# individually
-	rect = order_points(pts)
-	(tl, tr, br, bl) = rect
-
-	# compute the width of the new image, which will be the
-	# maximum distance between bottom-right and bottom-left
-	# x-coordiates or the top-right and top-left x-coordinates
-	widthA = np.sqrt(((br[0] - bl[0]) ** 2) + ((br[1] - bl[1]) ** 2))
-	widthB = np.sqrt(((tr[0] - tl[0]) ** 2) + ((tr[1] - tl[1]) ** 2))
-	maxWidth = max(int(widthA), int(widthB))
-
-	# compute the height of the new image, which will be the
-	# maximum distance between the top-right and bottom-right
-	# y-coordinates or the top-left and bottom-left y-coordinates
-	heightA = np.sqrt(((tr[0] - br[0]) ** 2) + ((tr[1] - br[1]) ** 2))
-	heightB = np.sqrt(((tl[0] - bl[0]) ** 2) + ((tl[1] - bl[1]) ** 2))
-	maxHeight = max(int(heightA), int(heightB))
-
-	# now that we have the dimensions of the new image, construct
-	# the set of destination points to obtain a "birds eye view",
-	# (i.e. top-down view) of the image, again specifying points
-	# in the top-left, top-right, bottom-right, and bottom-left
-	# order
-	dst = np.array([
-		[0, 0],
-		[maxWidth - 1, 0],
-		[maxWidth - 1, maxHeight - 1],
-		[0, maxHeight - 1]], dtype = "float32")
-
-	# compute the perspective transform matrix and then apply it
-	M = cv2.getPerspectiveTransform(rect, dst)
-	topdown = cv2.warpPerspective(image, M, (maxWidth, maxHeight))
-
-	# return the topdown image
-	return topdown
-
-def homography_transform(img, pts, dims):
-	src_pts = order_points(pts)
-	#fixed, hardcoded height/width
-	dst_pts = np.float32([
-		[0, 0],
-		[dims[0]-1, 0],
-		[dims[0]-1, dims[1]-1],
-		[0, dims[1]-1],
-	])
-
-	H, _ = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)
-	print(H)
-	# out = cv2.perspectiveTransform(src_pts, H)
-	# print(out)
-
-	topdown = cv2.warpPerspective(img, H, dims)
-	return topdown
-
+"""
+display chessboard image, allow user to click on four corners of board
+to segment board into squares
+"""
 def find_board(img):
 	global corners
 	#select corners of board to segment
@@ -141,6 +90,12 @@ def find_board(img):
 			print("corners cleared")
 	# cv2.destroyWindow("image")
 
+"""
+transform Canny edge version of chessboard
+identify possible squares w/ pieces based on # of canny pixels in square
+return 8x8 binary np array
+	piece = 1, empty = 0
+"""
 def find_poss_pieces(img, region_bounds, H, SQ_SIZE):
 	dims = (SQ_SIZE*8, SQ_SIZE*8)
 
@@ -149,27 +104,18 @@ def find_poss_pieces(img, region_bounds, H, SQ_SIZE):
 	#to find black pieces
 	sigma = 0.25
 	v = np.median(img)
-
-	# img = cv2.GaussianBlur(img, (3, 3), 2)
-
-	# lower = int(max(0, (1.0 - sigma) * v))
 	lower = 0
 	upper = int(min(255, (1.0 + sigma) * v))
 
 	canny_edge_img = cv2.Canny(img, lower, upper)
 	narr = np.asarray(canny_edge_img[:,:])
-	# print("non_zero", np.count_nonzero(narr))
 
+	#get topdown projection of Canny
 	topdown = cv2.transpose(cv2.warpPerspective(canny_edge_img, H, dims))
 
-	# cv2.imshow("canny", canny_edge_img)
-	# cv2.waitKey()
-	# cv2.imshow("topdowncanny", topdown)
-	# cv2.waitKey()
-
+	#identify number of significant canny points based on white_pix_thresh
 	canny_cts = []
-	#will take upper half of canny pix
-	white_pix_thresh = topdown[topdown!=0].mean()
+	white_pix_thresh = topdown[topdown!=0].mean() #take upper half of canny pix
 	for reg in region_bounds: #bounds are transposed
 		subimg = topdown[int(reg[0][0]):int(reg[3][0]), int(reg[0][1]):int(reg[1][1])]
 
@@ -180,56 +126,44 @@ def find_poss_pieces(img, region_bounds, H, SQ_SIZE):
 					ct += 1
 		canny_cts.append(ct)
 
-	#intentionally low, aiming for perfect recall
-	#(mark all pieces at expense of accuracy)
-	canny_ct_thresh = 10
+	#identify squares that pass threshold for possibly having a piece
+	canny_ct_thresh = 10 #aiming for perfect recall (mark all pieces at expense of accuracy)
 	piece_binary = np.asarray([1 if n > canny_ct_thresh else 0 for n in canny_cts]).reshape(-1, 8)
+
 	return piece_binary
 
+"""
+use solvePnPRansac, projectPoints on 9x9 array of sqr intersections
+to estimate piece height
+return estimated height for every square of board
+"""
 def estimate_tops(img, piece_height, square_bounds):
-	"""
-	top-left start
-	left to right, top to bottom
-	(row-col)
-	"""
-	board_corners = []
+	#get imgpts of chessboard intersections
+	board_corners = []	#left to right, top to bottom
 	for r in range(8):
 		sqrs = square_bounds[r*8:(r+1)*8]
 		for sq in sqrs:
 			board_corners.append([sq[0][0],sq[0][1]])
 		board_corners.append([sqrs[-1][1][0],sqrs[-1][1][1]])
-
 	last_row = square_bounds[-8:]
 	for sq in last_row:
 		board_corners.append([sq[3][0], sq[3][1]])
 	board_corners.append([last_row[-1][2][0],last_row[-1][2][1]])
-
-	# print(len(board_corners))
 	board_corners = np.asarray(board_corners) #81x2
-	# print(board_corners.shape)
 
-	# for dot in board_corners:
-	# 	cv2.circle(img, tuple([int(i) for i in dot]), 5, (255, 0, 0), thickness=5)
-
-	# cv2.imshow("corners", img)
-	# cv2.waitKey()
-
+	#81x2 of coords (0,0) -> (9,9)
 	objp = np.zeros((81,3), np.float32)
 	coords = np.mgrid[0:9,0:9].T
 	coords[:,:,[1,0]] = coords[:,:,[0,1]]
 	objp[:,:2] = coords.reshape(-1,2)
 
-	# print(objp)
-	# print(board_corners)
-
+	#solvePnPRansac with board_corners and objp
 	img_r, img_c = img.shape[:-1]
 	camera_matrix = np.asarray([[img_c, 0, img_c/2],[0, img_c, img_r/2],[0, 0, 1]])
 	dist_coeffs = np.zeros((4,1))
-	# print(camera_matrix)
-	# print(dist_coeffs)
-	#imagePoints = board_corners
 	retval, rvec, tvec, inliers = cv2.solvePnPRansac(objp, board_corners, camera_matrix, dist_coeffs)
 
+	#find centers of each square
 	to_draw = []
 	for r in range(8):
 		for c in range(8):
@@ -237,100 +171,97 @@ def estimate_tops(img, piece_height, square_bounds):
 			for pt in [[r+0.5,c+0.5,0],[r+0.5,c+0.5,piece_height]]:
 				to_draw.append(pt)
 	to_draw = np.asarray(to_draw).astype(np.float32)
-	# print(to_draw)
-	# print(to_draw.shape)
-	# to_draw = np.float32([[7,7,0], [7,8,0], [8,7,0], [7,7,1]]).reshape(-1,3)
+
+	#use centers and Ransac to project piece heights in image
 	proj_pts, jac = cv2.projectPoints(to_draw, rvec, tvec, camera_matrix, dist_coeffs)
 	proj_pts = proj_pts.astype(int)
 	tops = []
 	for i in range(1,len(proj_pts),2):
 		tops.append(proj_pts[i][0])
-		# cv2.line(img, tuple(proj_pts[i-1][0]), tuple(proj_pts[i][0]), (0, 255, 0), 2)
 	tops = np.asarray(tops)
-	# print(tops)
-	# print(tops.shape)
-	# cv2.imshow("axes",img)
-	# cv2.waitKey()
 
 	return tops
 
+"""
+show image of square, get label, save to save_dir
+"""
 def label_subimgs(img, square_bounds, poss_pieces, tops, file, save_dir):
-	#label subimgs
 	for i in range(len(square_bounds)):
 		if not poss_pieces[i]: continue
 
+		#segment full image into square
 		corners = square_bounds[i]
 		bottom = np.max(corners[:, 1])
 		top = tops[i][1] if tops[i][1] > 0 else 0
 		left = np.min(corners[:, 0])
 		right = np.max(corners[:, 0])
-		"""
-		bottom = np.max(corners[:, 1])
-		top = bottom - 150 #should be based on homography_transform or pct of square_size
-		if top < 0:
-			top = 0
-		left = np.min(corners[:, 0])
-		right = np.max(corners[:, 0])
-		"""
 		subimg = img[int(top):int(bottom), int(left):int(right)]
 
+		#get piece label
 		window_name = file+"_subimg_"+str(i)
 		cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
+		cv2.imshow(window_name, subimg)
+		piece = piece_label_handler(window_name)
 
-		while True:
-			cv2.imshow(window_name, subimg)
-
-			color = "?"
-			print("select color")
-			c = chr(cv2.waitKey())
-			if c in {"w", "b"}:
-				color = c
-			elif c in {" ", "e"}:
-				color = "e"
-			elif c == "\x1b":
-				exit("escaped")
-
-			print("select piece")
-			piece = ""
-			if color != "e":
-				piece = "?"
-				c = chr(cv2.waitKey())
-				if c in {"p", "q", "r", "n", "k", "b", "e"}:
-					piece = c
-				elif c == "\x1b":
-					exit("escaped")
-
-			print("space to confirm, any other to redo")
-			if piece:
-				print("color: {}\npiece: {}".format(color, piece))
-			else:
-				print("blank square")
-
-			if chr(cv2.waitKey()) == " ":
-				break
-			elif c == "\x1b":
-				exit("escaped")
-			else:
-				print("redo")
-
-		cv2.destroyWindow(window_name)
-
-		if color == "w":
-			piece = piece.upper()
-
-		if not piece: #blank sq
-			piece = "x"
-
-		#save each subimg by SAN
-		#lowercase for black, uppercase for white
-		# N = KNIGHT !!!
+		#save
 		filename = "{}-{}.jpg".format(i, piece)
 		full_path = os.path.join(save_dir, filename)
-		print(full_path)
 		cv2.imwrite(full_path, subimg)
 		print("subimg_{} saved to {}\n".format(i, full_path))
 
-# https://stackoverflow.com/questions/35180764/opencv-python-image-too-big-to-display
+"""
+return SAN of input piece and color
+"""
+def piece_label_handler(window_name):
+	while True:
+		color = "?"
+		print("select color")
+		c = chr(cv2.waitKey())
+		if c in {"w", "b"}:
+			color = c
+		elif c in {" ", "e"}:
+			color = "e"
+		elif c == "\x1b":
+			exit("escaped")
+
+		print("select piece")
+		piece = ""
+		if color != "e":
+			piece = "?"
+			c = chr(cv2.waitKey())
+			if c in {"p", "q", "r", "n", "k", "b", "e"}:
+				piece = c
+			elif c == "\x1b":
+				exit("escaped")
+
+		print("space to confirm, any other to redo")
+		if piece:
+			print("color: {}\npiece: {}".format(color, piece))
+		else:
+			print("blank square")
+
+		if chr(cv2.waitKey()) == " ":
+			break
+		elif c == "\x1b":
+			exit("escaped")
+		else:
+			print("redo")
+
+	cv2.destroyWindow(window_name)
+
+	#convert input color+piece to SAN
+	if color == "w":
+		piece = piece.upper()
+	if not piece: #blank sq
+		piece = "x"
+
+	return piece
+
+"""
+resize to width/height while keeping aspect ratio
+return resized img
+https://stackoverflow.com/questions/35180764/opencv-python-image-too-big-to-display
+"""
 def ResizeWithAspectRatio(image, width=None, height=None, inter=cv2.INTER_AREA):
     dim = None
     (h, w) = image.shape[:2]
@@ -346,6 +277,13 @@ def ResizeWithAspectRatio(image, width=None, height=None, inter=cv2.INTER_AREA):
 
     return cv2.resize(image, dim, interpolation=inter)
 
+"""
+for given file,
+	segment board into squares
+	use orthophoto to identify poss pieces
+	use projectPoints to estimate piece height
+	show piece, get user-inputted label, save to dir
+"""
 def save_squares(file, outer_dir):
 	global corners
 
@@ -383,10 +321,20 @@ def save_squares(file, outer_dir):
 	square_bounds = [c[0] for c in chunks]
 	tops = estimate_tops(img, piece_height, square_bounds)
 
-	#label poss piece locations
+	#label squares with pieces, save
 	label_subimgs(img, square_bounds, poss_pieces, tops, file, save_dir)
 
+"""
+for each file in input img_dir,
+	make output dir for labelled squares
+	call save_squares()
+"""
 def main():
+	if len(sys.argv) < 3:
+		print("usage: python data_collection.py input_dir output_dir")
+		print("-> input_dir (of imgs), output_dir (to store subimgs)")
+		exit(0)
+
 	global corners
 	img_dir = sys.argv[1]
 

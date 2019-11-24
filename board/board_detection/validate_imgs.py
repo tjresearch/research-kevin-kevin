@@ -2,107 +2,82 @@ import sys, time
 import cv2
 import os
 import numpy as np
+from piece_labelling import piece_label_handler
 
 """
-takes folder of folders of images
+turn filename (SAN) into human-readable piece name
+"""
+def get_human_label(filename):
+    dash = filename.index('-')
+    dot = filename.index('.')
+    sq_num = filename[:dash]
+    piece = filename[dash+1:dot]
+    ext = filename[dot+1:]
+
+    if piece == "x":
+        return "blank square"
+
+    label = "black " if piece.islower() else "white "
+
+    p = piece.lower()
+    if p == "r":
+        label += "rook"
+    elif p == "n":
+        label += "knight"
+    elif p == "b":
+        label += "bishop"
+    elif p == "k":
+        label += "king"
+    elif p == "q":
+        label += "queen"
+    elif p == "p":
+        label += "pawn"
+    return sq_num, label, ext
+
+"""
+take folder of folders of images as input
+    outer_dir
+    |_ img_dir
+        |_ 0-x.jpg
+        ...
+    ...
 (as produced by board/board_detection/piece_labelling.py)
-renames image files in place
+
+then rename image files in place based on user input
 """
-outer_dir = sys.argv[1]
-for dir in os.listdir(outer_dir):
-    img_dir = os.path.join(outer_dir, dir)
-    print("img_dir:",img_dir)
-    for filename in os.listdir(img_dir):
-        if filename.endswith(".jpg") or filename.endswith(".jpeg") or filename.endswith(".png"):
-            filepath = os.path.join(img_dir, filename)
-            print("file: {}".format(filepath))
-            img = cv2.imread(filepath)
+def main():
+    outer_dir = sys.argv[1]
+    print(outer_dir)
+    for dir in os.listdir(outer_dir):
+        img_dir = os.path.join(outer_dir, dir)
+        print("img_dir:",img_dir)
+        for filename in os.listdir(img_dir):
+            if filename.endswith(".jpg") or filename.endswith(".jpeg") or filename.endswith(".png"):
+                filepath = os.path.join(img_dir, filename)
+                print("file: {}".format(filepath))
+                img = cv2.imread(filepath)
 
-            cv2.namedWindow(filename, cv2.WINDOW_NORMAL)
-            cv2.imshow(filename, img)
+                cv2.namedWindow(filename, cv2.WINDOW_NORMAL)
+                cv2.imshow(filename, img)
 
-            dash = filename.index('-')
-            dot = filename.index('.')
-            sq_num = filename[:dash]
-            piece = filename[dash+1:dot]
-            ext = filename[dot+1:]
-            print("label:", end=" ")
-            if piece == "x":
-                print("blank square")
-            else:
-                printout = ""
-                if piece.islower():
-                    color = "black"
-                else:
-                    color = "white"
+                sq_num, label, ext = get_human_label(filename)
+                print(label)
 
-                printout += color+" "
-                p = piece.lower()
-                if p == "r":
-                    printout += "rook"
-                elif p == "n":
-                    printout += "knight"
-                elif p == "b":
-                    printout += "bishop"
-                elif p == "k":
-                    printout += "king"
-                elif p == "q":
-                    printout += "queen"
-                elif p == "p":
-                    printout += "pawn"
-                print(printout)
-
-            print("\nspace if label correct, ESC to quit, any other key to relabel")
-            c = chr(cv2.waitKey())
-            if c == "\x1b":
-                exit("escaped")
-            elif c == " ":
-                cv2.destroyWindow(filename)
-                continue
-
-            print("relabelling", filename)
-            while True:
-                color = "?"
-                print("select color")
+                print("\nspace if label correct, ESC to quit, any other key to relabel")
                 c = chr(cv2.waitKey())
-                if c in {"w", "b"}:
-                	color = c
-                elif c in {" ", "e"}:
-                	color = "e"
-                elif c == "\x1b":
-                	exit("escaped")
+                if c == "\x1b":
+                    exit("escaped")
+                elif c == " ":
+                    cv2.destroyWindow(filename)
+                    continue
 
-                print("select piece")
-                piece = ""
-                if color != "e":
-                	piece = "?"
-                	c = chr(cv2.waitKey())
-                	if c in {"p", "q", "r", "n", "k", "b", "e"}:
-                		piece = c
-                	elif c == "\x1b":
-                		exit("escaped")
+                print("relabel piece", filename)
+                piece = piece_label_handler(filename)
 
-                print("space to confirm, any other to redo")
-                if piece:
-                	print("color: {}\npiece: {}".format(color, piece))
-                else:
-                	print("blank square")
+                #rename old file
+                new_filename = "{}-{}.{}".format(sq_num, piece, ext)
+                print("renaming {} to {}".format(filename, new_filename))
+                os.rename(os.path.join(img_dir, filename), os.path.join(img_dir, new_filename))
 
-                if chr(cv2.waitKey()) == " ":
-                	break
-                elif c == "\x1b":
-                	exit("escaped")
-                else:
-                	print("redo")
-
-            cv2.destroyWindow(filename)
-            if color == "w":
-                piece = piece.upper()
-
-            if not piece: #blank sq
-                piece = "x"
-
-            new_filename = "{}-{}.{}".format(sq_num, piece, ext)
-
-            print("renaming {} to {}".format(filename, new_filename))
-            os.rename(os.path.join(img_dir, filename), os.path.join(img_dir, new_filename))
+if __name__ == '__main__':
+    main()
