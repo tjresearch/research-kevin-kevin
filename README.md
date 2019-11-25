@@ -1,7 +1,7 @@
 # AutoPGN
 ## An automatic chess-move transcriber.
 
-Code Folders:
+### Code Folders:
 
 ```bash
 code/
