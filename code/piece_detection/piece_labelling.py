@@ -1,9 +1,11 @@
-import board_segmentation
 from datetime import datetime
 import cv2
-import sys
 import os
 import numpy as np
+import sys
+sys.path.insert(1, '../board_detection')
+import board_segmentation #from /board_detection
+
 
 """
 mouse callback for find_board()
