@@ -5,8 +5,8 @@ import board_locator
 import line_detection
 import board_segmentation
 
-filename = "chessimgs1010/glare/IMG_7892_1.jpg"
-img = cv2.imread(os.path.join("images", filename))
+filename = "chessboard2.jpg"
+img = cv2.imread(os.path.join("numbers", filename))
 
 # img = cv2.resize(img, (1280, 720))
 

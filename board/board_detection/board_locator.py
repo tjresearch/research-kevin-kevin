@@ -2,6 +2,7 @@ import numpy as np
 import itertools
 import utils
 import math
+import cv2
 import line_detection
 
 
@@ -33,6 +34,25 @@ def find_chessboard(img):
 
 	lattice_points = [p for p in get_intersections(lines) if 0 <= p[0] < img.shape[1] and 0 <= p[1] < img.shape[0]]
 
+	lattice_disp = img.copy()
+
+	for line in lines:
+		rho, theta = line
+		a = np.cos(theta)
+		b = np.sin(theta)
+		x0 = a * rho
+		y0 = b * rho
+		x1 = int(x0 + 1000 * -b)
+		y1 = int(y0 + 1000 * a)
+		x2 = int(x0 - 1000 * -b)
+		y2 = int(y0 - 1000 * a)
+		cv2.line(lattice_disp, (x1, y1), (x2, y2), (255, 0, 0), 2)
+
+	for lattice_point in lattice_points:
+		cv2.circle(lattice_disp, (int(lattice_point[0]), int(lattice_point[1])), 3, (0, 0, 255), 2)
+
+	cv2.imshow("lattice", lattice_disp)
+
 	corners = []
 
 	best_board = (None, 0, math.inf)
@@ -47,9 +67,6 @@ def find_chessboard(img):
 				disp = img.copy()
 				corners = utils.sorted_ccw(corners)
 
-				# for lattice_point in lattice_points:
-				# 	cv2.circle(disp, (int(lattice_point[0]), int(lattice_point[1])), 3, (0, 0, 255), 2)
-				#
 				# for corner in corners:
 				# 	cv2.circle(disp, (int(corner[0]), int(corner[1])), 3, (255, 0, 0), 2)
 
