@@ -2,7 +2,7 @@
 
 AutoPGN is an automatic chess-move transcriber. It locates a chessboard on an image, segments it into individual squares, then recognizes the piece (or lack thereof) on each square with computer vision and machine learning.
 
-### Code Folders:
+## Code Folders:
 
 ```bash
 code/
@@ -20,7 +20,7 @@ code/
 
 `user_interface`: PGN reader & writer, sample .pgn files
 
-### Requirements:
+## Requirements:
 
  - python 3.6
  - matplotlib 3.1.1
@@ -29,20 +29,20 @@ code/
  - scikit-learn 0.21.3
  - tensorflow 2.0.0
 
-### Installation Instructions:
+## Installation Instructions:
 
 1. Install required packages (see above).
 2. Download [ipCamera app](https://apps.apple.com/us/app/ipcamera-high-end-networkcam/id570912928) for iPhone.
 3. Clone this repo.
 
-### Run Instructions:
+## Run Instructions:
 
 1. Open ipCamera on iPhone.
 2. Note URL on app.
 
 Currently, there's no working product, but putting the url from step 2 as a command-line arg of  `board_detection/live_line_detection.py` shows the board detection working live, when linked to the ipCamera app.
 
-### Sample Output:
+## Sample Output:
 
 Board detection:
-![board detection](https://github.com/tjresearch/research-kevin-kevin/readme_images/line_detect_1018.png)
+![board detection](../readme_images/line_detect_1018.png)
