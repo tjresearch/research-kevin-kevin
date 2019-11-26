@@ -45,4 +45,4 @@ Currently, there's no working product, but putting the url from step 2 as a comm
 ## Sample Output:
 
 Board detection:
-![board detection](../readme_images/line_detect_1018.png)
+![board detection](readme_images/line_detect_1018.png)
