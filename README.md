@@ -1,5 +1,6 @@
 # AutoPGN
-## An automatic chess-move transcriber. Uses computer vision techniques to locate and segment a chessboard into individual squares, then machine learning to recognize the pieces on each square.
+
+AutoPGN is an automatic chess-move transcriber. It locates a chessboard on an image, segments it into individual squares, then recognizes the piece (or lack thereof) on each square with computer vision and machine learning.
 
 ### Code Folders:
 
@@ -42,3 +43,6 @@ code/
 Currently, there's no working product, but putting the url from step 2 as a command-line arg of  `board_detection/live_line_detection.py` shows the board detection working live, when linked to the ipCamera app.
 
 ### Sample Output:
+
+Board detection:
+![board detection](https://github.com/tjresearch/research-kevin-kevin/readme_images/line_detect_1018.png)
