@@ -18,19 +18,10 @@ take folder of folder of folders of images as input
 then rename image files in place based on user input
 """
 def main():
-    stats = {
-        "rook":0,
-        "knight":0,
-        "bishop":0,
-        "king":0,
-        "queen":0,
-        "pawn":0,
-        "empty":0,
-        "white":0,
-        "black":0,
-    } #totals calculated later
+    stats = {}
 
     data_dir = sys.argv[1]
+    print("searching {}...".format(data_dir))
     for file in os.listdir(data_dir):
         outer_dir = os.path.join(data_dir, file)
         if not os.path.isdir(outer_dir): continue
@@ -44,17 +35,43 @@ def main():
                     img = cv2.imread(filepath)
 
                     sq_num, label, ext = get_human_label(filename)
-                    for word in label.split(" "):
-                        if word != "?":
-                            stats[word] += 1
 
-    stats["total_pieces"] = stats["white"]+stats["black"]
-    stats["total_squares"] = stats["empty"]+stats["total_pieces"]
+                    if label not in stats:
+                        stats[label] = 0
+                    stats[label] += 1
+
+                    for word in label.split("_"):
+                        if word not in stats:
+                            stats[word] = 0
+                        stats[word] += 1
+
+    #add summaries
+    totals = {}
+    totals["pieces"] = stats["white"]+stats["black"]
+    totals["squares"] = stats["empty"]+totals["pieces"]
 
     #display stats
     print("\n"+"-"*15)
-    print("stats:\n")
-    for word, freq in stats.items():
+    print("piece types:\n")
+    sorted_stats = dict(sorted(stats.items()))
+    for word, freq in sorted_stats.items():
+        if " " in word:
+            print("{}: {}".format(word, freq))
+    print()
+
+    for word, freq in sorted_stats.items():
+        if " " not in word and word not in {"empty", "black", "white"}:
+            print("{}: {}".format(word, freq))
+    print("-"*15)
+
+
+    print("totals:\n")
+    print("{}: {}".format("black", stats["black"]))
+    print("{}: {}".format("white", stats["white"]))
+    print("{}: {}".format("empty", stats["empty"]))
+    print()
+
+    for word, freq in totals.items():
         print("{}: {}".format(word, freq))
     print("-"*15)
 

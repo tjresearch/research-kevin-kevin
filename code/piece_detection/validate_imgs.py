@@ -19,7 +19,7 @@ def get_human_label(filename):
     elif piece == "?":
         return sq_num, "?", ext
 
-    label = "black " if piece.islower() else "white "
+    label = "black_" if piece.islower() else "white_"
 
     p = piece.lower()
     if p == "r":
