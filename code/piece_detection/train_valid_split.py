@@ -1,11 +1,11 @@
 """
 splits class separated data into train/validation subsets
+usage: python train_valid_split.py [input_dir] [valid_pct]
 """
 
 import sys
 import os
 import shutil
-import glob
 import random
 
 def main():
