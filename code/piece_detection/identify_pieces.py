@@ -297,9 +297,6 @@ def main():
 	print(len(squares))
 
 	#run each square through nnet
-	"""
-	bug: board display should have - instead of x
-	"""
 	CLASS_TO_SAN = {
 		'black_bishop':'b',
 		'black_king':'k',
@@ -307,7 +304,7 @@ def main():
 		'black_pawn':'p',
 		'black_queen':'q',
 		'black_rook':'r',
-		'empty':'x',
+		'empty':'-',
 		'white_bishop':'B',
 		'white_king':'K',
 		'white_knight':'N',
@@ -319,9 +316,12 @@ def main():
 	print(ALL_CLASSES)
 	TARGET_SIZE = (224,112)
 
-	#predict squares (slower than verbose????)
+	#predict squares
+	"""
+	why is this so much slower than the verbose version?
+	"""
 	st_pred_time = time.time()
-	sq_preds = ["x" for i in range(64)] #8x8 chessboard
+	sq_preds = ["-" for i in range(64)] #8x8 chessboard
 	for i in range(len(squares)):
 		img = squares[i]
 		indx = indices[i]
