@@ -34,7 +34,10 @@ def calc_gamma(l1, l2):
 	inter = find_intersection(l1, l2)
 	if inter is None:
 		return None
-	return (utils.dist(l1[0], inter) + utils.dist(l1[1], inter) + utils.dist(l2[0], inter) + utils.dist(l2[1], inter)) * np.sin(angle(l1, l2)) / 4
+	mag1 = np.sqrt((l1[1][0] - l1[0][0]) ** 2 + (l1[1][1] - l1[0][1]) ** 2)
+	mag2 = np.sqrt((l2[1][0] - l2[0][0]) ** 2 + (l2[1][1] - l2[0][1]) ** 2)
+	nln = lambda l, x, dx: np.linalg.norm(np.cross(np.array(l[1]) - np.array(l[0]), np.array(l[0]) - np.array(x))) / dx
+	return (nln(l1, l2[0], mag1) + nln(l1, l2[1], mag1) + nln(l2, l1[0], mag2) + nln(l2, l1[1], mag2)) / 4 + 0.00001
 
 def linkable(l1, l2, img):
 	omega = np.pi / (2 * math.pow(img.shape[0] * img.shape[1], 1/4))

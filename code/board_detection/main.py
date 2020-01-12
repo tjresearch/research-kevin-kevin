@@ -6,7 +6,7 @@ import line_detection
 import board_segmentation
 
 filename = "chessboard2.jpg"
-img = cv2.imread(os.path.join("numbers", filename))
+img = cv2.imread(os.path.join("images", filename))
 
 # img = cv2.resize(img, (1280, 720))
 
@@ -35,7 +35,9 @@ cv2.imshow("lines", line_disp)
 
 cv2.waitKey()
 
-corners = board_locator.find_chessboard(img)
+lattice_point_model = board_locator.load_model("lattice_points_model.json", "lattice_points_model.h5")
+print("Loaded model.")
+corners = board_locator.find_chessboard(img, lattice_point_model)
 
 corner_disp = img.copy()
 

@@ -3,8 +3,53 @@ import itertools
 import utils
 import math
 import cv2
+import os
 import line_detection
+import tensorflow as tf
 
+def load_model(model_file, weights_file):
+	json_file = open(model_file, "r")
+	model_json = json_file.read()
+	json_file.close()
+	model = tf.keras.models.model_from_json(model_json)
+	model.load_weights(weights_file)
+	return model
+
+def validate_lattice_point(model, lattice_point, img):
+	if not (10 < lattice_point[0] < img.shape[1] - 10 and 10 < lattice_point[1] < img.shape[0] - 10):
+		return False
+
+	subimg = img[lattice_point[1] - 10:lattice_point[1] + 11, lattice_point[0] - 10:lattice_point[0] + 11]
+
+	subimg = cv2.cvtColor(subimg, cv2.COLOR_BGR2GRAY)
+	subimg = cv2.threshold(subimg, 0, 255, cv2.THRESH_OTSU)[1]
+	subimg = cv2.Canny(subimg, 0, 255)
+
+	subimg = subimg.astype(np.float32) / 255.0
+
+	return bool(np.argmax(model.predict(subimg[np.newaxis, ..., np.newaxis])))
+
+
+def classify_lattice_point(lattice_point, img):
+	if not(10 < lattice_point[0] < img.shape[1] - 10 and 10 < lattice_point[1] < img.shape[0] - 10):
+		return
+
+	subimg = img[lattice_point[1] - 10:lattice_point[1] + 11, lattice_point[0] - 10:lattice_point[0] + 11]
+
+	cv2.imshow("sub", subimg)
+	c = cv2.waitKey()
+
+	save_dir = ""
+	if chr(c) == "y":
+		save_dir = "images/lattice_points/yes"
+	elif chr(c) == "n":
+		save_dir = "images/lattice_points/no"
+
+	if save_dir:
+		file_id = "%03d.jpg" % len(os.listdir(save_dir))
+		cv2.imwrite(os.path.join(save_dir, file_id), subimg)
+	else:
+		exit()
 
 def separate_lines(lines):
 	hor, vert = [], []
@@ -29,7 +74,7 @@ def get_intersections(lines):
 	return intersections
 
 
-def find_chessboard(img):
+def find_chessboard(img, lattice_point_model):
 	lines = line_detection.find_lines_improved(img)
 
 	lattice_points = [p for p in get_intersections(lines) if 0 <= p[0] < img.shape[1] and 0 <= p[1] < img.shape[0]]
@@ -49,9 +94,15 @@ def find_chessboard(img):
 		cv2.line(lattice_disp, (x1, y1), (x2, y2), (255, 0, 0), 2)
 
 	for lattice_point in lattice_points:
-		cv2.circle(lattice_disp, (int(lattice_point[0]), int(lattice_point[1])), 3, (0, 0, 255), 2)
+		if validate_lattice_point(lattice_point_model, lattice_point, img):
+			cv2.circle(lattice_disp, (int(lattice_point[0]), int(lattice_point[1])), 3, (0, 255, 0), 2)
+		else:
+			cv2.circle(lattice_disp, (int(lattice_point[0]), int(lattice_point[1])), 3, (0, 0, 255), 2)
+
+		# classify_lattice_point(lattice_point, img)
 
 	cv2.imshow("lattice", lattice_disp)
+	cv2.waitKey()
 
 	corners = []
 
@@ -109,3 +160,4 @@ def find_chessboard(img):
 	#
 	# return hor[np.argmin(np.abs(hor[:, 0]))], ver[np.argmin(np.abs(ver[:, 0]))], \
 	# 	   hor[np.argmax(np.abs(hor[:, 0]))], ver[np.argmax(np.abs(ver[:, 0]))]
+

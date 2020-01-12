@@ -16,16 +16,16 @@ def mouse_event(event, x, y, flags, params):
 		cv2.imshow("sub", subimg)
 
 		if event == cv2.EVENT_LBUTTONDOWN:
-			save_dir = "numbers/lattice_points/yes"
+			save_dir = "images/lattice_points/yes"
 		else:
-			save_dir = "numbers/lattice_points/no"
+			save_dir = "images/lattice_points/no"
 
 		file_id = "%03d.jpg" % len(os.listdir(save_dir))
 
 		cv2.imwrite(os.path.join(save_dir, file_id), subimg)
 
 
-path = "numbers/chessimgs1010/low_angle/IMG_7898.jpeg"
+path = "images/chessimgs930/IMG_7837.jpg"
 img = cv2.imread(path)
 
 cv2.namedWindow("image")
