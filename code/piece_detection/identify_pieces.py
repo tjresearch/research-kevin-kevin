@@ -30,10 +30,6 @@ from piece_labelling import ResizeWithAspectRatio
 mouse callback for find_board()
 """
 corners = []
-# corners = [[ 98, 173],
-# 			[362, 172],
-# 			[382, 338],
-# 			[ 88, 340]]
 def mark_point(event, x, y, flags, params):
 	global corners
 	if event == cv2.EVENT_LBUTTONDOWN:

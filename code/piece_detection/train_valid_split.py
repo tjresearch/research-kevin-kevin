@@ -1,6 +1,7 @@
 """
 splits class separated data into train/validation subsets
 usage: python train_valid_split.py [input_dir] [valid_pct]
+(not used in final product)
 """
 
 import sys

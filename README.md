@@ -2,7 +2,7 @@
 
 AutoPGN is an automatic chess-move transcriber. It locates a chessboard on an image, segments it into individual squares, then recognizes the piece (or lack thereof) on each square with computer vision and machine learning.
 
-## Code Folders:
+## Code Overview:
 
 ```bash
 code/
@@ -31,7 +31,7 @@ code/
 
 ## Installation Instructions:
 
-1. Install required packages (see above).
+1. Install required packages with pip (see above).
 2. Download [ipCamera app](https://apps.apple.com/us/app/ipcamera-high-end-networkcam/id570912928) for iPhone.
 3. Clone this repo.
 

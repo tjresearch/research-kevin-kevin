@@ -1,7 +1,9 @@
 """
 this script makes validate_imgs unnecessary
 if mislabelled img found, just move its class dir
+(not used in final product)
 """
+
 import sys
 import os
 from validate_imgs import get_human_label

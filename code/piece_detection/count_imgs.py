@@ -1,3 +1,8 @@
+"""
+utility script to count classes represented by images
+(not used in final product)
+"""
+
 import sys, time
 import cv2
 import os

@@ -1,3 +1,8 @@
+"""
+utility script to view data augmentations
+(not used in final product)
+"""
+
 import sys, time
 # import cv2
 import os

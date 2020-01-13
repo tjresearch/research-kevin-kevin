@@ -1,6 +1,7 @@
 """
-crops SIDES OF formatted train data
-(after calling format_train_data.py)
+utility that crops width of formatted train data
+(run after calling format_train_data.py)
+(not used in final product)
 """
 import sys
 import os
