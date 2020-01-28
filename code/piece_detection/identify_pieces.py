@@ -24,6 +24,24 @@ sys.path.insert(2, '../user_interface')
 from pgn_helper import display #from /user_interface
 from piece_labelling import ResizeWithAspectRatio
 
+CLASS_TO_SAN = {
+	'black_bishop':'b',
+	'black_king':'k',
+	'black_knight':'n',
+	'black_pawn':'p',
+	'black_queen':'q',
+	'black_rook':'r',
+	'empty':'-',
+	'white_bishop':'B',
+	'white_king':'K',
+	'white_knight':'N',
+	'white_pawn':'P',
+	'white_queen':'Q',
+	'white_rook':'R'
+}
+ALL_CLASSES = [*CLASS_TO_SAN.keys()]
+print(ALL_CLASSES)
+
 #because of global array in piece_labelling, have to copy-paste methods from piece_labelling
 """from piece_labelling"""
 """
@@ -280,7 +298,8 @@ def local_load_model(net_path):
 	return net
 
 #not verbose
-def pred_squares(CLASS_TO_SAN, ALL_CLASSES, TARGET_SIZE, net, squares, indices):
+def pred_squares(TARGET_SIZE, net, squares, indices):
+	global CLASS_TO_SAN, ALL_CLASSES
 	#predict squares
 	"""
 	why is this so much slower than the verbose version?
@@ -334,27 +353,10 @@ def main():
 	print(len(squares))
 
 	#run each square through nnet
-	CLASS_TO_SAN = {
-		'black_bishop':'b',
-		'black_king':'k',
-		'black_knight':'n',
-		'black_pawn':'p',
-		'black_queen':'q',
-		'black_rook':'r',
-		'empty':'-',
-		'white_bishop':'B',
-		'white_king':'K',
-		'white_knight':'N',
-		'white_pawn':'P',
-		'white_queen':'Q',
-		'white_rook':'R'
-	}
-	ALL_CLASSES = [*CLASS_TO_SAN.keys()]
-	print(ALL_CLASSES)
 	TARGET_SIZE = (224,112)
 
 	#predict squares
-	board = pred_squares(CLASS_TO_SAN, ALL_CLASSES, TARGET_SIZE, net, squares, indices)
+	board = pred_squares(TARGET_SIZE, net, squares, indices)
 	display(board)
 
 	if not VERBOSE:
