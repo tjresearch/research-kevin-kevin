@@ -75,11 +75,8 @@ def sorted_ccw(points):
 	return sorted(points, key=lambda x: angle_and_dist(x, origin, refvec))
 
 
-def find_homography(corners, square_size):
-	dst_size = 8 * square_size
-	dst_corners = [(0, 0), (0, dst_size), (dst_size, dst_size), (dst_size, 0)]
-
-	H, _ = cv2.findHomography(np.array(corners), np.array(dst_corners))
+def find_homography(corners, dst_points):
+	H, _ = cv2.findHomography(np.array(corners), np.array(dst_points))
 
 	return H
 
@@ -113,3 +110,16 @@ def convert_ab_to_rho_theta(line):
 		theta += np.pi
 		rho = -rho
 	return rho, theta
+
+
+def rho_theta_line_point_dist(line, point):
+	x, y = point
+	rho, theta = line
+	pr = np.hypot(x, y)
+	ptheta = math.atan2(y, x)
+	return abs(rho - pr * math.cos(ptheta - theta))
+
+
+def line_point_dist(line, point):
+	mag = np.hypot(line[0][0] - line[1][0], line[0][1] - line[1][1])
+	return np.linalg.norm(np.cross(np.array(line[1]) - np.array(line[0]), np.array(line[0]) - np.array(point))) / mag

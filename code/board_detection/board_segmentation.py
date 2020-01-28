@@ -25,50 +25,12 @@ def quadrilateral_slice(points, arr):
 	return arr * np.repeat(indices[..., np.newaxis], 3, axis=2)
 
 
-def segment_board_from_edges(img, edges):
-
-	intersections = []
-
-	for i in range(4):
-		intersection = utils.find_intersection(edges[i], edges[(i + 1) % 4])
-		intersections.append((int(intersection[0]), int(intersection[1])))
-
-	return segment_board(img, intersections)
-
-def segment_board(img, corners):
-	square_size = 100
-
-	H = utils.find_homography(corners, square_size)
-
-	chunks = []
-
-	for i in range(8):
-		for j in range(8):
-			square = []
-
-			corners = [(i * square_size, j * square_size),
-					   (i * square_size, (j + 1) * square_size),
-					   ((i + 1) * square_size, (j + 1) * square_size),
-					   ((i + 1) * square_size, j * square_size)]
-			for k in range(4):
-				corners[k] = utils.inverse_warp_point(corners[k], H)
-
-			square.append(np.array(corners))
-
-			center = ((i + 0.5) * square_size, (j + 0.5) * square_size)
-
-			center = utils.inverse_warp_point(center, H)
-
-			square.append(center)
-
-			chunks.append(square)
-
-	return chunks
-
 def regioned_segment_board(img, corners, SQ_SIZE):
 	SQ_SIZE = 100
 
-	H = utils.find_homography(corners, SQ_SIZE)
+	dst_size = SQ_SIZE * 8
+	dst_points = [(SQ_SIZE, SQ_SIZE), (SQ_SIZE, dst_size - SQ_SIZE), (dst_size - SQ_SIZE, dst_size - SQ_SIZE), (dst_size - SQ_SIZE, SQ_SIZE)]
+	H = utils.find_homography(corners, dst_points)
 
 	chunks = []
 

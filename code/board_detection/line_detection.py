@@ -76,17 +76,6 @@ def union(index1, index2, lines):
 		lines[root1][2] += 1
 
 
-def rho_theta_distance(p1, p2):
-
-	rho_dist1 = (p1[0] - p2[0]) ** 2
-	theta_dist1 = (p1[1] - p2[1]) ** 2
-	rho_dist2 = (p1[0] + p2[0]) ** 2
-	if p1[1] < p2[1]:
-		theta_dist2 = (p1[1] - p2[1] + 1) ** 2
-	else:
-		theta_dist2 = (p2[1] - p1[1] + 1) ** 2
-	return min(np.sqrt(rho_dist1 + theta_dist1), np.sqrt(rho_dist2 + theta_dist2))
-
 def find_lines(img):
 	gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
@@ -151,35 +140,9 @@ def disp_lines_ab(lines, img):
 				 (int(endpoints[1][0]), int(endpoints[1][1])), (255, 0, 0), 2)
 
 
-def find_lines_improved(img):
+def find_lines_rho_theta(img):
 	lines = find_lines(img)
 	rho_theta_lines = []
 	for line in lines:
 		rho_theta_lines.append(utils.convert_ab_to_rho_theta(line))
-	# return filter_lines(np.array(rho_theta_lines))
 	return rho_theta_lines
-
-def filter_lines(lines):
-	data = lines.copy()
-
-	data[:, 0] = data[:, 0] / np.max(np.abs(data[:, 0]))
-	data[:, 1] = data[:, 1] / np.pi
-
-	indices, clusters = dbscan(data, 0.02, min_samples=1, metric=rho_theta_distance)
-
-	lines = lines[indices]
-	clusters = clusters[indices]
-	num_clusters = len(set(clusters))
-
-	firsts = [clusters.tolist().index(i) for i in range(num_clusters)]
-
-	# plt.scatter(lines[:, 0, 0], lines[:, 0, 1], c=clusters)
-	# title = "number of cluster: {}".format(num_clusters)
-	# plt.title(title)
-	# plt.xlabel("Rho")
-	# plt.ylabel("Theta")
-	# plt.show()
-
-	best_lines = [list(lines[i]) for i in firsts]
-
-	return best_lines
