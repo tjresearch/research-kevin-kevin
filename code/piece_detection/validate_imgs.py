@@ -1,3 +1,7 @@
+"""
+replaced by format_train_data.py
+"""
+
 import sys, time
 import cv2
 import os

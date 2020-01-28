@@ -1,3 +1,13 @@
+"""
+script to label pieces given an input image of a chessboard
+1. click on corners of board
+2. label color (w/b)
+3. label piece (r/n/b/q/k/p)
+will be saved as {sq_num}-{piece_in_SAN}.jpg
+
+uses orthophoto, canny, pose-estimation
+"""
+
 from datetime import datetime
 import cv2
 import os
@@ -5,7 +15,6 @@ import numpy as np
 import sys
 sys.path.insert(1, '../board_detection')
 import board_segmentation #from /board_detection
-
 
 """
 mouse callback for find_board()

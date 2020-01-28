@@ -2,6 +2,7 @@
 putting a piece-recognition nnet with the
 piece splitting system in piece_labelling.py
 (TEST to run on snowy, because can't mouse click on snowy)
+currently does not work bc tensorflow and opencv can't run at the same time
 
 1. wait for model to load (150 s on avg)
 2. click corners of board in chessboard_img
