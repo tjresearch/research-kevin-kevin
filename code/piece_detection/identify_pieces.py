@@ -267,51 +267,20 @@ def split_chessboard(img):
 	#label squares with pieces, save
 	# label_subimgs(img, square_bounds, poss_pieces, tops, file, save_dir)
 
-def main():
-	if len(sys.argv)<3:
-		print("usage: python identify_pieces.py [model_path]|[model_dir] [chessboard_img] [verbose=False]")
-		exit("\t->model_dir will pick highest acc model in dir")
-
-	VERBOSE = sys.argv[3] if len(sys.argv)==4 else False
-
+def local_load_model(net_path):
 	#load model
-	net_path = sys.argv[1]
-	if os.path.isdir(sys.argv[1]):
-		net_file = sorted(os.listdir(sys.argv[1]))[-1] #lowest alphabetically = highest acc
+	if os.path.isdir(net_path):
+		net_file = sorted(os.listdir(net_path))[-1] #lowest alphabetically = highest acc
 		net_path = os.path.join(net_path, net_file)
 	print("Loading:",net_path)
 	st_load_time = time.time()
 	net = load_model(net_path)
 	load_time = time.time()-st_load_time
 	print("\nLoaded {} in {} s.".format(net_path, round(load_time, 3)))
+	return net
 
-	#split img into squares
-	img_path = sys.argv[2]
-	print("Img src:", img_path)
-	img = cv2.imread(img_path)
-	squares, indices = split_chessboard(img)
-	print(len(squares))
-
-	#run each square through nnet
-	CLASS_TO_SAN = {
-		'black_bishop':'b',
-		'black_king':'k',
-		'black_knight':'n',
-		'black_pawn':'p',
-		'black_queen':'q',
-		'black_rook':'r',
-		'empty':'-',
-		'white_bishop':'B',
-		'white_king':'K',
-		'white_knight':'N',
-		'white_pawn':'P',
-		'white_queen':'Q',
-		'white_rook':'R'
-	}
-	ALL_CLASSES = [*CLASS_TO_SAN.keys()]
-	print(ALL_CLASSES)
-	TARGET_SIZE = (224,112)
-
+#not verbose
+def pred_squares(CLASS_TO_SAN, ALL_CLASSES, TARGET_SIZE, net, squares, indices):
 	#predict squares
 	"""
 	why is this so much slower than the verbose version?
@@ -341,10 +310,52 @@ def main():
 	for i in range(8):
 		for j in range(8):
 			board[i][j] = str(sq_preds[i][j])
-	display(board)
 
 	pred_time = time.time()-st_pred_time
 	print("\nPrediction time: {} s.".format(round(pred_time, 3)))
+
+	return board
+
+def main():
+	if len(sys.argv)<3:
+		print("usage: python identify_pieces.py [model_path]|[model_dir] [chessboard_img] [verbose=False]")
+		exit("\t->model_dir will pick highest acc model in dir")
+
+	VERBOSE = sys.argv[3] if len(sys.argv)==4 else False
+
+	# model_filename = "exp_hybrid_allclass_9896_1579640093_highangle_RES152V2.h5"
+	net = local_load_model(sys.argv[1])
+
+	#split img into squares
+	img_path = sys.argv[2]
+	print("Img src:", img_path)
+	img = cv2.imread(img_path)
+	squares, indices = split_chessboard(img)
+	print(len(squares))
+
+	#run each square through nnet
+	CLASS_TO_SAN = {
+		'black_bishop':'b',
+		'black_king':'k',
+		'black_knight':'n',
+		'black_pawn':'p',
+		'black_queen':'q',
+		'black_rook':'r',
+		'empty':'-',
+		'white_bishop':'B',
+		'white_king':'K',
+		'white_knight':'N',
+		'white_pawn':'P',
+		'white_queen':'Q',
+		'white_rook':'R'
+	}
+	ALL_CLASSES = [*CLASS_TO_SAN.keys()]
+	print(ALL_CLASSES)
+	TARGET_SIZE = (224,112)
+
+	#predict squares
+	board = pred_squares(CLASS_TO_SAN, ALL_CLASSES, TARGET_SIZE, net, squares, indices)
+	display(board)
 
 	if not VERBOSE:
 		cv2.destroyAllWindows()
