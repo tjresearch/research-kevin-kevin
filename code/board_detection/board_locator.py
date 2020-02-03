@@ -49,9 +49,9 @@ def classify_lattice_point(lattice_point, img):
 
 	save_dir = ""
 	if chr(c) == "y":
-		save_dir = "images/lattice_points/yes"
+		save_dir = "board_detection/images/lattice_points/yes"
 	elif chr(c) == "n":
-		save_dir = "images/lattice_points/no"
+		save_dir = "board_detection/images/lattice_points/no"
 
 	if save_dir:
 		file_id = "%03d.jpg" % len(os.listdir(save_dir))
@@ -90,19 +90,19 @@ def find_lattice_points(img, lines, lattice_point_model):
 
 	intersections = [p for p in get_intersections(lines) if 0 <= p[0] < img.shape[1] and 0 <= p[1] < img.shape[0]]
 
-	lattice_disp = img.copy()
-
-	for line in lines:
-		rho, theta = line
-		a = np.cos(theta)
-		b = np.sin(theta)
-		x0 = a * rho
-		y0 = b * rho
-		x1 = int(x0 + 1000 * -b)
-		y1 = int(y0 + 1000 * a)
-		x2 = int(x0 - 1000 * -b)
-		y2 = int(y0 - 1000 * a)
-		cv2.line(lattice_disp, (x1, y1), (x2, y2), (255, 0, 0), 2)
+	# lattice_disp = img.copy()
+	#
+	# for line in lines:
+	# 	rho, theta = line
+	# 	a = np.cos(theta)
+	# 	b = np.sin(theta)
+	# 	x0 = a * rho
+	# 	y0 = b * rho
+	# 	x1 = int(x0 + 1000 * -b)
+	# 	y1 = int(y0 + 1000 * a)
+	# 	x2 = int(x0 - 1000 * -b)
+	# 	y2 = int(y0 - 1000 * a)
+	# 	cv2.line(lattice_disp, (x1, y1), (x2, y2), (255, 0, 0), 4)
 
 	lattice_points = []
 
@@ -113,11 +113,11 @@ def find_lattice_points(img, lines, lattice_point_model):
 
 	lattice_points = cluster_points(lattice_points)
 
-	for point in lattice_points:
-		cv2.circle(lattice_disp, (int(point[0]), int(point[1])), 3, (0, 255, 0), 2)
-
-	cv2.imshow("lattice", lattice_disp)
-	cv2.waitKey()
+	# for point in lattice_points:
+	# 	cv2.circle(lattice_disp, (int(point[0]), int(point[1])), 5, (0, 255, 0), -1)
+	#
+	# cv2.imshow("lattice", lattice_disp)
+	# cv2.waitKey()
 
 	return lattice_points
 
@@ -231,18 +231,22 @@ def find_chessboard(img, lattice_point_model):
 
 	# print(best_board)
 
-	line_disp = img.copy()
-	for line in best_board[0]:
-		rho, theta = line
-		a = np.cos(theta)
-		b = np.sin(theta)
-		x0 = a * rho
-		y0 = b * rho
-		x1 = int(x0 + 1000 * -b)
-		y1 = int(y0 + 1000 * a)
-		x2 = int(x0 - 1000 * -b)
-		y2 = int(y0 - 1000 * a)
-		cv2.line(line_disp, (x1, y1), (x2, y2), (255, 0, 0), 2)
+	# line_disp = img.copy()
+	# for line in best_board[0]:
+	# 	rho, theta = line
+	# 	a = np.cos(theta)
+	# 	b = np.sin(theta)
+	# 	x0 = a * rho
+	# 	y0 = b * rho
+	# 	x1 = int(x0 + 1000 * -b)
+	# 	y1 = int(y0 + 1000 * a)
+	# 	x2 = int(x0 - 1000 * -b)
+	# 	y2 = int(y0 - 1000 * a)
+	# 	cv2.line(line_disp, (x1, y1), (x2, y2), (255, 0, 0), 4)
+	#
+	# cv2.imshow("lines", line_disp)
+	# cv2.waitKey()
 
-	cv2.imshow("lines", line_disp)
-	cv2.waitKey()
+	best_board[1] = utils.sorted_ccw(best_board[1])
+
+	return best_board

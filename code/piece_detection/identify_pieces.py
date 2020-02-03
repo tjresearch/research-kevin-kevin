@@ -247,21 +247,37 @@ for given file,
 	use projectPoints to estimate piece height
 	return list of img arrays
 """
-def split_chessboard(img):
-	global corners
+def split_chessboard(img, corners):
 
 	#downsize large resolutions
 	scale_to = (960, 720)
+	old_shape = img.shape
 	if img.size > scale_to[0]*scale_to[1]:
 		img = ResizeWithAspectRatio(img, width=scale_to[1])
+		for i in range(4):
+			corners[i] = (int(corners[i][0] * scale_to[1] / old_shape[1]), int(corners[i][1] * scale_to[1] / old_shape[1]))
 
 	#fill and order global list corners
-	find_board(img)
+	# find_board(img)
 
-	print(corners)
+	corners = order_points(corners)
+
+	# disp = img.copy()
+	# for corner in corners:
+	# 	cv2.circle(disp, corner, 3, (255, 0, 0), 2)
+	# cv2.imshow("corners", disp)
+	# cv2.waitKey()
+
 	#segment board
 	SQ_SIZE = 100
 	chunks, H = board_segmentation.regioned_segment_board(img, corners, SQ_SIZE)
+
+	# for chunk in chunks:
+	# 	center = chunk[1]
+	# 	cv2.circle(disp, (int(center[0]), int(center[1])), 3, (255, 0, 0), 2)
+	#
+	# cv2.imshow("centers", disp)
+	# cv2.waitKey()
 
 	"""
 	chunks[0] = corners (squares defined by four corners)
@@ -277,6 +293,14 @@ def split_chessboard(img):
 
 	piece_height = 2 #squares tall
 	square_bounds = [c[0] for c in chunks]
+
+	# for bounds in square_bounds:
+	# 	disp = img.copy()
+	# 	for corner in bounds:
+	# 		cv2.circle(disp, (int(corner[0]), int(corner[1])), 3, (255, 0, 0), 2)
+	# 	cv2.imshow("disp", disp)
+	# 	cv2.waitKey()
+
 	tops = estimate_tops(img, piece_height, square_bounds)
 
 	#turn corner coords into list of imgs
@@ -290,11 +314,11 @@ def local_load_model(net_path):
 	if os.path.isdir(net_path):
 		net_file = sorted(os.listdir(net_path))[-1] #lowest alphabetically = highest acc
 		net_path = os.path.join(net_path, net_file)
-	print("Loading:",net_path)
-	st_load_time = time.time()
+	# print("Loading:",net_path)
+	# st_load_time = time.time()
 	net = load_model(net_path)
-	load_time = time.time()-st_load_time
-	print("\nLoaded {} in {} s.".format(net_path, round(load_time, 3)))
+	# load_time = time.time()-st_load_time
+	# print("\nLoaded {} in {} s.".format(net_path, round(load_time, 3)))
 	return net
 
 #not verbose
@@ -335,6 +359,11 @@ def pred_squares(TARGET_SIZE, net, squares, indices):
 
 	return board
 
+def classify_pieces(img, corners, net, TARGET_SIZE):
+	squares, indices = split_chessboard(img, corners)
+	board = pred_squares(TARGET_SIZE, net, squares, indices)
+	return board
+
 def main():
 	if len(sys.argv)<3:
 		print("usage: python identify_pieces.py [model_path]|[model_dir] [chessboard_img] [verbose=False]")
@@ -349,7 +378,7 @@ def main():
 	img_path = sys.argv[2]
 	print("Img src:", img_path)
 	img = cv2.imread(img_path)
-	squares, indices = split_chessboard(img)
+	squares, indices = split_chessboard(img, corners)
 	print(len(squares))
 
 	#run each square through nnet

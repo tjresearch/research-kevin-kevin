@@ -5,7 +5,7 @@ import board_locator
 import line_detection
 import board_segmentation
 
-filename = "chessboard1.jpg"
+filename = "chessboard2.jpg"
 img = cv2.imread(os.path.join("images", filename))
 
 # img = cv2.resize(img, (1280, 720))
@@ -37,32 +37,4 @@ img = cv2.imread(os.path.join("images", filename))
 
 lattice_point_model = board_locator.load_model("models/lattice_points_model.json", "models/lattice_points_model.h5")
 print("Loaded model.")
-corners = board_locator.find_chessboard(img, lattice_point_model)
-
-corner_disp = img.copy()
-
-for i in range(4):
-	cv2.line(corner_disp, (int(corners[i][0]), int(corners[i][1])), (int(corners[(i+1)%4][0]), int(corners[(i+1)%4][1])), (255, 0, 0), 2)
-
-cv2.imshow("corners", corner_disp)
-
-chunks = board_segmentation.segment_board(img, corners)
-
-chunk_disp = img.copy()
-composite_disp = img.copy()
-
-for chunk in chunks:
-	corners, center = chunk
-	top = np.min(corners[:, 1])
-	bottom = np.max(corners[:, 1])
-	left = np.min(corners[:, 0])
-	right = np.max(corners[:, 0])
-	box = ((left, bottom), (right, bottom), (right, bottom - 150), (left, bottom - 150))
-	for i in range(4):
-		cv2.line(chunk_disp, (int(box[i][0]), int(box[i][1])), (int(box[(i+1)%4][0]), int(box[(i+1)%4][1])), (255, 0, 0), 2)
-		cv2.line(composite_disp, (int(corners[i][0]), int(corners[i][1])), (int(corners[(i+1)%4][0]), int(corners[(i+1)%4][1])), (0, 0, 255), 2)
-
-cv2.imshow("composite", composite_disp)
-cv2.imshow("chunks", chunk_disp)
-
-cv2.waitKey()
+lines, corners = board_locator.find_chessboard(img, lattice_point_model)

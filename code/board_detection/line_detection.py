@@ -114,7 +114,7 @@ def find_lines(img):
 	for group in groups.values():
 		linked_lines.append(line_linking.link(group))
 
-	cv2.imshow("board", line_disp)
+	# cv2.imshow("board", line_disp)
 
 	return linked_lines
 
