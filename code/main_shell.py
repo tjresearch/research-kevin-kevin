@@ -11,8 +11,8 @@ from board_detection import board_locator
 from piece_detection import identify_pieces
 from user_interface import pgn_helper
 
-if len(sys.argv) < 3:
-	print("usage: python main_shell.py [phone ip] [models dir]")
+if len(sys.argv) != 2:
+	print("usage: python main_shell.py [phone ip] [shared models dir]")
 	exit(1)
 
 phone_ip = sys.argv[1]
