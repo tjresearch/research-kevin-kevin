@@ -37,11 +37,14 @@ print("Loaded in {} s".format(time.time() - st_load_time))
 TARGET_SIZE = (224, 112)
 
 # For single image
-# img_path = "board_detection/images/chessboard4.jpg"
+# img_path = "board_detection/images/chessboard2.jpg"
 # img = cv2.imread(img_path)
 # cv2.imshow("Image", img)
 #
+# st_locate_time = time.time()
 # lines, corners = board_locator.find_chessboard(img, lattice_point_model)
+# print("Located board in {} s".format(time.time() - st_locate_time))
+#
 # board = identify_pieces.classify_pieces(img, corners, piece_model, TARGET_SIZE)
 # pgn_helper.display(board)
 #
