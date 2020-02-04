@@ -1,37 +1,40 @@
 import cv2
 import os
+import line_detection
+import board_locator
+
+def dist(p1, p2):
+	return ((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2) ** (1 / 2)
+
+
 
 def mouse_event(event, x, y, flags, params):
-	global img
+	global img, intersections
 
-	if event == cv2.EVENT_LBUTTONDOWN or event == cv2.EVENT_RBUTTONDOWN:
+	if event == cv2.EVENT_LBUTTONDOWN:
+		closest_point = None
+		closest_dist = img.shape[0] + img.shape[1]
+		for point in intersections:
+			cur_dist = dist((x, y), point)
+			if cur_dist < closest_dist:
+				closest_point = point
+				closest_dist = cur_dist
 
-		print("{}, {}".format(x, y))
-		subimg = img[y - 10:y + 11, x - 10:x + 11]
-
-		# subimg = cv2.cvtColor(subimg, cv2.COLOR_BGR2GRAY)
-		# subimg = cv2.threshold(subimg, 0, 255, cv2.THRESH_OTSU)[1]
-		# subimg = cv2.Canny(subimg, 0, 255)
-
-		cv2.imshow("sub", subimg)
-
-		if event == cv2.EVENT_LBUTTONDOWN:
-			save_dir = "images/lattice_points/yes"
-		else:
-			save_dir = "images/lattice_points/no"
-
-		file_id = "%03d.jpg" % len(os.listdir(save_dir))
-
-		cv2.imwrite(os.path.join(save_dir, file_id), subimg)
+		if
 
 
 path = "images/chessimgs930/IMG_7837.jpg"
 img = cv2.imread(path)
+
+model = board_locator.load_model("models/lattice_points_model.json", "models/lattice_points_model.h5")
+
+lines = line_detection.find_lines_rho_theta(img)
+intersections = {p:0 for p in board_locator.get_intersections(lines) if 0 <= p[0] < img.shape[1] and 0 <= p[1] < img.shape[0]}
+
+
 
 cv2.namedWindow("image")
 cv2.setMouseCallback("image", mouse_event)
 
 cv2.imshow("image", img)
 cv2.waitKey()
-
-
