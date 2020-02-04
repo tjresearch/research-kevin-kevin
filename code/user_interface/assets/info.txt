@@ -1,0 +1,3 @@
+this folder is used for temporary saving of video/image files from live camera input
+move files out of here before pushing
+(alternatively, add to .gitignore file?)

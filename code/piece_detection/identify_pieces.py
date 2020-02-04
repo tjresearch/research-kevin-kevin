@@ -20,8 +20,8 @@ from tensorflow.keras.preprocessing import image
 
 sys.path.insert(1, '../board_detection')
 import board_segmentation #from /board_detection
-sys.path.insert(2, '../user_interface')
-from pgn_helper import display #from /user_interface
+sys.path.insert(2, '../chess_logic')
+from pgn_helper import display #from /chess_logic
 from piece_labelling import ResizeWithAspectRatio
 
 CLASS_TO_SAN = {
