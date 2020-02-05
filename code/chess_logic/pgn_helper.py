@@ -19,8 +19,8 @@ def display(board, flipped=False):
         row_head = " "+str(r+1)+" " if flipped else " "+str(8-r)+" "
         output += "\n{}| ".format(row_head)
         for c in range(7):
-            output += board[r][c]+' | '
-        output += board[r][-1]+ ' |{}\n'.format(row_head)
+            output += str(board[r][c])+' | '
+        output += str(board[r][-1])+ ' |{}\n'.format(row_head)
         output += line
     output += "\n"+left_margin
     for k in COL_HEADS:
