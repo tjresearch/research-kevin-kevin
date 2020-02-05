@@ -62,7 +62,7 @@ print("Resolution: {}".format(resolution))
 
 while cap.isOpened():
 	ret, frame = cap.read()
-	frame = cv2.flip(cv2.transpose(frame), 0)
+	# frame = cv2.flip(cv2.transpose(frame), 0)
 	if ret:
 		cv2.imshow("Feed", frame)
 		c = cv2.waitKey(1)

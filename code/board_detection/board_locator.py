@@ -38,26 +38,6 @@ def validate_lattice_point(model, lattice_point, img):
 	return bool(np.argmax(model.predict(subimg[np.newaxis, ..., np.newaxis])))
 
 
-def classify_lattice_point(lattice_point, img):
-	if not(10 < lattice_point[0] < img.shape[1] - 10 and 10 < lattice_point[1] < img.shape[0] - 10):
-		return
-
-	subimg = img[lattice_point[1] - 10:lattice_point[1] + 11, lattice_point[0] - 10:lattice_point[0] + 11]
-
-	cv2.imshow("sub", subimg)
-	c = cv2.waitKey()
-
-	save_dir = ""
-	if chr(c) == "y":
-		save_dir = "board_detection/images/lattice_points/yes"
-	elif chr(c) == "n":
-		save_dir = "board_detection/images/lattice_points/no"
-
-	if save_dir:
-		file_id = "%03d.jpg" % len(os.listdir(save_dir))
-		cv2.imwrite(os.path.join(save_dir, file_id), subimg)
-
-
 def get_intersections(lines):
 	intersections = []
 	for i in range(len(lines)):
@@ -107,7 +87,6 @@ def find_lattice_points(img, lines, lattice_point_model):
 	lattice_points = []
 
 	for intersection in intersections:
-		# classify_lattice_point(intersection, img)
 		if validate_lattice_point(lattice_point_model, intersection, img):
 			lattice_points.append(intersection)
 
