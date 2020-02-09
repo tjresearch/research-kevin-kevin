@@ -180,6 +180,10 @@ def is_next_board_poss(board, stacked_poss):
                 return False
     return True
 
+"""
+give a game in pgn file format, will play through and see if any illegal moves made
+(according to stacked_poss, so checks not accounted for)
+"""
 def main():
     pgn_file = sys.argv[1]
     num_move_list = reader.clean_pgn(pgn_file)
