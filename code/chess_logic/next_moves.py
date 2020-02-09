@@ -119,7 +119,7 @@ def next_poss_from_st(board, st_pos):
     return next_poss
 
 def get_bitboard_from_poss(next_poss):
-    bitboard = [[0 for j in range(8)] for i in range(8)]
+    bitboard = [[0 for c in range(8)] for r in range(8)]
     for r, c in next_poss:
         bitboard[r][c] = 1
     return bitboard
@@ -129,42 +129,62 @@ def get_bitboard_from_poss(next_poss):
 #where every sqr has set of every piece that could be there
 #(includes possibility of pieces not moving)
 def get_stacked_poss(board):
-    piece_bitboards = []
-    stacked_poss = [[{board[i][j]} for j in range(8)] for i in range(8)]
+    piece_bitboards = {}
+    stacked_poss = [[{board[r][c]} for c in range(8)] for r in range(8)]
 
-    for i in range(8):
-        for j in range(8):
+    for r in range(8):
+        for c in range(8):
             #liberally apply en passant possibility
-            if (i == 3 and piece == "P") or (i == 4 and piece == "p"):
-                stacked_poss[i][j].add("-")
+            if (r == 3 and piece == "P") or (r == 4 and piece == "p"):
+                stacked_poss[r][c].add("-")
 
-            piece = board[i][j]
-            next_poss = next_poss_from_st(board, (i, j))
+            piece = board[r][c]
+            next_poss = next_poss_from_st(board, (r, c))
             if next_poss: #piece can move, meaning current sqr could be vacated
-                stacked_poss[i][j].add("-")
-            piece_bitboards.append((piece, get_bitboard_from_poss(next_poss)))
+                stacked_poss[r][c].add("-")
+
+            if piece not in piece_bitboards:
+                piece_bitboards[piece] = get_bitboard_from_poss(next_poss)
+            else:
+                to_add = get_bitboard_from_poss(next_poss)
+                for tr in range(8):
+                    for tc in range(8):
+                        if to_add[tr][tc]:
+                            piece_bitboards[piece][tr][tc] = 1
 
     # for piece, bitboard in piece_bitboards:
     #     if piece not in {"R", "K"}: continue
     #     print(piece)
     #     ph.display(bitboard)
 
-    for piece, bitboard in piece_bitboards:
-        for i in range(8):
-            for j in range(8):
-                if bitboard[i][j]:
-                    stacked_poss[i][j].add(piece)
+    for piece, bitboard in piece_bitboards.items():
+        for r in range(8):
+            for c in range(8):
+                if bitboard[r][c]:
+                    stacked_poss[r][c].add(piece)
+
+                    if (piece=="P" and r==0) or (piece=="p" and r==7):
+                        # print(piece, "promotable at", (r,c))
+                        # for row in bitboard:
+                        #     print(row)
+
+                        for promotable in {"Q","R","N","B"}:
+                            if piece.isupper():
+                                stacked_poss[r][c].add(promotable)
+                            else:
+                                stacked_poss[r][c].add(promotable.lower())
+
     return stacked_poss
 
 #check whether given next board is possible given current board's stacked_poss
 def is_next_board_poss(board, stacked_poss):
-    for i in range(8):
-        for j in range(8):
-            if board[i][j] not in stacked_poss[i][j]:
+    for r in range(8):
+        for c in range(8):
+            if board[r][c] not in stacked_poss[r][c]:
                 print("not poss here")
-                print(i, j)
-                print(board[i][j])
-                print(stacked_poss[i][j])
+                print(r, c)
+                print(board[r][c])
+                print(stacked_poss[r][c])
                 return False
     return True
 
