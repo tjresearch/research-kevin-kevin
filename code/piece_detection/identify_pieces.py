@@ -22,6 +22,7 @@ sys.path.insert(1, '../board_detection')
 import board_segmentation #from /board_detection
 sys.path.insert(2, '../chess_logic')
 from pgn_helper import display #from /chess_logic
+from next_moves import get_stacked_board
 from piece_labelling import ResizeWithAspectRatio
 
 CLASS_TO_SAN = {
@@ -322,27 +323,39 @@ def local_load_model(net_path):
 	return net
 
 #not verbose
-def pred_squares(TARGET_SIZE, net, squares, indices):
+def pred_squares(TARGET_SIZE, net, squares, indices, flat_poss=None):
 	global CLASS_TO_SAN, ALL_CLASSES
+
 	#predict squares
-	"""
-	why is this so much slower than the verbose version?
-	"""
 	st_pred_time = time.time()
 	sq_preds = ["-" for i in range(64)] #8x8 chessboard
-	for i in range(len(squares)):
-		img = squares[i]
-		indx = indices[i]
+	for sq_i in range(len(squares)):
+		img = squares[sq_i]
+		indx = indices[sq_i]
+		if flat_poss:
+			poss = flat_poss[indx] #not sq_i, since full flat_poss passed
+			if not poss: continue #skip square if ruled impossible to have piece by chess logic
 
+		#convert img to numpy array, preprocess for resnet
 		resized_img = cv2.resize(img, dsize=(TARGET_SIZE[1],TARGET_SIZE[0]), interpolation=cv2.INTER_NEAREST)
 		x = preprocess_input(resized_img)
 		x = np.expand_dims(x, axis=0) #need to add dim to put into resnet
 
-		preds = net.predict(x)[0]
-		top_indx = preds.argsort()[::-1][0]
-		pred_class = ALL_CLASSES[top_indx]
+		#get prediction from resnet, get SAN from prediction
+		preds = net.predict(x)[0].argsort()[::-1] #most to least likely predictions
+		ptr = 0
+		pred_SAN = CLASS_TO_SAN[ALL_CLASSES[preds[ptr]]]
 
-		sq_preds[indx] = CLASS_TO_SAN[pred_class]
+		#move down prediction list if prediction is impossible (by chess logic)
+		if flat_poss:
+			while pred_SAN not in poss:
+				if ptr >= len(preds):
+					print("ran out of predictions")
+					pred_SAN = "?"
+				ptr += 1
+				pred_SAN = CLASS_TO_SAN[ALL_CLASSES[preds[ptr]]]
+
+		sq_preds[indx] = pred_SAN
 
 	#rotate board for std display (white on bottom)
 	sq_preds = np.asarray(sq_preds)
@@ -359,9 +372,26 @@ def pred_squares(TARGET_SIZE, net, squares, indices):
 
 	return board
 
-def classify_pieces(img, corners, net, TARGET_SIZE):
+#prev state given in same form as output of this method (array of ltrs)
+def classify_pieces(img, corners, net, TARGET_SIZE, prev_state=None):
 	squares, indices = split_chessboard(img, corners)
-	board = pred_squares(TARGET_SIZE, net, squares, indices)
+	# print(indices)
+
+	#compute possible next moves from prev state, flatten to 1D list,
+	flat_poss = []
+	if prev_state:
+		# print(prev_state)
+		stacked_poss = get_stacked_board(prev_state)
+		for row in stacked_poss:
+			for tup in row:
+				flat_poss.append(tup)
+	# matching_flat_poss = [flat_poss[i] for i in range(len(flat_poss)) if i in indices]
+
+	# for r in prev_state:
+	# 	print(r)
+	# print(matching_flat_poss)
+
+	board = pred_squares(TARGET_SIZE, net, squares, indices, flat_poss)
 	return board
 
 def main():

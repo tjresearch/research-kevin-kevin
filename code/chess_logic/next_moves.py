@@ -31,6 +31,7 @@ def next_pos_from_st(board, st_pos):
         elif (st_pos[0] == 3 and piece.isupper()) or (st_pos[0] == 4 and piece.islower()):
             for shift in {-1, 1}:
                 p = (st_pos[0], st_pos[1]+shift)
+                if not ph.in_bounds(p): continue
                 opp_team = (board[p[0]][p[1]].isupper() and piece.islower()) or (piece.isupper() and board[p[0]][p[1]].islower())
                 if board[p[0]][p[1]].upper() == "P" and opp_team:
                     if board[p[0]+(2*fwd)][p[1]] == "-":
@@ -126,10 +127,10 @@ def get_stacked_board(board):
             piece, bitboard = next_pos_from_st(board, (i, j))
             piece_bitboards.append((piece, bitboard))
 
-    for piece, bitboard in piece_bitboards:
-        if piece not in {"R", "K"}: continue
-        print(piece)
-        ph.display(bitboard)
+    # for piece, bitboard in piece_bitboards:
+    #     if piece not in {"R", "K"}: continue
+    #     print(piece)
+    #     ph.display(bitboard)
 
     stacked_board = [[{board[i][j]} for j in range(8)] for i in range(8)]
     for piece, bitboard in piece_bitboards:
