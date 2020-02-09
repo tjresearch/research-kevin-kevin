@@ -1,10 +1,10 @@
-import sys
+import sys, time
 import pgn_reader as reader
 import pgn_helper as ph
 
 #given one piece, figure out all next poss positions for that piece
-def next_pos_from_st(board, st_pos):
-    next_pos = set()
+def next_poss_from_st(board, st_pos):
+    next_poss = set()
     piece = board[st_pos[0]][st_pos[1]]
     if piece == "-": return set()
 
@@ -24,7 +24,7 @@ def next_pos_from_st(board, st_pos):
             for p in poss:
                 if not ph.in_bounds(p): continue
                 if board[p[0]][p[1]] != "-": break
-                next_pos.add(p)
+                next_poss.add(p)
         #en passant
         #actually not possible to figure out en passant w/out prev board state
         #but assuming en passant is possible if the current board appears to allow it
@@ -35,13 +35,13 @@ def next_pos_from_st(board, st_pos):
                 opp_team = (board[p[0]][p[1]].isupper() and piece.islower()) or (piece.isupper() and board[p[0]][p[1]].islower())
                 if board[p[0]][p[1]].upper() == "P" and opp_team:
                     if board[p[0]+(2*fwd)][p[1]] == "-":
-                        next_pos.add((p[0]+fwd, p[1]))
+                        next_poss.add((p[0]+fwd, p[1]))
 
         #move fwd 1 otherwise (could overlap w/ above, but set fixes that)
         p = (st_pos[0]+fwd, st_pos[1])
         if ph.in_bounds(p):
             if board[p[0]][p[1]] == "-":
-                next_pos.add(p)
+                next_poss.add(p)
 
         #pawn captures
         for shift in {-1, 1}:
@@ -50,7 +50,7 @@ def next_pos_from_st(board, st_pos):
                 if board[p[0]][p[1]] != "-":
                     opp_team = (board[p[0]][p[1]].isupper() and piece.islower()) or (piece.isupper() and board[p[0]][p[1]].islower())
                     if opp_team:
-                        next_pos.add(p)
+                        next_poss.add(p)
     else:
         """
         doesn't handle checks, probably will do when full stack considered
@@ -69,11 +69,11 @@ def next_pos_from_st(board, st_pos):
                         opp_team = (pc.isupper() and piece.islower()) or (piece.isupper() and pc.islower())
                         # print(opp_team, pos)
                         if opp_team:
-                            next_pos.add(pos)
+                            next_poss.add(pos)
                         if upper_piece != "N": #not sure if in {"N", "n"} is faster
                             break
                     else:
-                        next_pos.add(pos)
+                        next_poss.add(pos)
 
         #castling check
         if upper_piece in {"K", "R"}:
@@ -87,58 +87,81 @@ def next_pos_from_st(board, st_pos):
                 elif board[st_pos[0]][st_pos[1]].upper() == "R" and st_pos[1] in {0, 7}:
                     if board[st_pos[0]][4].upper() == "K":
                         pairs_to_check.add(((st_pos[0], 4), st_pos))
-            print()
-            print(pairs_to_check)
-            print()
+            # print()
+            # print(pairs_to_check)
+            # print()
 
             for p1, p2 in pairs_to_check:
                 low = min(p1[1], p2[1])
                 high = max(p1[1], p2[1])
 
-                print(low, high)
+                # print(low, high)
                 good_castle = True
                 for c in range(low+1, high):
                     if board[p1[0]][c] != "-":
                         good_castle = False
                         break
-                print(p1, p2, good_castle)
+                # print(p1, p2, good_castle)
                 # TODO: add the correct positions (rn adding where the pieces are, not where they will castle to
                 if good_castle:
+                    #map every possible pair to where pair will end up
+                    castle_map = {
+                        ((0,4),(0,0)):((0,2),(0,3)),
+                        ((0,4),(0,7)):((0,6),(0,5)),
+                        ((7,4),(7,0)):((7,2),(7,3)),
+                        ((7,4),(7,7)):((7,6),(7,5)),
+                    }
                     if upper_piece == "K":
-                        next_pos.add(p1)
+                        next_poss.add(castle_map[(p1, p2)][0])
                     else:
-                        next_pos.add(p2)
+                        next_poss.add(castle_map[(p1, p2)][1])
 
+    return next_poss
+
+def get_bitboard_from_poss(next_poss):
     bitboard = [[0 for j in range(8)] for i in range(8)]
-    for r, c in next_pos:
+    for r, c in next_poss:
         bitboard[r][c] = 1
-    return piece, bitboard
+    return bitboard
 
-#take board state, get all possible next piece positions
-#return as a 3D stacked_board
+#take board state, get all possible next board states
+#return as a 3D array
 #where every sqr has set of every piece that could be there
 #(includes possibility of pieces not moving)
-def get_stacked_board(board):
+def get_stacked_poss(board):
     piece_bitboards = []
+    stacked_poss = [[{board[i][j]} for j in range(8)] for i in range(8)]
+
     for i in range(8):
         for j in range(8):
-            pc = board[i][j]
-            if pc == "-": continue
-            piece, bitboard = next_pos_from_st(board, (i, j))
-            piece_bitboards.append((piece, bitboard))
+            piece = board[i][j]
+            next_poss = next_poss_from_st(board, (i, j))
+            if next_poss: #piece can move, meaning current sqr could be vacated
+                stacked_poss[i][j].add("-")
+            piece_bitboards.append((piece, get_bitboard_from_poss(next_poss)))
 
     # for piece, bitboard in piece_bitboards:
     #     if piece not in {"R", "K"}: continue
     #     print(piece)
     #     ph.display(bitboard)
 
-    stacked_board = [[{board[i][j]} for j in range(8)] for i in range(8)]
     for piece, bitboard in piece_bitboards:
         for i in range(8):
             for j in range(8):
                 if bitboard[i][j]:
-                    stacked_board[i][j].add(piece)
-    return stacked_board
+                    stacked_poss[i][j].add(piece)
+    return stacked_poss
+
+#check whether given next board is possible given current board's stacked_poss
+def is_next_board_poss(board, stacked_poss):
+    for i in range(8):
+        for j in range(8):
+            if board[i][j] not in stacked_poss[i][j]:
+                print(i, j)
+                print(board[i][j])
+                print(stacked_poss[i][j])
+                return False
+    return True
 
 def main():
     pgn_file = sys.argv[1]
@@ -151,30 +174,37 @@ def main():
     board = reader.FEN_to_board()
     ph.display(board)
 
-    for i in range(8):
+    for i in range(len(move_list)):
+        stacked_poss = get_stacked_poss(board)
+
+        next_board = reader.make_move(board, move_list[i], (i+1)%2)
+
+        if not is_next_board_poss(next_board, stacked_poss):
+            ph.display(next_board)
+            print(i)
+            break
+
+        board = next_board
+    """
+    last_move = 7 # 8 for castling
+    for i in range(last_move):
         board = reader.make_move(board, move_list[i], (i+1)%2)
         print(move_list[i])
         # ph.display(board)
 
-    # board[4][5] = "q"
-    # board[1][5] = "-"
-    # board[3][5] = "p"
-    # board[3][6] = "P"
+    print("start")
     ph.display(board)
-    # board = reader.make_move(board, "e4", True)
-    # board[4][3] = 'p'
-    # ph.display(board)
-    #
-    # next_pos = next_pos_from_st(board, (4, 3))
-    # print(next_pos)
-    #
-    # for np in next_pos:
-    #     board[np[0]][np[1]] = "*"
-    # ph.display(board)
 
-    stacked_board = get_stacked_board(board)
-    for row in stacked_board:
+    next_board = reader.make_move(board, move_list[last_move+1], last_move%2)
+    print("next")
+    ph.display(next_board)
+
+    stacked_poss = get_stacked_poss(board)
+    for row in stacked_poss:
         print(row)
+
+    print(is_next_board_poss(next_board, stacked_poss))
+    """
 
 if __name__ == '__main__':
     main()
