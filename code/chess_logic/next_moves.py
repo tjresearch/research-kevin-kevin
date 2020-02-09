@@ -2,7 +2,11 @@ import sys, time
 import pgn_reader as reader
 import pgn_helper as ph
 
-#given one piece, figure out all next poss positions for that piece
+"""
+given one piece and current board,
+figure out all next poss positions for that piece
+doesn't handle checks
+"""
 def next_poss_from_st(board, st_pos):
     next_poss = set()
     piece = board[st_pos[0]][st_pos[1]]
@@ -10,10 +14,6 @@ def next_poss_from_st(board, st_pos):
 
     upper_piece = piece.upper()
     if upper_piece == "P":
-        """
-        pawn logic similar to pgn_reader.py
-        en passant not handled
-        """
         fwd = 1 #black pawn assumed
         if piece.isupper(): #white pawn
             fwd = -1
@@ -52,9 +52,6 @@ def next_poss_from_st(board, st_pos):
                     if opp_team:
                         next_poss.add(p)
     else:
-        """
-        doesn't handle checks, probably will do when full stack considered
-        """
         #all pieces besides pawns
         starts = ph.REL_STARTS[upper_piece]
         search_sp = [[(st_pos[0]+p[0], st_pos[1]+p[1]) for p in dir] for dir in starts]
@@ -87,24 +84,19 @@ def next_poss_from_st(board, st_pos):
                 elif board[st_pos[0]][st_pos[1]].upper() == "R" and st_pos[1] in {0, 7}:
                     if board[st_pos[0]][4].upper() == "K":
                         pairs_to_check.add(((st_pos[0], 4), st_pos))
-            # print()
-            # print(pairs_to_check)
-            # print()
 
             for p1, p2 in pairs_to_check:
                 low = min(p1[1], p2[1])
                 high = max(p1[1], p2[1])
 
-                # print(low, high)
                 good_castle = True
                 for c in range(low+1, high):
                     if board[p1[0]][c] != "-":
                         good_castle = False
                         break
-                # print(p1, p2, good_castle)
-                # TODO: add the correct positions (rn adding where the pieces are, not where they will castle to
+
                 if good_castle:
-                    #map every possible pair to where pair will end up
+                    #map of every possible pair to where pair will end up
                     castle_map = {
                         ((0,4),(0,0)):((0,2),(0,3)),
                         ((0,4),(0,7)):((0,6),(0,5)),
@@ -118,16 +110,21 @@ def next_poss_from_st(board, st_pos):
 
     return next_poss
 
+"""
+turn poss set into bitboard
+"""
 def get_bitboard_from_poss(next_poss):
     bitboard = [[0 for c in range(8)] for r in range(8)]
     for r, c in next_poss:
         bitboard[r][c] = 1
     return bitboard
 
-#take board state, get all possible next board states
-#return as a 3D array
-#where every sqr has set of every piece that could be there
-#(includes possibility of pieces not moving)
+"""
+take board state, get all possible next board states
+return as a 3D array
+where every sqr has set of every piece that could be there
+(includes possibility of pieces not moving)
+"""
 def get_stacked_poss(board):
     piece_bitboards = {}
     stacked_poss = [[{board[r][c]} for c in range(8)] for r in range(8)]
@@ -145,17 +142,12 @@ def get_stacked_poss(board):
 
             if piece not in piece_bitboards:
                 piece_bitboards[piece] = get_bitboard_from_poss(next_poss)
-            else:
+            else: #merge bitboards of same piece type
                 to_add = get_bitboard_from_poss(next_poss)
                 for tr in range(8):
                     for tc in range(8):
                         if to_add[tr][tc]:
                             piece_bitboards[piece][tr][tc] = 1
-
-    # for piece, bitboard in piece_bitboards:
-    #     if piece not in {"R", "K"}: continue
-    #     print(piece)
-    #     ph.display(bitboard)
 
     for piece, bitboard in piece_bitboards.items():
         for r in range(8):
