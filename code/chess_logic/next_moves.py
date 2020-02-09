@@ -134,6 +134,10 @@ def get_stacked_poss(board):
 
     for i in range(8):
         for j in range(8):
+            #liberally apply en passant possibility
+            if (i == 3 and piece == "P") or (i == 4 and piece == "p"):
+                stacked_poss[i][j].add("-")
+
             piece = board[i][j]
             next_poss = next_poss_from_st(board, (i, j))
             if next_poss: #piece can move, meaning current sqr could be vacated
@@ -157,6 +161,7 @@ def is_next_board_poss(board, stacked_poss):
     for i in range(8):
         for j in range(8):
             if board[i][j] not in stacked_poss[i][j]:
+                print("not poss here")
                 print(i, j)
                 print(board[i][j])
                 print(stacked_poss[i][j])
@@ -180,31 +185,19 @@ def main():
         next_board = reader.make_move(board, move_list[i], (i+1)%2)
 
         if not is_next_board_poss(next_board, stacked_poss):
+            ph.display(board)
+            print("IMPOSSIBLE", i, move_list[i])
             ph.display(next_board)
-            print(i)
+
+            print("stacked_poss:")
+            for row in stacked_poss:
+                print(row)
+
             break
+        else:
+            print("move {} good".format(i))
 
         board = next_board
-    """
-    last_move = 7 # 8 for castling
-    for i in range(last_move):
-        board = reader.make_move(board, move_list[i], (i+1)%2)
-        print(move_list[i])
-        # ph.display(board)
-
-    print("start")
-    ph.display(board)
-
-    next_board = reader.make_move(board, move_list[last_move+1], last_move%2)
-    print("next")
-    ph.display(next_board)
-
-    stacked_poss = get_stacked_poss(board)
-    for row in stacked_poss:
-        print(row)
-
-    print(is_next_board_poss(next_board, stacked_poss))
-    """
 
 if __name__ == '__main__':
     main()
