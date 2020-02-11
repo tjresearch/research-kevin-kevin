@@ -1,4 +1,4 @@
-import sys, time
+import sys
 import pgn_reader as reader
 import pgn_helper as ph
 
@@ -199,6 +199,11 @@ def main():
         stacked_poss = get_stacked_poss(board)
 
         next_board = reader.make_move(board, move_list[i], (i+1)%2)
+
+        # print(move_list[i])
+        # ph.display(next_board)
+        # for row in stacked_poss:
+        #     print(row)
 
         if not is_next_board_poss(next_board, stacked_poss):
             ph.display(board)

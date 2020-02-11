@@ -22,7 +22,7 @@ sys.path.insert(1, '../board_detection')
 import board_segmentation #from /board_detection
 sys.path.insert(2, '../chess_logic')
 from pgn_helper import display #from /chess_logic
-from next_moves import get_stacked_board
+from next_moves import get_stacked_poss
 from piece_labelling import ResizeWithAspectRatio
 
 CLASS_TO_SAN = {
@@ -136,7 +136,7 @@ identify possible squares w/ pieces based on # of canny pixels in square
 return 8x8 binary np array
 	piece = 1, empty = 0
 """
-def find_poss_pieces(img, region_bounds, H, SQ_SIZE):
+def get_ortho_guesses(img, region_bounds, H, SQ_SIZE):
 	dims = (SQ_SIZE*8, SQ_SIZE*8)
 
 	#same as canny() in line_detection.py but
@@ -249,7 +249,6 @@ for given file,
 	return list of img arrays
 """
 def split_chessboard(img, corners):
-
 	#downsize large resolutions
 	scale_to = (960, 720)
 	old_shape = img.shape
@@ -288,9 +287,10 @@ def split_chessboard(img, corners):
 	region_bounds = [c[2] for c in chunks]
 
 	#use orthophoto to find poss piece locations
-	poss_pieces = find_poss_pieces(img, region_bounds, H, SQ_SIZE)
-	print(poss_pieces)
-	poss_pieces = poss_pieces.flatten()
+	ortho_guesses = get_ortho_guesses(img, region_bounds, H, SQ_SIZE)
+	print("ortho_guesses:")
+	print(ortho_guesses)
+	ortho_guesses = ortho_guesses.flatten()
 
 	piece_height = 2 #squares tall
 	square_bounds = [c[0] for c in chunks]
@@ -305,7 +305,7 @@ def split_chessboard(img, corners):
 	tops = estimate_tops(img, piece_height, square_bounds)
 
 	#turn corner coords into list of imgs
-	return corners_to_imgs(img, square_bounds, poss_pieces, tops)
+	return corners_to_imgs(img, square_bounds, ortho_guesses, tops)
 
 	#label squares with pieces, save
 	# label_subimgs(img, square_bounds, poss_pieces, tops, file, save_dir)
@@ -324,17 +324,24 @@ def local_load_model(net_path):
 
 #not verbose
 def pred_squares(TARGET_SIZE, net, squares, indices, flat_poss=None):
+	print("pred_squares start")
 	global CLASS_TO_SAN, ALL_CLASSES
 
 	#predict squares
 	st_pred_time = time.time()
 	sq_preds = ["-" for i in range(64)] #8x8 chessboard
+
 	for sq_i in range(len(squares)):
 		img = squares[sq_i]
 		indx = indices[sq_i]
+
+		poss = {}
 		if flat_poss:
 			poss = flat_poss[indx] #not sq_i, since full flat_poss passed
-			if not poss: continue #skip square if ruled impossible to have piece by chess logic
+			if len(poss) == 1: #skip pred if only one possible piece there
+				sq_preds[indx] = poss.pop()
+				print("unique sqr:", sq_preds[indx])
+				continue
 
 		#convert img to numpy array, preprocess for resnet
 		resized_img = cv2.resize(img, dsize=(TARGET_SIZE[1],TARGET_SIZE[0]), interpolation=cv2.INTER_NEAREST)
@@ -347,15 +354,20 @@ def pred_squares(TARGET_SIZE, net, squares, indices, flat_poss=None):
 		pred_SAN = CLASS_TO_SAN[ALL_CLASSES[preds[ptr]]]
 
 		#move down prediction list if prediction is impossible (by chess logic)
-		if flat_poss:
+		if poss:
 			while pred_SAN not in poss:
+				print("collision of pred:", pred_SAN)
+				print("poss_set:", poss)
+				print("moving down list:", preds)
 				if ptr >= len(preds):
 					print("ran out of predictions")
 					pred_SAN = "?"
 				ptr += 1
 				pred_SAN = CLASS_TO_SAN[ALL_CLASSES[preds[ptr]]]
+				print(ptr, pred_SAN)
 
 		sq_preds[indx] = pred_SAN
+		cv2.destroyWindow("{}".format(indx))
 
 	#rotate board for std display (white on bottom)
 	sq_preds = np.asarray(sq_preds)
@@ -380,16 +392,19 @@ def classify_pieces(img, corners, net, TARGET_SIZE, prev_state=None):
 	#compute possible next moves from prev state, flatten to 1D list,
 	flat_poss = []
 	if prev_state:
-		# print(prev_state)
-		stacked_poss = get_stacked_board(prev_state)
-		for row in stacked_poss:
-			for tup in row:
-				flat_poss.append(tup)
-	# matching_flat_poss = [flat_poss[i] for i in range(len(flat_poss)) if i in indices]
+		stacked_poss = get_stacked_poss(prev_state)
 
-	# for r in prev_state:
-	# 	print(r)
-	# print(matching_flat_poss)
+
+		#matching same orientation as board
+		for c in range(8):
+			for r in range(7, -1, -1):
+				flat_poss.append(stacked_poss[r][c])
+
+		print("flat poss, pic oriented")
+		for r in range(8):
+			for c in range(8):
+				print(flat_poss[r*8+c], end=', ')
+			print()
 
 	board = pred_squares(TARGET_SIZE, net, squares, indices, flat_poss)
 	return board
