@@ -14,7 +14,13 @@ import os
 import numpy as np
 import sys
 sys.path.insert(1, '../board_detection')
-import board_segmentation #from /board_detection
+from board_detection import board_locator, board_segmentation
+
+print("Loading board model...")
+st_load_time = time.time()
+lattice_point_model = board_locator.load_model(os.path.join(model_dir, "lattice_points_model.json"),
+											   os.path.join(model_dir, "lattice_points_model.h5"))
+print("Loaded in {} s".format(time.time() - st_load_time))
 
 """
 mouse callback for find_board()
@@ -63,6 +69,20 @@ to segment board into squares
 """
 def find_board(img):
 	global corners
+
+	st_locate_time = time.time()
+	lines, corners = board_locator.find_chessboard(img, lattice_point_model)
+	print("Located board in {} s".format(time.time() - st_locate_time))
+
+	for corner in corners:
+		cv2.circle(img, (int(corner[0]), int(corner[1])), 3, (255, 0, 0), 2)
+
+	cv2.imshow("original", img)
+	c = chr(cv2.waitKey())
+	if c == " ":
+		pass
+	#add manual reset on corners from board_locator
+
 	#select corners of board to segment
 	print("ESC to quit")
 	while True:

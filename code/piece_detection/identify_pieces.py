@@ -307,9 +307,6 @@ def split_chessboard(img, corners):
 	#turn corner coords into list of imgs
 	return corners_to_imgs(img, square_bounds, ortho_guesses, tops)
 
-	#label squares with pieces, save
-	# label_subimgs(img, square_bounds, poss_pieces, tops, file, save_dir)
-
 def local_load_model(net_path):
 	#load model
 	if os.path.isdir(net_path):
@@ -393,7 +390,6 @@ def classify_pieces(img, corners, net, TARGET_SIZE, prev_state=None):
 	flat_poss = []
 	if prev_state:
 		stacked_poss = get_stacked_poss(prev_state)
-
 
 		#matching same orientation as board
 		for c in range(8):

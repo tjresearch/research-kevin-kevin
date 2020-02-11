@@ -31,23 +31,62 @@ print("Loaded in {} s".format(time.time() - st_load_time))
 print("Loading piece model...")
 st_load_time = time.time()
 piece_model = identify_pieces.local_load_model(os.path.join(model_dir, "piece_detection_model.h5"))
+# piece_model = None
 print("Loaded in {} s".format(time.time() - st_load_time))
 
 TARGET_SIZE = (224, 112)
 
 # For single image
-# img_path = "board_detection/images/chessboard2.jpg"
-# img = cv2.imread(img_path)
-# cv2.imshow("Image", img)
-#
-# st_locate_time = time.time()
-# lines, corners = board_locator.find_chessboard(img, lattice_point_model)
-# print("Located board in {} s".format(time.time() - st_locate_time))
-#
-# board = identify_pieces.classify_pieces(img, corners, piece_model, TARGET_SIZE)
-# pgn_helper.display(board)
-#
-# cv2.waitKey()
+cv2.namedWindow("original")
+
+img_path = "piece_detection/raw_imgs/high_split/IMG_7835.jpg"
+img = cv2.imread(img_path)
+cv2.imshow("original", img)
+cv2.waitKey()
+
+st_locate_time = time.time()
+lines, corners = board_locator.find_chessboard(img, lattice_point_model)
+print("Located board in {} s".format(time.time() - st_locate_time))
+
+for corner in corners:
+	cv2.circle(img, (int(corner[0]), int(corner[1])), 3, (255, 0, 0), 2)
+
+cv2.imshow("original", img)
+cv2.waitKey()
+
+prev_state = [['-', '-', '-', '-', '-', '-', '-', '-'],
+			  ['-', '-', '-', '-', 'N', '-', '-', '-'],
+			  ['-', '-', '-', '-', '-', '-', '-', '-'],
+			  ['-', '-', '-', '-', 'R', '-', 'q', 'P'],
+			  ['-', '-', '-', 'r', '-', '-', '-', '-'],
+			  ['-', '-', '-', '-', '-', 'R', 'Q', '-'],
+			  ['-', '-', '-', 'N', '-', '-', '-', '-'],
+			  ['-', '-', '-', '-', 'B', '-', '-', '-']]
+
+print("prev state:")
+pgn_helper.display(prev_state)
+print(prev_state)
+
+"""
+#calling twice no work
+#somehow the orthophoto is very wrong when run a second time
+board = identify_pieces.classify_pieces(img, corners, piece_model, TARGET_SIZE)
+print()
+print(board)
+print()
+pgn_helper.display(board)
+print("-"*60)
+"""
+
+board = identify_pieces.classify_pieces(img, corners, piece_model, TARGET_SIZE, prev_state)
+pgn_helper.display(board)
+print()
+print(board)
+print()
+
+cv2.waitKey()
+cv2.destroyWindow("disp")
+exit(0)
 
 # For live feed
 cap = cv2.VideoCapture(url)
