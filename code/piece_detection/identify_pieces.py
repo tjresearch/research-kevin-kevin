@@ -18,8 +18,6 @@ from tensorflow.keras.models import load_model
 from tensorflow.keras.applications.resnet_v2 import preprocess_input
 from tensorflow.keras.preprocessing import image
 
-from data_collection import *
-
 sys.path.insert(1, '../board_detection')
 import board_segmentation #from /board_detection
 sys.path.insert(2, '../chess_logic')
@@ -186,6 +184,26 @@ def corners_to_imgs(img, square_bounds, poss_pieces, tops):
 	return imgs, indices
 
 """
+resize to width/height while keeping aspect ratio
+return resized img
+https://stackoverflow.com/questions/35180764/opencv-python-image-too-big-to-display
+"""
+def ResizeWithAspectRatio(image, width=None, height=None, inter=cv2.INTER_AREA):
+	dim = None
+	(h, w) = image.shape[:2]
+
+	if width is None and height is None:
+		return image
+	if width is None:
+		r = height / float(h)
+		dim = (int(w * r), height)
+	else:
+		r = width / float(w)
+		dim = (width, int(h * r))
+
+	return cv2.resize(image, dim, interpolation=inter)
+
+"""
 for given file, corners of board...
 1. segment board into squares
 2. use orthophoto to identify poss pieces
@@ -202,27 +220,11 @@ def split_chessboard(img, corners):
 		for i in range(4):
 			corners[i] = (int(corners[i][0] * scale_to[1] / old_shape[1]), int(corners[i][1] * scale_to[1] / old_shape[1]))
 
-	#fill and order global list corners
-	# find_board(img)
-
 	corners = order_points(corners)
-
-	# disp = img.copy()
-	# for corner in corners:
-	# 	cv2.circle(disp, corner, 3, (255, 0, 0), 2)
-	# cv2.imshow("corners", disp)
-	# cv2.waitKey()
 
 	#segment board
 	SQ_SIZE = 100
 	chunks, H = board_segmentation.regioned_segment_board(img, corners, SQ_SIZE)
-
-	# for chunk in chunks:
-	# 	center = chunk[1]
-	# 	cv2.circle(disp, (int(center[0]), int(center[1])), 3, (255, 0, 0), 2)
-	#
-	# cv2.imshow("centers", disp)
-	# cv2.waitKey()
 
 	"""
 	chunks[0] = corners (squares defined by four corners)
@@ -239,13 +241,6 @@ def split_chessboard(img, corners):
 
 	piece_height = 1.75 #squares tall
 	square_bounds = [c[0] for c in chunks]
-
-	# for bounds in square_bounds:
-	# 	disp = img.copy()
-	# 	for corner in bounds:
-	# 		cv2.circle(disp, (int(corner[0]), int(corner[1])), 3, (255, 0, 0), 2)
-	# 	cv2.imshow("disp", disp)
-	# 	cv2.waitKey()
 
 	tops = estimate_tops(img, piece_height, square_bounds)
 

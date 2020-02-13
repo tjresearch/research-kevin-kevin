@@ -20,7 +20,7 @@ import os
 import numpy as np
 import sys, time
 
-import identify_pieces as id
+from identify_pieces import split_chessboard, order_points
 
 sys.path.insert(1, '../board_detection')
 import board_locator, board_segmentation
@@ -81,7 +81,7 @@ def find_board(img, lattice_point_model):
 					print("corners cleared")
 
 			disp = img.copy()
-			corners = id.order_points(corners)
+			corners = order_points(corners)
 
 			for corner in corners:
 				cv2.circle(disp, (int(corner[0]), int(corner[1])), 3, (255, 0, 0), 2)
@@ -172,26 +172,6 @@ def piece_label_handler(window_name):
 	return piece
 
 """
-resize to width/height while keeping aspect ratio
-return resized img
-https://stackoverflow.com/questions/35180764/opencv-python-image-too-big-to-display
-"""
-def ResizeWithAspectRatio(image, width=None, height=None, inter=cv2.INTER_AREA):
-	dim = None
-	(h, w) = image.shape[:2]
-
-	if width is None and height is None:
-		return image
-	if width is None:
-		r = height / float(h)
-		dim = (int(w * r), height)
-	else:
-		r = width / float(w)
-		dim = (width, int(h * r))
-
-	return cv2.resize(image, dim, interpolation=inter)
-
-"""
 for given file,
 	segment board into squares
 	use orthophoto to identify poss pieces
@@ -206,16 +186,11 @@ def save_squares(file, outer_dir, lattice_point_model):
 	print("output dir: {}".format(save_dir))
 	img = cv2.imread(file)
 
-	#downsize large resolutions
-	scale_to = (960, 720)
-	if img.size > scale_to[0]*scale_to[1]:
-		img = ResizeWithAspectRatio(img, width=scale_to[1])
-
 	#find corners of board
 	corners = find_board(img, lattice_point_model)
 
 	#take corners, split image into subimgs of viable squares & their indicies
-	squares, indices = id.split_chessboard(img, corners)
+	squares, indices = split_chessboard(img, corners)
 	# print(len(squares))
 	# print(indices)
 

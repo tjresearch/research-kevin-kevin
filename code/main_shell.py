@@ -84,6 +84,7 @@ print()
 print(board)
 print()
 
+print("any key to close")
 cv2.waitKey()
 cv2.destroyWindow("disp")
 exit(0)
