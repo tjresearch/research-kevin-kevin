@@ -1,6 +1,6 @@
 """
 putting a piece-recognition nnet with the
-piece splitting system in piece_labelling.py (modified)
+piece splitting system in data_collection.py (modified)
 
 1. wait for model to load (150 s on avg)
 2. click corners of board in chessboard_img
@@ -18,12 +18,13 @@ from tensorflow.keras.models import load_model
 from tensorflow.keras.applications.resnet_v2 import preprocess_input
 from tensorflow.keras.preprocessing import image
 
+from data_collection import *
+
 sys.path.insert(1, '../board_detection')
 import board_segmentation #from /board_detection
 sys.path.insert(2, '../chess_logic')
 from pgn_helper import display #from /chess_logic
 from next_moves import get_stacked_poss
-from piece_labelling import ResizeWithAspectRatio
 
 CLASS_TO_SAN = {
 	'black_bishop':'b',
@@ -41,22 +42,10 @@ CLASS_TO_SAN = {
 	'white_rook':'R'
 }
 ALL_CLASSES = [*CLASS_TO_SAN.keys()]
-print(ALL_CLASSES)
-
-#because of global array in piece_labelling, have to copy-paste methods from piece_labelling
-"""from piece_labelling"""
-"""
-mouse callback for find_board()
-"""
-corners = []
-def mark_point(event, x, y, flags, params):
-	global corners
-	if event == cv2.EVENT_LBUTTONDOWN:
-		print("Marked: {}, {}".format(x, y))
-		corners.append((x, y))
+# print(ALL_CLASSES)
 
 """
-order four points in top-left, top-right, bottom-left, bottom-right order
+order four points clockwise from top-left corner
 return np array of points
 https://www.pyimagesearch.com/2014/08/25/4-point-opencv-getperspective-transform-example/
 """
@@ -85,50 +74,6 @@ def order_points(pts):
 
 	# return the ordered coordinates
 	return rect
-
-"""
-display chessboard image, allow user to click on four corners of board
-to segment board into squares
-"""
-def find_board(img):
-	global corners
-	#select corners of board to segment
-	print("ESC to quit")
-	while True:
-		cv2.namedWindow("image")
-		cv2.setMouseCallback("image", mark_point)
-
-		while True:
-			cv2.imshow("image", img)
-			print("pick four corners, space to finish, any other to redo")
-
-			c = chr(cv2.waitKey())
-			if c == " ":
-				break
-			elif c == "\x1b":
-				exit("escaped")
-			else:
-				corners = []
-				print("corners cleared")
-
-		disp = img.copy()
-		corners = order_points(corners)
-
-		for i in range(4): #will crash if < 4 corners marked
-			cv2.line(disp, tuple(corners[i]), tuple(corners[(i+1)%4]), (255, 0, 0), 2)
-
-		cv2.imshow("image", disp)
-		print("space to confirm board, any other to redo")
-
-		c = chr(cv2.waitKey())
-		if c == " ":
-			break
-		elif c == "\x1b":
-			exit("escaped")
-		else:
-			corners = []
-			print("corners cleared")
-	# cv2.destroyWindow("image")
 
 """
 transform Canny edge version of chessboard
@@ -221,7 +166,6 @@ def estimate_tops(img, piece_height, square_bounds):
 	tops = np.asarray(tops)
 
 	return tops
-"""end from piece_labelling"""
 
 def corners_to_imgs(img, square_bounds, poss_pieces, tops):
 	imgs = []
@@ -242,11 +186,12 @@ def corners_to_imgs(img, square_bounds, poss_pieces, tops):
 	return imgs, indices
 
 """
-for given file,
-	segment board into squares
-	use orthophoto to identify poss pieces
-	use projectPoints to estimate piece height
-	return list of img arrays
+for given file, corners of board...
+1. segment board into squares
+2. use orthophoto to identify poss pieces
+3. use projectPoints to estimate piece height
+
+return list of img arrays
 """
 def split_chessboard(img, corners):
 	#downsize large resolutions
@@ -292,7 +237,7 @@ def split_chessboard(img, corners):
 	print(ortho_guesses)
 	ortho_guesses = ortho_guesses.flatten()
 
-	piece_height = 2 #squares tall
+	piece_height = 1.75 #squares tall
 	square_bounds = [c[0] for c in chunks]
 
 	# for bounds in square_bounds:
@@ -381,7 +326,10 @@ def pred_squares(TARGET_SIZE, net, squares, indices, flat_poss=None):
 
 	return board
 
-#prev state given in same form as output of this method (array of ltrs)
+"""
+classify pieces in img given: board corners, piece_nnet, TARGET_SIZE to nnet
+optionally: prev state--in same form as output of this method (array of ltrs)
+"""
 def classify_pieces(img, corners, net, TARGET_SIZE, prev_state=None):
 	squares, indices = split_chessboard(img, corners)
 	# print(indices)
@@ -405,6 +353,9 @@ def classify_pieces(img, corners, net, TARGET_SIZE, prev_state=None):
 	board = pred_squares(TARGET_SIZE, net, squares, indices, flat_poss)
 	return board
 
+"""
+deprecated main method
+"""
 def main():
 	if len(sys.argv)<3:
 		print("usage: python identify_pieces.py [model_path]|[model_dir] [chessboard_img] [verbose=False]")
