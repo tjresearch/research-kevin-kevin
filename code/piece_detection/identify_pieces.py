@@ -95,6 +95,7 @@ def get_ortho_guesses(img, region_bounds, H, SQ_SIZE):
 
 	#get topdown projection of Canny
 	topdown = cv2.transpose(cv2.warpPerspective(canny_edge_img, H, dims))
+	# cv2.imshow("topdown", topdown)
 
 	#identify number of significant canny points based on white_pix_thresh
 	canny_cts = []
@@ -120,7 +121,7 @@ use solvePnPRansac, projectPoints on 9x9 array of sqr intersections
 to estimate piece height
 return estimated height for every square of board
 """
-def estimate_tops(img, piece_height, square_bounds):
+def estimate_tops(img, square_bounds, piece_height):
 	#get imgpts of chessboard intersections
 	board_corners = []	#left to right, top to bottom
 	for r in range(8):
@@ -132,6 +133,16 @@ def estimate_tops(img, piece_height, square_bounds):
 	for sq in last_row:
 		board_corners.append([sq[3][0], sq[3][1]])
 	board_corners.append([last_row[-1][2][0],last_row[-1][2][1]])
+
+	"""
+	#temp
+	disp = img.copy()
+	for bc in board_corners:
+		cv2.circle(disp, (int(bc[0]), int(bc[1])), 3, (0, 255, 0), 2)
+	cv2.imshow("board corners", disp)
+	cv2.waitKey()
+	"""
+
 	board_corners = np.asarray(board_corners) #81x2
 
 	#81x2 of coords (0,0) -> (9,9)
@@ -146,39 +157,58 @@ def estimate_tops(img, piece_height, square_bounds):
 	dist_coeffs = np.zeros((4,1))
 	retval, rvec, tvec, inliers = cv2.solvePnPRansac(objp, board_corners, camera_matrix, dist_coeffs)
 
-	#find centers of each square
-	to_draw = []
+	desired_tops = []
 	for r in range(8):
 		for c in range(8):
-			# for pt in [[r,c,0],[r,c+1,0],[r+1,c,0],[r,c,1]]:
-			for pt in [[r+0.5,c+0.5,0],[r+0.5,c+0.5,piece_height]]:
-				to_draw.append(pt)
-	to_draw = np.asarray(to_draw).astype(np.float32)
+			#points of interest
+			#front pts of base, front pts of top
+			POI = [[r+1,c,piece_height],[r+1,c+1,piece_height]]
+			for pt in POI:
+				desired_tops.append(pt)
+	desired_tops = np.asarray(desired_tops).astype(np.float32)
+	# print(desired_tops)
 
 	#use centers and Ransac to project piece heights in image
-	proj_pts, jac = cv2.projectPoints(to_draw, rvec, tvec, camera_matrix, dist_coeffs)
-	proj_pts = proj_pts.astype(int)
+	top_proj, jac = cv2.projectPoints(desired_tops, rvec, tvec, camera_matrix, dist_coeffs)
+	top_proj = top_proj.astype(int)
+
+	#reshape to pair top coords
 	tops = []
-	for i in range(1,len(proj_pts),2):
-		tops.append(proj_pts[i][0])
-	tops = np.asarray(tops)
+	for i in range(0, len(top_proj), 2):
+		tops.append([top_proj[i][0], top_proj[i+1][0]])
+	# tops = np.asarray(tops)
+
+	# print("tops")
+	# for t in tops:
+	# 	print(t)
 
 	return tops
 
-def corners_to_imgs(img, square_bounds, poss_pieces, tops):
+def corners_to_imgs(img, poss_pieces, square_bounds, piece_height, SQ_SIZE):
 	imgs = []
 	indices = []
+	tops = estimate_tops(img, square_bounds, piece_height)
+
 	for i in range(len(square_bounds)):
 		if not poss_pieces[i]: continue
 
-		#segment full image into square
-		corners = square_bounds[i]
-		bottom = np.max(corners[:, 1])
-		top = tops[i][1] if tops[i][1] > 0 else 0
-		left = np.min(corners[:, 0])
-		right = np.max(corners[:, 0])
-		subimg = img[int(top):int(bottom), int(left):int(right)]
-		imgs.append(subimg)
+		#crop square out of full image
+		corners = square_bounds[i] #cw from top-left
+		top_pts = tops[i]
+		bot_pts = [corners[2].astype(int), corners[3].astype(int)] #x y from top left
+		shear_box = top_pts+bot_pts #cw from top-left
+
+		#perspective transform to normalize parallelogram to rectangle
+		pix_height = piece_height*SQ_SIZE
+		dims = (SQ_SIZE, pix_height)
+		dst_box = [(0,0), (dims[0],0), dims, (0,dims[1])] #cw, xy origin top-left
+		H, _ = cv2.findHomography(np.array(shear_box), np.array(dst_box))
+		unshear = cv2.warpPerspective(img, H, dims)
+		cv2.imshow("unshear sqr", unshear)
+		cv2.waitKey()
+
+		#add rectangle to img list
+		imgs.append(unshear)
 		indices.append(i)
 
 	return imgs, indices
@@ -223,7 +253,7 @@ def split_chessboard(img, corners):
 	corners = order_points(corners)
 
 	#segment board
-	SQ_SIZE = 100
+	SQ_SIZE = 112
 	chunks, H = board_segmentation.regioned_segment_board(img, corners, SQ_SIZE)
 
 	"""
@@ -239,13 +269,11 @@ def split_chessboard(img, corners):
 	print(ortho_guesses)
 	ortho_guesses = ortho_guesses.flatten()
 
-	piece_height = 1.75 #squares tall
+	piece_height = 2 #squares tall
 	square_bounds = [c[0] for c in chunks]
 
-	tops = estimate_tops(img, piece_height, square_bounds)
-
 	#turn corner coords into list of imgs
-	return corners_to_imgs(img, square_bounds, ortho_guesses, tops)
+	return corners_to_imgs(img, ortho_guesses, square_bounds, piece_height, SQ_SIZE)
 
 def local_load_model(net_path):
 	#load model
@@ -369,7 +397,7 @@ def main():
 	print(len(squares))
 
 	#run each square through nnet
-	TARGET_SIZE = (224,112)
+	TARGET_SIZE = (224,112) #row col
 
 	#predict squares
 	board = pred_squares(TARGET_SIZE, net, squares, indices)

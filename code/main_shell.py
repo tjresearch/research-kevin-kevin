@@ -30,8 +30,8 @@ print("Loaded in {} s".format(time.time() - st_load_time))
 # Load piece models
 print("Loading piece model...")
 st_load_time = time.time()
-piece_model = identify_pieces.local_load_model(os.path.join(model_dir, "piece_detection_model.h5"))
-# piece_model = None
+# piece_model = identify_pieces.local_load_model(os.path.join(model_dir, "piece_detection_model.h5"))
+piece_model = None
 print("Loaded in {} s".format(time.time() - st_load_time))
 
 TARGET_SIZE = (224, 112)
@@ -39,7 +39,7 @@ TARGET_SIZE = (224, 112)
 # For single image
 cv2.namedWindow("original")
 
-img_path = "piece_detection/raw_imgs/high_split/IMG_7835.jpg"
+img_path = "piece_detection/feb_imgs/game_1/IMG_8558.jpeg"
 img = cv2.imread(img_path)
 cv2.imshow("original", img)
 cv2.waitKey()
@@ -48,10 +48,11 @@ st_locate_time = time.time()
 lines, corners = board_locator.find_chessboard(img, lattice_point_model)
 print("Located board in {} s".format(time.time() - st_locate_time))
 
+disp = img.copy()
 for corner in corners:
-	cv2.circle(img, (int(corner[0]), int(corner[1])), 3, (255, 0, 0), 2)
+	cv2.circle(disp, (int(corner[0]), int(corner[1])), 3, (255, 0, 0), 2)
 
-cv2.imshow("original", img)
+cv2.imshow("corners", disp)
 cv2.waitKey()
 
 prev_state = [['-', '-', '-', '-', '-', '-', '-', '-'],

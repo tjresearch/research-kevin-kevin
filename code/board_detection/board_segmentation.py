@@ -26,8 +26,6 @@ def quadrilateral_slice(points, arr):
 
 
 def regioned_segment_board(img, corners, SQ_SIZE):
-	SQ_SIZE = 100
-
 	dst_size = SQ_SIZE * 8
 	dst_points = [(SQ_SIZE, SQ_SIZE), (SQ_SIZE, dst_size - SQ_SIZE), (dst_size - SQ_SIZE, dst_size - SQ_SIZE), (dst_size - SQ_SIZE, SQ_SIZE)]
 	H = utils.find_homography(corners, dst_points)

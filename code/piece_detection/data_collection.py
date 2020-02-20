@@ -226,8 +226,13 @@ def main():
 	os.mkdir(save_dir)
 	print("save dir: {}".format(save_dir))
 
+	ct = 0
+	print(len(os.listdir(img_dir)))
+
 	#save squares of each file
 	for file in os.listdir(img_dir):
+		ct += 1
+		print("img {}/{}".format(ct, len(os.listdir(img_dir))))
 		if file.endswith(".jpg") or file.endswith(".jpeg") or file.endswith(".png"):
 			filepath = os.path.join(img_dir, file)
 			print("file: {}".format(filepath))
