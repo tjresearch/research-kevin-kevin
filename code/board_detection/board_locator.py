@@ -6,7 +6,6 @@ import utils
 import math
 import cv2
 import sklearn
-import os
 import scipy.spatial, scipy.cluster
 import collections
 import line_detection
@@ -20,22 +19,27 @@ def load_model(model_file, weights_file):
 	model.load_weights(weights_file)
 	return model
 
-def validate_lattice_point(model, lattice_point, img):
-	if not (10 < lattice_point[0] < img.shape[1] - 10 and 10 < lattice_point[1] < img.shape[0] - 10):
-		return False
+def validate_lattice_points(model, lattice_points, img):
 
-	subimg = img[lattice_point[1] - 10:lattice_point[1] + 11, lattice_point[0] - 10:lattice_point[0] + 11]
+	poss_points = []
+	poss_images = []
+	for lattice_point in lattice_points:
+		if 10 < lattice_point[0] < img.shape[1] - 10 and 10 < lattice_point[1] < img.shape[0] - 10:
+			subimg = img[lattice_point[1] - 10:lattice_point[1] + 11, lattice_point[0] - 10:lattice_point[0] + 11]
 
-	subimg = cv2.cvtColor(subimg, cv2.COLOR_BGR2GRAY)
-	subimg = cv2.threshold(subimg, 0, 255, cv2.THRESH_OTSU)[1]
-	subimg = cv2.Canny(subimg, 0, 255)
+			subimg = cv2.cvtColor(subimg, cv2.COLOR_BGR2GRAY)
+			subimg = cv2.threshold(subimg, 0, 255, cv2.THRESH_OTSU)[1]
+			subimg = cv2.Canny(subimg, 0, 255)
 
-	# cv2.imshow("lattice_point", subimg)
-	# cv2.waitKey()
+			subimg = subimg.astype(np.float32) / 255.0
 
-	subimg = subimg.astype(np.float32) / 255.0
+			poss_points.append(lattice_point)
+			poss_images.append(subimg)
 
-	return bool(np.argmax(model.predict(subimg[np.newaxis, ..., np.newaxis])))
+	poss_images = np.array(poss_images)
+	conf = np.argmax(model.predict(poss_images[..., np.newaxis]), axis=1)
+
+	return poss_points, conf
 
 
 def get_intersections(lines):
@@ -84,11 +88,8 @@ def find_lattice_points(img, lines, lattice_point_model):
 	# 	y2 = int(y0 - 1000 * a)
 	# 	cv2.line(lattice_disp, (x1, y1), (x2, y2), (255, 0, 0), 4)
 
-	lattice_points = []
-
-	for intersection in intersections:
-		if validate_lattice_point(lattice_point_model, intersection, img):
-			lattice_points.append(intersection)
+	poss_points, conf = validate_lattice_points(lattice_point_model, intersections, img)
+	lattice_points = poss_points[conf]
 
 	lattice_points = cluster_points(lattice_points)
 
