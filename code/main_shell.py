@@ -39,7 +39,7 @@ TARGET_SIZE = (224, 112)
 # For single image
 cv2.namedWindow("original")
 
-img_path = "board_detection/images/chessjpgs0208/game 1/IMG_8558.jpeg"
+img_path = "board_detection/images/chessjpgs0208/game 1/IMG_8561.jpeg"
 img = cv2.imread(img_path)
 cv2.imshow("original", img)
 cv2.waitKey()
