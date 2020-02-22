@@ -40,7 +40,6 @@ CLASS_TO_SAN = {
 	'white_rook':'R'
 }
 ALL_CLASSES = [*CLASS_TO_SAN.keys()]
-# print(ALL_CLASSES)
 
 """
 order four points clockwise from top-left corner
@@ -51,26 +50,16 @@ def order_points(pts):
 	if type(pts) == list:
 		pts = np.array(pts)
 
-	# initialzie a list of coordinates that will be ordered
-	# such that the first entry in the list is the top-left,
-	# the second entry is the top-right, the third is the
-	# bottom-right, and the fourth is the bottom-left
 	rect = np.zeros((4, 2), dtype = "float32")
 
-	# the top-left point will have the smallest sum, whereas
-	# the bottom-right point will have the largest sum
 	s = pts.sum(axis = 1)
 	rect[0] = pts[np.argmin(s)]
 	rect[2] = pts[np.argmax(s)]
 
-	# now, compute the difference between the points, the
-	# top-right point will have the smallest difference,
-	# whereas the bottom-left will have the largest difference
 	diff = np.diff(pts, axis = 1)
 	rect[1] = pts[np.argmin(diff)]
 	rect[3] = pts[np.argmax(diff)]
 
-	# return the ordered coordinates
 	return rect
 
 """
@@ -82,9 +71,8 @@ return 8x8 binary np array
 def get_ortho_guesses(img, region_bounds, H, SQ_SIZE):
 	dims = (SQ_SIZE*8, SQ_SIZE*8)
 
-	#same as canny() in line_detection.py but
-	#no lower hysteresis thresh and no medianBlur
-	#to find black pieces
+	#same as canny() in line_detection.py but no lower hysteresis thresh
+	#and no medianBlur, to find black pieces
 	sigma = 0.25
 	v = np.median(img)
 	lower = 0
@@ -132,7 +120,7 @@ use solvePnPRansac, projectPoints on 9x9 array of sqr intersections
 to estimate piece height
 return estimated height for every square of board
 """
-def estimate_tops(img, square_bounds, piece_height):
+def estimate_bounds(img, square_bounds, piece_height, graphics_on=False):
 	#get imgpts of chessboard intersections
 	board_corners = []	#left to right, top to bottom
 	for r in range(8):
@@ -168,50 +156,65 @@ def estimate_tops(img, square_bounds, piece_height):
 	dist_coeffs = np.zeros((4,1))
 	retval, rvec, tvec, inliers = cv2.solvePnPRansac(objp, board_corners, camera_matrix, dist_coeffs)
 
-	desired_tops = []
+	#find front face of 3D bounding box
+	desired_bounds = []
 	for r in range(8):
 		for c in range(8):
-			#points of interest
-			#front pts of base, front pts of top
+			#points of interest: front pts of base, front pts of top
 			POI = [[r+0.75,c,piece_height],[r+0.75,c+1,piece_height],[r+0.75,c+1,0],[r+0.75,c,0]]
 			for pt in POI:
-				desired_tops.append(pt)
-	desired_tops = np.asarray(desired_tops).astype(np.float32)
-	# print(desired_tops)
-
-	#use centers and Ransac to project piece heights in image
-	top_proj, jac = cv2.projectPoints(desired_tops, rvec, tvec, camera_matrix, dist_coeffs)
-	top_proj = top_proj.astype(int)
+				desired_bounds.append(pt)
+	desired_bounds = np.asarray(desired_bounds).astype(np.float32)
 
 	#reshape to group top coords
-	tops = []
-	for i in range(0, len(top_proj), 4):
+	pix_bounds = []
+	for i in range(0, len(bounds_proj), 4):
 		my_group = []
 		for shift in range(4):
-			my_group.append(top_proj[i+shift][0])
-		tops.append(my_group)
-	# tops = np.asarray(tops)
+			my_group.append(bounds_proj[i+shift][0])
+		pix_bounds.append(my_group)
 
-	# print("tops")
-	# for t in tops:
-	# 	print(t)
+	#use centers and Ransac to project piece heights in image
+	bounds_proj, jac = cv2.projectPoints(desired_bounds, rvec, tvec, camera_matrix, dist_coeffs)
+	bounds_proj = bounds_proj.astype(int)
 
-	return tops
+	#for display, find full 3D bounds
+	if graphics_on:
+		disp_bounds = []
+		for r in range(8):
+			for c in range(8):
+				#points of interest: front pts of base, front pts of top
+				POI = [[r+0.75,c,piece_height],[r+0.75,c+1,piece_height],[r+0.75,c+1,0],[r+0.75,c,0],
+						[r-0.25,c,piece_height],[r-0.25,c+1,piece_height],[r-0.25,c+1,0],[r-0.25,c,0]]
+				for pt in POI:
+					disp_bounds.append(pt)
+		disp_bounds = np.asarray(disp_bounds).astype(np.float32)
+
+		disp_bounds_proj, jac = cv2.projectPoints(disp_bounds, rvec, tvec, camera_matrix, dist_coeffs)
+		disp_bounds_proj = disp_bounds_proj.astype(int)
+
+		disp_pix_bounds = []
+		for i in range(0, len(disp_bounds_proj), 8):
+			my_group = []
+			for shift in range(8):
+				my_group.append(disp_bounds_proj[i+shift][0])
+			disp_pix_bounds.append(my_group)
+			
+		print("work with disp_pix_bounds list to draw bounding boxes")
+
+	return pix_bounds
 
 def corners_to_imgs(img, poss_pieces, square_bounds, piece_height, SQ_SIZE):
 	imgs = []
 	indices = []
-	tops = estimate_tops(img, square_bounds, piece_height)
+	bounds = estimate_bounds(img, square_bounds, piece_height)
 
 	for i in range(len(square_bounds)):
 		if not poss_pieces[i]: continue
 
 		#crop square out of full image
 		corners = square_bounds[i] #cw from top-left
-		top_pts = tops[i]
-		# bot_pts = [corners[2].astype(int), corners[3].astype(int)] #x y from top left
-		# shear_box = top_pts+bot_pts #cw from top-left
-		shear_box = top_pts
+		shear_box = bounds[i]
 
 		#perspective transform to normalize parallelogram to rectangle
 		pix_height = piece_height*SQ_SIZE
@@ -290,18 +293,18 @@ def split_chessboard(img, corners):
 	#turn corner coords into list of imgs
 	return corners_to_imgs(img, ortho_guesses, square_bounds, piece_height, SQ_SIZE)
 
+#load model
 def local_load_model(net_path):
-	#load model
 	if os.path.isdir(net_path):
 		net_file = sorted(os.listdir(net_path))[-1] #lowest alphabetically = highest acc
 		net_path = os.path.join(net_path, net_file)
-	# print("Loading:",net_path)
-	# st_load_time = time.time()
+
 	net = load_model(net_path)
-	# load_time = time.time()-st_load_time
-	# print("\nLoaded {} in {} s.".format(net_path, round(load_time, 3)))
 	return net
 
+"""
+predict squares, given segmented and orthophoto-pared
+"""
 def pred_squares(TARGET_SIZE, net, squares, indices, flat_poss=None):
 	print("pred_squares start")
 	global CLASS_TO_SAN, ALL_CLASSES
@@ -319,18 +322,11 @@ def pred_squares(TARGET_SIZE, net, squares, indices, flat_poss=None):
 		#convert img to numpy array, preprocess for resnet
 		resized_img = cv2.resize(img, dsize=(TARGET_SIZE[1],TARGET_SIZE[0]), interpolation=cv2.INTER_NEAREST)
 		x = preprocess_input(resized_img)
-		# x = np.expand_dims(x, axis=0) #need to add dim to put into resnet
-		# print(x.shape)
 		input_stack.append(x)
-	# print(len(input_stack))
 	input_stack = np.array(input_stack)
-	# print(input_stack.shape)
 
 	#predict on full stack of inputs
 	preds = net.predict(input_stack)
-	# print(preds)
-	# print(preds.shape)
-	# print(preds[0])
 
 	#feed preds through poss set checks, repred as needed
 	#get SAN and fill pred_board
@@ -338,7 +334,6 @@ def pred_squares(TARGET_SIZE, net, squares, indices, flat_poss=None):
 
 	for i in range(len(preds)):
 		pred = preds[i].argsort()[::-1] #most to least likely classes, based on pred
-		# print(pred)
 		poss = poss_sets[i]
 		ptr = 0
 		pred_SAN = CLASS_TO_SAN[ALL_CLASSES[pred[ptr]]]
@@ -357,7 +352,6 @@ def pred_squares(TARGET_SIZE, net, squares, indices, flat_poss=None):
 				print(ptr, pred_SAN)
 
 		pred_board[indices[i]] = pred_SAN
-		# cv2.destroyWindow("{}".format(indx))
 
 	#rotate board for std display (white on bottom)
 	# TODO: rot90 w/out converting to numpy and back
@@ -384,7 +378,7 @@ optionally: prev state--in same form as output of this method (array of ltrs)
 def classify_pieces(img, corners, net, TARGET_SIZE, prev_state=None):
 	squares, indices = split_chessboard(img, corners)
 
-	#compute possible next moves from prev state, flatten to 1D list,
+	#compute possible next moves from prev state, flatten to 1D list
 	flat_poss = []
 	if prev_state:
 		stacked_poss = get_stacked_poss(prev_state)
