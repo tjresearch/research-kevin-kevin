@@ -60,7 +60,7 @@ def collect_data(img, model):
 
 model = board_locator.load_model("models/lattice_points_model.json", "models/lattice_points_model.h5")
 
-path = "images/chessjpgs0208/game 1/IMG_8602.jpeg"
+path = "images/chessboard4.jpg"
 img = cv2.imread(path)
 
 collect_data(img, model)
