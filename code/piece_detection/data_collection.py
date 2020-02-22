@@ -46,16 +46,17 @@ def find_board(img, lattice_point_model):
 	global corners
 
 	cv2.imshow("full_image", img)
+
 	disp = img.copy()
 
 	st_locate_time = time.time()
-	lines, corners = board_locator.find_chessboard(img, lattice_point_model)
+	# lines, corners = board_locator.find_chessboard(img, lattice_point_model)
 	print("Located board in {} s".format(time.time() - st_locate_time))
-
+	corners = []
 	for corner in corners:
 		cv2.circle(disp, (int(corner[0]), int(corner[1])), 3, (255, 0, 0), 2)
-
 	cv2.imshow("full_image", disp)
+
 	c = chr(cv2.waitKey())
 	if c != " ":
 		#manual override on corners from board_locator
@@ -198,7 +199,7 @@ def save_squares(file, outer_dir, lattice_point_model):
 	label_subimgs(img, squares, indices, file, save_dir)
 
 """
-for each file in input img_dir,
+for each file in input img_dir_path,
 	make output dir for labelled squares
 	call save_squares()
 """
@@ -216,7 +217,7 @@ def main():
 	print("Loaded in {} s".format(time.time() - st_load_time))
 
 	global corners
-	img_dir = sys.argv[1]
+	img_dir_path = sys.argv[1]
 
 	#make dir of current time for subimgs
 	now = datetime.now()
@@ -227,18 +228,24 @@ def main():
 	print("save dir: {}".format(save_dir))
 
 	ct = 0
-	print(len(os.listdir(img_dir)))
+	print(len(os.listdir(img_dir_path)))
 
 	#save squares of each file
-	for file in os.listdir(img_dir):
+	for file in os.listdir(img_dir_path):
 		ct += 1
-		print("img {}/{}".format(ct, len(os.listdir(img_dir))))
+		print("img {}/{}".format(ct, len(os.listdir(img_dir_path))))
+		if file.startswith("*"): continue #skip if marked as done
 		if file.endswith(".jpg") or file.endswith(".jpeg") or file.endswith(".png"):
-			filepath = os.path.join(img_dir, file)
+			filepath = os.path.join(img_dir_path, file)
 			print("file: {}".format(filepath))
 			save_squares(filepath, save_dir, lattice_point_model)
 			corners = [] #clear for next board
 			print("file {} done".format(filepath))
+			os.rename(filepath, os.path.join(img_dir_path, "*{}".format(file))) #mark as done
+
+	#mark whole dir as done
+	last_dir_i = img_dir_path[0:len(img_dir_path)-1].rfind("/")
+	os.rename(img_dir_path, os.path.join(img_dir_path[:last_dir_i], "*{}".format(img_dir_path[last_dir_i+1:]))) #mark as done
 
 if __name__ == '__main__':
 	main()

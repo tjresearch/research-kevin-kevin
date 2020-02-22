@@ -95,7 +95,7 @@ def get_ortho_guesses(img, region_bounds, H, SQ_SIZE):
 
 	#get topdown projection of Canny
 	topdown = cv2.transpose(cv2.warpPerspective(canny_edge_img, H, dims))
-	# cv2.imshow("topdown", topdown)
+	cv2.imshow("topdown", topdown)
 
 	#identify number of significant canny points based on white_pix_thresh
 	canny_cts = []
@@ -111,9 +111,20 @@ def get_ortho_guesses(img, region_bounds, H, SQ_SIZE):
 		canny_cts.append(ct)
 
 	#identify squares that pass threshold for possibly having a piece
-	canny_ct_thresh = 10 #aiming for perfect recall (mark all pieces at expense of accuracy)
-	piece_binary = np.asarray([1 if n > canny_ct_thresh else 0 for n in canny_cts]).reshape(-1, 8)
+	#aiming for perfect recall (mark all pieces at expense of accuracy)
+	local_thresh = 5 #thresh to mark current sqr
+	# above_thresh = 25 #thresh for the "square below" mark
+	flat_piece_binary = [0 for i in range(64)]
+	for i in range(64):
+		cc = canny_cts[i]
+		# if cc > above_thresh and i < 56:
+			# flat_piece_binary[i+8] = 1
+		if cc > local_thresh:
+			flat_piece_binary[i] = 1
+		else:
+			flat_piece_binary[i] = 0
 
+	piece_binary = np.asarray(flat_piece_binary).reshape(-1, 8)
 	return piece_binary
 
 """
@@ -162,7 +173,7 @@ def estimate_tops(img, square_bounds, piece_height):
 		for c in range(8):
 			#points of interest
 			#front pts of base, front pts of top
-			POI = [[r+1,c,piece_height],[r+1,c+1,piece_height]]
+			POI = [[r+0.75,c,piece_height],[r+0.75,c+1,piece_height],[r+0.75,c+1,0],[r+0.75,c,0]]
 			for pt in POI:
 				desired_tops.append(pt)
 	desired_tops = np.asarray(desired_tops).astype(np.float32)
@@ -172,10 +183,13 @@ def estimate_tops(img, square_bounds, piece_height):
 	top_proj, jac = cv2.projectPoints(desired_tops, rvec, tvec, camera_matrix, dist_coeffs)
 	top_proj = top_proj.astype(int)
 
-	#reshape to pair top coords
+	#reshape to group top coords
 	tops = []
-	for i in range(0, len(top_proj), 2):
-		tops.append([top_proj[i][0], top_proj[i+1][0]])
+	for i in range(0, len(top_proj), 4):
+		my_group = []
+		for shift in range(4):
+			my_group.append(top_proj[i+shift][0])
+		tops.append(my_group)
 	# tops = np.asarray(tops)
 
 	# print("tops")
@@ -195,8 +209,9 @@ def corners_to_imgs(img, poss_pieces, square_bounds, piece_height, SQ_SIZE):
 		#crop square out of full image
 		corners = square_bounds[i] #cw from top-left
 		top_pts = tops[i]
-		bot_pts = [corners[2].astype(int), corners[3].astype(int)] #x y from top left
-		shear_box = top_pts+bot_pts #cw from top-left
+		# bot_pts = [corners[2].astype(int), corners[3].astype(int)] #x y from top left
+		# shear_box = top_pts+bot_pts #cw from top-left
+		shear_box = top_pts
 
 		#perspective transform to normalize parallelogram to rectangle
 		pix_height = piece_height*SQ_SIZE
@@ -204,8 +219,8 @@ def corners_to_imgs(img, poss_pieces, square_bounds, piece_height, SQ_SIZE):
 		dst_box = [(0,0), (dims[0],0), dims, (0,dims[1])] #cw, xy origin top-left
 		H, _ = cv2.findHomography(np.array(shear_box), np.array(dst_box))
 		unshear = cv2.warpPerspective(img, H, dims)
-		cv2.imshow("unshear sqr", unshear)
-		cv2.waitKey()
+		# cv2.imshow("unshear sqr", unshear)
+		# cv2.waitKey()
 
 		#add rectangle to img list
 		imgs.append(unshear)
@@ -287,67 +302,80 @@ def local_load_model(net_path):
 	# print("\nLoaded {} in {} s.".format(net_path, round(load_time, 3)))
 	return net
 
-#not verbose
 def pred_squares(TARGET_SIZE, net, squares, indices, flat_poss=None):
 	print("pred_squares start")
 	global CLASS_TO_SAN, ALL_CLASSES
-
-	#predict squares
 	st_pred_time = time.time()
-	sq_preds = ["-" for i in range(64)] #8x8 chessboard
 
-	for sq_i in range(len(squares)):
-		img = squares[sq_i]
-		indx = indices[sq_i]
+	#populate poss sets for given squares
+	poss_sets = []
+	if flat_poss:
+		for i in range(len(squares)):
+			poss_sets.append(flat_poss[indices[i]])
 
-		poss = {}
-		if flat_poss:
-			poss = flat_poss[indx] #not sq_i, since full flat_poss passed
-			if len(poss) == 1: #skip pred if only one possible piece there
-				sq_preds[indx] = poss.pop()
-				print("unique sqr:", sq_preds[indx])
-				continue
-
+	#preprocess images, flatten into stack for resnet
+	input_stack = []
+	for img in squares:
 		#convert img to numpy array, preprocess for resnet
 		resized_img = cv2.resize(img, dsize=(TARGET_SIZE[1],TARGET_SIZE[0]), interpolation=cv2.INTER_NEAREST)
 		x = preprocess_input(resized_img)
-		x = np.expand_dims(x, axis=0) #need to add dim to put into resnet
+		# x = np.expand_dims(x, axis=0) #need to add dim to put into resnet
+		# print(x.shape)
+		input_stack.append(x)
+	# print(len(input_stack))
+	input_stack = np.array(input_stack)
+	# print(input_stack.shape)
 
-		#get prediction from resnet, get SAN from prediction
-		preds = net.predict(x)[0].argsort()[::-1] #most to least likely predictions
+	#predict on full stack of inputs
+	preds = net.predict(input_stack)
+	# print(preds)
+	# print(preds.shape)
+	# print(preds[0])
+
+	#feed preds through poss set checks, repred as needed
+	#get SAN and fill pred_board
+	pred_board = ["-" for i in range(64)] #flattened 8x8 chessboard
+
+	for i in range(len(preds)):
+		pred = preds[i].argsort()[::-1] #most to least likely classes, based on pred
+		# print(pred)
+		poss = poss_sets[i]
 		ptr = 0
-		pred_SAN = CLASS_TO_SAN[ALL_CLASSES[preds[ptr]]]
+		pred_SAN = CLASS_TO_SAN[ALL_CLASSES[pred[ptr]]]
 
 		#move down prediction list if prediction is impossible (by chess logic)
 		if poss:
 			while pred_SAN not in poss:
 				print("collision of pred:", pred_SAN)
 				print("poss_set:", poss)
-				print("moving down list:", preds)
+				print("moving down list:", pred)
 				if ptr >= len(preds):
 					print("ran out of predictions")
 					pred_SAN = "?"
 				ptr += 1
-				pred_SAN = CLASS_TO_SAN[ALL_CLASSES[preds[ptr]]]
+				pred_SAN = CLASS_TO_SAN[ALL_CLASSES[pred[ptr]]]
 				print(ptr, pred_SAN)
 
-		sq_preds[indx] = pred_SAN
-		cv2.destroyWindow("{}".format(indx))
+		pred_board[indices[i]] = pred_SAN
+		# cv2.destroyWindow("{}".format(indx))
 
 	#rotate board for std display (white on bottom)
-	sq_preds = np.asarray(sq_preds)
-	sq_preds = np.resize(sq_preds, (8,8))
-	sq_preds = np.rot90(sq_preds)
+	# TODO: rot90 w/out converting to numpy and back
+	pred_board = np.asarray(pred_board)
+	pred_board = np.resize(pred_board, (8,8))
+	pred_board = np.rot90(pred_board)
 
+	#convert from numpy to nested lists
 	board = [[None for j in range(8)] for i in range(8)]
 	for i in range(8):
 		for j in range(8):
-			board[i][j] = str(sq_preds[i][j])
+			board[i][j] = str(pred_board[i][j])
 
+	#print time
 	pred_time = time.time()-st_pred_time
 	print("\nPrediction time: {} s.".format(round(pred_time, 3)))
 
-	return board
+	return board #return nested lists
 
 """
 classify pieces in img given: board corners, piece_nnet, TARGET_SIZE to nnet
@@ -355,7 +383,6 @@ optionally: prev state--in same form as output of this method (array of ltrs)
 """
 def classify_pieces(img, corners, net, TARGET_SIZE, prev_state=None):
 	squares, indices = split_chessboard(img, corners)
-	# print(indices)
 
 	#compute possible next moves from prev state, flatten to 1D list,
 	flat_poss = []
@@ -379,65 +406,5 @@ def classify_pieces(img, corners, net, TARGET_SIZE, prev_state=None):
 """
 deprecated main method
 """
-def main():
-	if len(sys.argv)<3:
-		print("usage: python identify_pieces.py [model_path]|[model_dir] [chessboard_img] [verbose=False]")
-		exit("\t->model_dir will pick highest acc model in dir")
-
-	VERBOSE = sys.argv[3] if len(sys.argv)==4 else False
-
-	# model_filename = "exp_hybrid_allclass_9896_1579640093_highangle_RES152V2.h5"
-	net = local_load_model(sys.argv[1])
-
-	#split img into squares
-	img_path = sys.argv[2]
-	print("Img src:", img_path)
-	img = cv2.imread(img_path)
-	squares, indices = split_chessboard(img, corners)
-	print(len(squares))
-
-	#run each square through nnet
-	TARGET_SIZE = (224,112) #row col
-
-	#predict squares
-	board = pred_squares(TARGET_SIZE, net, squares, indices)
-	display(board)
-
-	if not VERBOSE:
-		cv2.destroyAllWindows()
-		exit("verbose output not enabled")
-
-	#predict squares (verbose)
-	st_vpred_time = time.time()
-	sq_vpred_outputs = [(np.array([]), None, None, None) for i in range(64)] #8x8 chessboard
-	for i in range(len(squares)):
-		img = squares[i]
-		indx = indices[i]
-
-		resized_img = cv2.resize(img, dsize=(TARGET_SIZE[1],TARGET_SIZE[0]), interpolation=cv2.INTER_NEAREST)
-		x = preprocess_input(resized_img)
-		x = np.expand_dims(x, axis=0) #need to add dim to put into resnet
-
-		preds = net.predict(x)[0]
-		top_inds = preds.argsort()[::-1]
-
-		sq_vpred_outputs[indx] = (img, resized_img, preds, top_inds)
-
-	vpred_time = time.time()-st_vpred_time
-	print("\nVerbose prediction time: {} s.".format(round(vpred_time, 3)))
-
-	#show verbose predictions
-	cv2.namedWindow("original", cv2.WINDOW_NORMAL)
-	cv2.namedWindow("resized", cv2.WINDOW_NORMAL)
-	for img, resized_img, preds, top_inds in sq_vpred_outputs:
-		if img.size == 0: continue
-		cv2.imshow("original", img)
-		cv2.imshow("resized", resized_img)
-		for i in top_inds[:5]: #only show top five
-			print('{}: {}'.format(ALL_CLASSES[i], preds[i]))
-		print()
-		cv2.waitKey()
-	cv2.destroyAllWindows()
-
 if __name__ == '__main__':
-	main()
+	print("no main method")

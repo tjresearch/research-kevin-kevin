@@ -58,8 +58,6 @@ def regioned_segment_board(img, corners, SQ_SIZE):
 			center = ((i + 0.5) * SQ_SIZE, (j + 0.5) * SQ_SIZE)
 			center = utils.inverse_warp_point(center, H)
 
-			piece = False
-
 			# square = (np.array(warped_corners), center, np.array(warped_region_corners))
 			square = (np.array(warped_corners), center, np.array(region_corners))
 			chunks.append(square)
