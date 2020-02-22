@@ -89,7 +89,7 @@ def find_lattice_points(img, lines, lattice_point_model):
 	# 	cv2.line(lattice_disp, (x1, y1), (x2, y2), (255, 0, 0), 4)
 
 	poss_points, conf = validate_lattice_points(lattice_point_model, intersections, img)
-	lattice_points = poss_points[conf]
+	lattice_points = np.array(poss_points)[np.nonzero(conf)]
 
 	lattice_points = cluster_points(lattice_points)
 
