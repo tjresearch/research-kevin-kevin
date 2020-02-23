@@ -343,12 +343,10 @@ def pred_squares(TARGET_SIZE, net, squares, indices, flat_poss=None):
 		pred_board[indices[i]] = pred_SAN
 
 	#rotate board for std display (white on bottom)
-	# TODO: rot90 w/out converting to numpy and back
+	#converting to numpy and back takes 0.0 s (rounded to 3 digits)
 	pred_board = np.asarray(pred_board)
 	pred_board = np.resize(pred_board, (8,8))
 	pred_board = np.rot90(pred_board)
-
-	#convert from numpy to nested lists
 	board = [[None for j in range(8)] for i in range(8)]
 	for i in range(8):
 		for j in range(8):

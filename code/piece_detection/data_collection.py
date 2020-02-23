@@ -21,7 +21,6 @@ import numpy as np
 import sys, time
 
 from identify_pieces import split_chessboard, order_points
-
 sys.path.insert(1, '../board_detection')
 import board_locator, board_segmentation
 
@@ -50,7 +49,7 @@ def find_board(img, lattice_point_model):
 	disp = img.copy()
 
 	st_locate_time = time.time()
-	# lines, corners = board_locator.find_chessboard(img, lattice_point_model)
+	lines, corners = board_locator.find_chessboard(img, lattice_point_model)
 	print("Located board in {} s".format(time.time() - st_locate_time))
 	corners = []
 	for corner in corners:
@@ -98,7 +97,7 @@ def find_board(img, lattice_point_model):
 			else:
 				corners = []
 				print("corners cleared")
-	# cv2.destroyWindow("image")
+
 	return corners
 
 """
@@ -192,8 +191,6 @@ def save_squares(file, outer_dir, lattice_point_model):
 
 	#take corners, split image into subimgs of viable squares & their indicies
 	squares, indices = split_chessboard(img, corners)
-	# print(len(squares))
-	# print(indices)
 
 	#label squares with pieces, save
 	label_subimgs(img, squares, indices, file, save_dir)
