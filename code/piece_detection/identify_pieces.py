@@ -42,6 +42,26 @@ CLASS_TO_SAN = {
 ALL_CLASSES = [*CLASS_TO_SAN.keys()]
 
 """
+resize to width/height while keeping aspect ratio
+return resized img
+https://stackoverflow.com/questions/35180764/opencv-python-image-too-big-to-display
+"""
+def ResizeWithAspectRatio(image, width=None, height=None, inter=cv2.INTER_AREA):
+	dim = None
+	(h, w) = image.shape[:2]
+
+	if width is None and height is None:
+		return image
+	if width is None:
+		r = height / float(h)
+		dim = (int(w * r), height)
+	else:
+		r = width / float(w)
+		dim = (width, int(h * r))
+
+	return cv2.resize(image, dim, interpolation=inter)
+
+"""
 order four points clockwise from top-left corner
 return np array of points
 https://www.pyimagesearch.com/2014/08/25/4-point-opencv-getperspective-transform-example/
@@ -132,16 +152,6 @@ def estimate_bounds(img, square_bounds, piece_height, graphics_on=False):
 	for sq in last_row:
 		board_corners.append([sq[3][0], sq[3][1]])
 	board_corners.append([last_row[-1][2][0],last_row[-1][2][1]])
-
-	"""
-	#temp
-	disp = img.copy()
-	for bc in board_corners:
-		cv2.circle(disp, (int(bc[0]), int(bc[1])), 3, (0, 255, 0), 2)
-	cv2.imshow("board corners", disp)
-	cv2.waitKey()
-	"""
-
 	board_corners = np.asarray(board_corners) #81x2
 
 	#81x2 of coords (0,0) -> (9,9)
@@ -166,6 +176,10 @@ def estimate_bounds(img, square_bounds, piece_height, graphics_on=False):
 				desired_bounds.append(pt)
 	desired_bounds = np.asarray(desired_bounds).astype(np.float32)
 
+	#use centers and Ransac to project piece heights in image
+	bounds_proj, jac = cv2.projectPoints(desired_bounds, rvec, tvec, camera_matrix, dist_coeffs)
+	bounds_proj = bounds_proj.astype(int)
+
 	#reshape to group top coords
 	pix_bounds = []
 	for i in range(0, len(bounds_proj), 4):
@@ -173,10 +187,6 @@ def estimate_bounds(img, square_bounds, piece_height, graphics_on=False):
 		for shift in range(4):
 			my_group.append(bounds_proj[i+shift][0])
 		pix_bounds.append(my_group)
-
-	#use centers and Ransac to project piece heights in image
-	bounds_proj, jac = cv2.projectPoints(desired_bounds, rvec, tvec, camera_matrix, dist_coeffs)
-	bounds_proj = bounds_proj.astype(int)
 
 	#for display, find full 3D bounds
 	if graphics_on:
@@ -199,7 +209,7 @@ def estimate_bounds(img, square_bounds, piece_height, graphics_on=False):
 			for shift in range(8):
 				my_group.append(disp_bounds_proj[i+shift][0])
 			disp_pix_bounds.append(my_group)
-			
+
 		print("work with disp_pix_bounds list to draw bounding boxes")
 
 	return pix_bounds
@@ -232,26 +242,6 @@ def corners_to_imgs(img, poss_pieces, square_bounds, piece_height, SQ_SIZE):
 	return imgs, indices
 
 """
-resize to width/height while keeping aspect ratio
-return resized img
-https://stackoverflow.com/questions/35180764/opencv-python-image-too-big-to-display
-"""
-def ResizeWithAspectRatio(image, width=None, height=None, inter=cv2.INTER_AREA):
-	dim = None
-	(h, w) = image.shape[:2]
-
-	if width is None and height is None:
-		return image
-	if width is None:
-		r = height / float(h)
-		dim = (int(w * r), height)
-	else:
-		r = width / float(w)
-		dim = (width, int(h * r))
-
-	return cv2.resize(image, dim, interpolation=inter)
-
-"""
 for given file, corners of board...
 1. segment board into squares
 2. use orthophoto to identify poss pieces
@@ -272,14 +262,15 @@ def split_chessboard(img, corners):
 
 	#segment board
 	SQ_SIZE = 112
-	chunks, H = board_segmentation.regioned_segment_board(img, corners, SQ_SIZE)
+	sqr_info, H = board_segmentation.regioned_segment_board(img, corners, SQ_SIZE)
 
 	"""
-	chunks[0] = corners (squares defined by four corners)
-	chunks[1] = centers (squares defined by four corners)
-	chunks[2] = region_bounds (search regions of orthophoto, defined by four corners)
+	for si in sqr_info:
+		si[0] = square defined by four corners
+		si[1] = search region of orthophoto on sqr, defined by four corners
 	"""
-	region_bounds = [c[2] for c in chunks]
+	square_bounds = [si[0] for si in sqr_info]
+	region_bounds = [si[1] for si in sqr_info]
 
 	#use orthophoto to find poss piece locations
 	ortho_guesses = get_ortho_guesses(img, region_bounds, H, SQ_SIZE)
@@ -287,10 +278,8 @@ def split_chessboard(img, corners):
 	print(ortho_guesses)
 	ortho_guesses = ortho_guesses.flatten()
 
-	piece_height = 2 #squares tall
-	square_bounds = [c[0] for c in chunks]
-
 	#turn corner coords into list of imgs
+	piece_height = 2 #squares tall
 	return corners_to_imgs(img, ortho_guesses, square_bounds, piece_height, SQ_SIZE)
 
 #load model
@@ -372,8 +361,8 @@ def pred_squares(TARGET_SIZE, net, squares, indices, flat_poss=None):
 	return board #return nested lists
 
 """
-classify pieces in img given: board corners, piece_nnet, TARGET_SIZE to nnet
-optionally: prev state--in same form as output of this method (array of ltrs)
+classify pieces in img given these: board corners, piece_nnet, TARGET_SIZE of nnet
+optional arg: prev state--in same form as output of this method (array of ltrs)
 """
 def classify_pieces(img, corners, net, TARGET_SIZE, prev_state=None):
 	squares, indices = split_chessboard(img, corners)
@@ -397,8 +386,5 @@ def classify_pieces(img, corners, net, TARGET_SIZE, prev_state=None):
 	board = pred_squares(TARGET_SIZE, net, squares, indices, flat_poss)
 	return board
 
-"""
-deprecated main method
-"""
 if __name__ == '__main__':
 	print("no main method")

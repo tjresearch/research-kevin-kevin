@@ -2,7 +2,6 @@ import cv2
 import numpy as np
 import utils
 
-
 def quadrilateral_slice(points, arr):
 	x = np.linspace(0, arr.shape[1] - 1, arr.shape[1])
 	y = np.linspace(0, arr.shape[0] - 1, arr.shape[0])
@@ -24,14 +23,15 @@ def quadrilateral_slice(points, arr):
 	indices = np.all([eval(eq0), yy < lines[1][0] * xx + lines[1][1], eval(eq2), yy > lines[3][0] * xx + lines[3][1]], axis=0)
 	return arr * np.repeat(indices[..., np.newaxis], 3, axis=2)
 
-
+"""
+called by split_chessboard() in identify_pieces
+"""
 def regioned_segment_board(img, corners, SQ_SIZE):
 	dst_size = SQ_SIZE * 8
 	dst_points = [(SQ_SIZE, SQ_SIZE), (SQ_SIZE, dst_size - SQ_SIZE), (dst_size - SQ_SIZE, dst_size - SQ_SIZE), (dst_size - SQ_SIZE, SQ_SIZE)]
 	H = utils.find_homography(corners, dst_points)
 
-	chunks = []
-
+	sqr_info = []
 	for i in range(8):
 		for j in range(8):
 			raw_corners = ((i * SQ_SIZE, j * SQ_SIZE),
@@ -52,14 +52,7 @@ def regioned_segment_board(img, corners, SQ_SIZE):
 			)
 			# warped_region_corners = [utils.inverse_warp_point(region_corners[k], H) for k in range(4)]
 
-			# print("half",region_corners)
-			# print("full",raw_corners)
+			chunk = (np.array(warped_corners), np.array(region_corners))
+			sqr_info.append(chunk)
 
-			center = ((i + 0.5) * SQ_SIZE, (j + 0.5) * SQ_SIZE)
-			center = utils.inverse_warp_point(center, H)
-
-			# square = (np.array(warped_corners), center, np.array(warped_region_corners))
-			square = (np.array(warped_corners), center, np.array(region_corners))
-			chunks.append(square)
-
-	return chunks, H
+	return sqr_info, H
