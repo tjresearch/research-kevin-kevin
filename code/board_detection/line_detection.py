@@ -84,7 +84,7 @@ def find_lines(img):
 
 	for arr in CLAHE_PARAMS:
 		temp = clahe(gray, limit=arr[0], grid=arr[1], iters=arr[2])
-		new_lines = line_detector(canny(gray))
+		new_lines = line_detector(canny(temp))
 		for line in new_lines:
 			if line not in lines:
 				lines.append(line)
