@@ -19,9 +19,12 @@ from tensorflow.keras.applications.resnet_v2 import preprocess_input
 from tensorflow.keras.preprocessing import image
 
 sys.path.insert(1, '../board_detection')
-import board_segmentation #from /board_detection
+#from /board_detection
+from board_segmentation import regioned_segment_board
+
 sys.path.insert(2, '../chess_logic')
-from pgn_helper import display #from /chess_logic
+#from /chess_logic
+from pgn_helper import display
 from next_moves import get_stacked_poss
 
 CLASS_TO_SAN = {
@@ -82,14 +85,31 @@ def order_points(pts):
 
 	return rect
 
+# https://stackoverflow.com/questions/19363293/whats-the-fastest-way-to-increase-color-image-contrast-with-opencv-in-python-c
+def increase_color_contrast(img, clim=3.0, tgs=(8,8)):
+	clahe = cv2.createCLAHE(clipLimit=clim, tileGridSize=tgs)
+
+	lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)  # convert from BGR to LAB color space
+	l, a, b = cv2.split(lab)  # split on 3 different channels
+
+	l2 = clahe.apply(l)  # apply CLAHE to the L-channel
+
+	lab = cv2.merge((l2,a,b))  # merge channels
+	img2 = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)  # convert from LAB to BGR
+	cv2.imshow('Increased contrast', img2)
+	cv2.waitKey()
+	return img2
+
 """
 transform Canny edge version of chessboard
 identify possible squares w/ pieces based on # of canny pixels in square
 return 8x8 binary np array
 	piece = 1, empty = 0
 """
-def get_ortho_guesses(img, region_bounds, H, SQ_SIZE):
+def get_ortho_guesses(img, top_ortho_regions, H, SQ_SIZE):
 	dims = (SQ_SIZE*8, SQ_SIZE*8)
+
+	img = increase_color_contrast(img)
 
 	#same as canny() in line_detection.py but no lower hysteresis thresh
 	#and no medianBlur, to find black pieces
@@ -99,18 +119,17 @@ def get_ortho_guesses(img, region_bounds, H, SQ_SIZE):
 	upper = int(min(255, (1.0 + sigma) * v))
 
 	canny_edge_img = cv2.Canny(img, lower, upper)
-	narr = np.asarray(canny_edge_img[:,:])
-
 	#get topdown projection of Canny
 	topdown = cv2.transpose(cv2.warpPerspective(canny_edge_img, H, dims))
 	cv2.imshow("topdown", topdown)
+	cv2.waitKey()
 
 	#identify number of significant canny points based on white_pix_thresh
 	canny_cts = []
 	white_pix_thresh = topdown[topdown!=0].mean() #take upper half of canny pix
-	for reg in region_bounds: #bounds are transposed
-		subimg = topdown[int(reg[0][0]):int(reg[3][0]), int(reg[0][1]):int(reg[1][1])]
-
+	# white_pix_thresh = topdown.mean() #take upper half of ALL pix
+	for reg in top_ortho_regions: #bounds are transposed
+		# subimg = topdown[int(reg[0][0]):int(reg[3][0]), int(reg[0][1]):int(reg[1][1])]
 		ct = 0
 		for c in range(reg[0][1], reg[1][1]):
 			for r in range(reg[0][0], reg[3][0]):
@@ -120,14 +139,11 @@ def get_ortho_guesses(img, region_bounds, H, SQ_SIZE):
 
 	#identify squares that pass threshold for possibly having a piece
 	#aiming for perfect recall (mark all pieces at expense of accuracy)
-	local_thresh = 5 #thresh to mark current sqr
-	# above_thresh = 25 #thresh for the "square below" mark
+	mark_thresh = SQ_SIZE #thresh to mark current sqr
 	flat_piece_binary = [0 for i in range(64)]
 	for i in range(64):
 		cc = canny_cts[i]
-		# if cc > above_thresh and i < 56:
-			# flat_piece_binary[i+8] = 1
-		if cc > local_thresh:
+		if cc > mark_thresh:
 			flat_piece_binary[i] = 1
 		else:
 			flat_piece_binary[i] = 0
@@ -262,25 +278,19 @@ def split_chessboard(img, corners):
 
 	#segment board
 	SQ_SIZE = 112
-	sqr_info, H = board_segmentation.regioned_segment_board(img, corners, SQ_SIZE)
-
-	"""
-	for si in sqr_info:
-		si[0] = square defined by four corners
-		si[1] = search region of orthophoto on sqr, defined by four corners
-	"""
-	square_bounds = [si[0] for si in sqr_info]
-	region_bounds = [si[1] for si in sqr_info]
+	# sqr_corners, top_ortho_regions, bot_ortho_regions, H, ext_H = regioned_segment_board(img, corners, SQ_SIZE)
+	sqr_corners, top_ortho_regions, H = regioned_segment_board(img, corners, SQ_SIZE)
 
 	#use orthophoto to find poss piece locations
-	ortho_guesses = get_ortho_guesses(img, region_bounds, H, SQ_SIZE)
+	# ortho_guesses = get_ortho_guesses(img, top_ortho_regions, H, bot_ortho_regions, ext_H, SQ_SIZE)
+	ortho_guesses = get_ortho_guesses(img, top_ortho_regions, H, SQ_SIZE)
 	print("ortho_guesses:")
 	print(ortho_guesses)
 	ortho_guesses = ortho_guesses.flatten()
 
 	#turn corner coords into list of imgs
 	piece_height = 2 #squares tall
-	return corners_to_imgs(img, ortho_guesses, square_bounds, piece_height, SQ_SIZE)
+	return corners_to_imgs(img, ortho_guesses, sqr_corners, piece_height, SQ_SIZE)
 
 #load model
 def local_load_model(net_path):

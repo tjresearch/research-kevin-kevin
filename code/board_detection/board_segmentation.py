@@ -31,7 +31,8 @@ def regioned_segment_board(img, corners, SQ_SIZE):
 	dst_points = [(SQ_SIZE, SQ_SIZE), (SQ_SIZE, dst_size - SQ_SIZE), (dst_size - SQ_SIZE, dst_size - SQ_SIZE), (dst_size - SQ_SIZE, SQ_SIZE)]
 	H = utils.find_homography(corners, dst_points)
 
-	sqr_info = []
+	sqr_corners = []
+	top_ortho_regions = []
 	for i in range(8):
 		for j in range(8):
 			raw_corners = ((i * SQ_SIZE, j * SQ_SIZE),
@@ -52,7 +53,7 @@ def regioned_segment_board(img, corners, SQ_SIZE):
 			)
 			# warped_region_corners = [utils.inverse_warp_point(region_corners[k], H) for k in range(4)]
 
-			chunk = (np.array(warped_corners), np.array(region_corners))
-			sqr_info.append(chunk)
-
-	return sqr_info, H
+			sqr_corners.append(np.array(warped_corners))
+			top_ortho_regions.append(np.array(region_corners))
+	
+	return sqr_corners, top_ortho_regions, H
