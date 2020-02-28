@@ -160,7 +160,7 @@ def find_chessboard(img, lattice_point_model):
 	for i in range(len(lattice_points)):
 		lattice_points[i] = (int(lattice_points[i][0]), int(lattice_points[i][1]))
 
-	alpha = math.sqrt(cv2.contourArea(np.array(lattice_points)) / 49)
+	alpha = math.sqrt(cv2.contourArea(np.asarray(lattice_points)) / 49)
 	beta = len(lattice_points) / 20
 
 	X = sklearn.cluster.DBSCAN(eps=alpha * 4).fit(lattice_points)

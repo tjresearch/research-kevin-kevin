@@ -1,5 +1,4 @@
 import numpy as np
-import math
 import utils
 
 def get_line_eq(line):
@@ -37,10 +36,7 @@ def calc_gamma(l1, l2):
 	return (utils.line_point_dist(l1, l2[0]) + utils.line_point_dist(l1, l2[1]) +
 			utils.line_point_dist(l2, l1[0]) + utils.line_point_dist(l2, l1[1])) / 4 + 0.00001
 
-def linkable(l1, l2, img):
-	omega = np.pi / (2 * math.pow(math.pow(min(img.shape[0], img.shape[1]), 2), 1/4))
-	p = 0.9
-	t = p * omega
+def linkable(l1, l2, img, t):
 	mag1 = np.sqrt((l1[1][0] - l1[0][0]) ** 2 + (l1[1][1] - l1[0][1]) ** 2)
 	mag2 = np.sqrt((l2[1][0] - l2[0][0]) ** 2 + (l2[1][1] - l2[0][1]) ** 2)
 	delta = (mag1 + mag2) * t

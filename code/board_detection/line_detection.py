@@ -1,4 +1,5 @@
 import cv2
+import math
 import numpy as np
 import line_linking
 import utils
@@ -97,9 +98,13 @@ def find_lines(img):
 	for i in range(len(lines)):
 		lines[i] = [lines[i], i, 0]  # Line, parent, rank
 
+	omega = np.pi / (2 * math.pow(math.pow(min(img.shape[0], img.shape[1]), 2), 1 / 4))
+	p = 0.9
+	t = p * omega
+
 	for i in range(len(lines)):
 		for j in range(i + 1, len(lines)):
-			if line_linking.linkable(lines[i][0], lines[j][0], img):
+			if line_linking.linkable(lines[i][0], lines[j][0], img, t):
 				union(i, j, lines)
 
 	groups = {}
