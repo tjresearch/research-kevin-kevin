@@ -30,7 +30,7 @@ mouse callback for find_board()
 corners = []
 def mark_point(event, x, y, flags, params):
 	global corners
-	if event == cv2.EVENT_LBUTTONDOWN:
+	if event == cv2.EVENT_LBUTTONDOWN and len(corners) < 4:
 		print("Marked: {}, {}".format(x, y))
 		corners.append((x, y))
 
@@ -48,10 +48,11 @@ def find_board(img, lattice_point_model):
 
 	disp = img.copy()
 
+	print("finding board...")
 	st_locate_time = time.time()
 	lines, corners = board_locator.find_chessboard(img, lattice_point_model)
 	print("Located board in {} s".format(time.time() - st_locate_time))
-	corners = []
+
 	for corner in corners:
 		cv2.circle(disp, (int(corner[0]), int(corner[1])), 3, (255, 0, 0), 2)
 	cv2.imshow("full_image", disp)

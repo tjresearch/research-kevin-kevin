@@ -86,7 +86,7 @@ def order_points(pts):
 	return rect
 
 # https://stackoverflow.com/questions/19363293/whats-the-fastest-way-to-increase-color-image-contrast-with-opencv-in-python-c
-def increase_color_contrast(img, clim=3.0, tgs=(8,8)):
+def increase_color_contrast(img, clim, tgs=(8,8)):
 	clahe = cv2.createCLAHE(clipLimit=clim, tileGridSize=tgs)
 
 	lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)  # convert from BGR to LAB color space
@@ -96,8 +96,8 @@ def increase_color_contrast(img, clim=3.0, tgs=(8,8)):
 
 	lab = cv2.merge((l2,a,b))  # merge channels
 	img2 = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)  # convert from LAB to BGR
-	cv2.imshow('Increased contrast', img2)
-	cv2.waitKey()
+	# cv2.imshow('Increased contrast', img2)
+	# cv2.waitKey()
 	return img2
 
 """
@@ -109,7 +109,7 @@ return 8x8 binary np array
 def get_ortho_guesses(img, top_ortho_regions, H, SQ_SIZE):
 	dims = (SQ_SIZE*8, SQ_SIZE*8)
 
-	img = increase_color_contrast(img)
+	img = increase_color_contrast(img, 3.5)
 
 	#same as canny() in line_detection.py but no lower hysteresis thresh
 	#and no medianBlur, to find black pieces
@@ -121,8 +121,8 @@ def get_ortho_guesses(img, top_ortho_regions, H, SQ_SIZE):
 	canny_edge_img = cv2.Canny(img, lower, upper)
 	#get topdown projection of Canny
 	topdown = cv2.transpose(cv2.warpPerspective(canny_edge_img, H, dims))
-	cv2.imshow("topdown", topdown)
-	cv2.waitKey()
+	# cv2.imshow("topdown", topdown)
+	# cv2.waitKey()
 
 	#identify number of significant canny points based on white_pix_thresh
 	canny_cts = []
