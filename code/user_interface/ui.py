@@ -9,6 +9,8 @@ from threading import Thread, Event
 
 from PIL import Image, ImageTk
 
+import query_diagram
+
 sys.path.insert(1, "../board_detection")
 import board_locator
 
@@ -17,6 +19,7 @@ import identify_pieces
 
 supported_image_formats = [".bmp", ".pbm", ".pgm", ".ppm", ".sr", ".ras", ".jpeg", ".jpg", ".jpe", ".jp2", ".tiff", ".tif", ".png"]
 supported_video_formats = [".avi", ".flv", ".wmv", ".mov", ".mp4"]
+TARGET_SIZE = (224, 112)
 
 class Display(tk.Frame):
 	def __init__(self, parent):
@@ -26,6 +29,7 @@ class Display(tk.Frame):
 		self.live_cap = None
 		self.live_video_thread = None
 		self.live_video_stop = Event()
+		self.live_video_play = Event()
 
 		self.video_cap = None
 		self.video_thread = None
@@ -35,6 +39,9 @@ class Display(tk.Frame):
 		self.display_thread = None
 		self.cur_frame = None
 		self.display_stop = Event()
+
+		self.processing = False
+		self.processing_thread = None
 
 		self.intermediate_image_order = ["raw.png",
 										 "line_detection.png",
@@ -95,13 +102,11 @@ class Display(tk.Frame):
 		self.pause_play_button.pack(side=tk.LEFT)
 		self.next_frame_button.pack(side=tk.LEFT)
 
-		# self.video_controls.pack(side=tk.BOTTOM)
-
 		# Intialize the FEN/PGN display
-		self.fen_pgn_label = tk.Label(self, height=25, width=40, padx=20, pady=10, anchor="nw")
-		self.fen_pgn_label.configure(font=("Helvetica", 20))
+		self.diagram_label = tk.Label(self, padx=20, pady=10, anchor="nw")
+		self.diagram_label.configure(font=("Helvetica", 20))
 
-		self.fen_pgn_label.pack(side=tk.RIGHT)
+		self.diagram_label.pack(side=tk.RIGHT)
 
 		self.image_label.pack(side=tk.TOP)
 		self.caption.pack(side=tk.TOP)
@@ -139,7 +144,7 @@ class Display(tk.Frame):
 		self.models_loaded = True
 
 	def update_display(self, new_mode):
-		if not (self.mode == "live_video" and new_mode == "live_video"):
+		if not (self.mode == "live_video" and new_mode == "live_video") and not self.processing:
 			old_mode = self.mode
 			self.mode = new_mode
 
@@ -162,8 +167,8 @@ class Display(tk.Frame):
 				self.start_live_video()
 
 	def show_image(self, image_path):
-		load = Image.open(image_path)
-		load = load.resize(self.image_dims)
+		load = cv2.imread(image_path)
+		load = cv2.resize(load, self.image_dims)
 		self.cur_frame = load
 
 	@staticmethod
@@ -185,6 +190,7 @@ class Display(tk.Frame):
 		resolution = (int(self.live_cap.get(cv2.CAP_PROP_FRAME_HEIGHT)), int(self.live_cap.get(cv2.CAP_PROP_FRAME_WIDTH)))
 		self.caption["text"] = "IP: {}\nFPS: {}\nResolution {}".format(ip, fps, resolution)
 
+		self.live_video_play.set()
 		self.live_video_thread = Thread(target=self.live_video_handler)
 		self.live_video_thread.daemon = True
 		self.live_video_thread.start()
@@ -192,11 +198,11 @@ class Display(tk.Frame):
 	def live_video_handler(self):
 		try:
 			while not self.live_video_stop.is_set():
+				self.live_video_play.wait()
 				ret, frame = self.live_cap.read()
 				if ret:
 					frame = cv2.resize(frame, self.image_dims)
-					disp = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-					self.cur_frame = disp
+					self.cur_frame = frame
 				else:
 					break
 		except RuntimeError:
@@ -211,33 +217,35 @@ class Display(tk.Frame):
 
 	def display_handler(self):
 		while not self.display_stop.is_set():
-			render = ImageTk.PhotoImage(self.cur_frame)
+			disp = Image.fromarray(cv2.cvtColor(self.cur_frame, cv2.COLOR_BGR2RGB))
+			render = ImageTk.PhotoImage(disp)
 			self.image_label.configure(image=render)
 			self.image_label.image = render
 
 	def pause_play(self):
-		if self.video_play.is_set():
-			self.video_play.clear()
-		else:
-			self.video_play.set()
+		if not self.processing:
+			if self.video_play.is_set():
+				self.video_play.clear()
+			else:
+				self.video_play.set()
 
 	def prev_frame(self):
-		if not self.video_play.is_set():
-			prev_pos = self.video_cap.get(cv2.CAP_PROP_POS_FRAMES) - 2
-			if prev_pos >= 0:
-				self.video_cap.set(cv2.CAP_PROP_POS_FRAMES, prev_pos)
-				self.disp_next_frame()
+		if not self.processing:
+			if not self.video_play.is_set():
+				prev_pos = self.video_cap.get(cv2.CAP_PROP_POS_FRAMES) - 2
+				if prev_pos >= 0:
+					self.video_cap.set(cv2.CAP_PROP_POS_FRAMES, prev_pos)
+					self.disp_next_frame()
 
 	def next_frame(self):
-		if not self.video_play.is_set():
-			self.disp_next_frame()
+		if not self.processing:
+			if not self.video_play.is_set():
+				self.disp_next_frame()
 
 	def disp_next_frame(self):
 		ret, frame = self.video_cap.read()
 		if ret:
-			frame = cv2.resize(frame, self.image_dims)
-			disp = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-			self.cur_frame = disp
+			self.cur_frame = cv2.resize(frame, self.image_dims)
 
 	def start_video(self, video_path):
 		self.video_controls.pack()
@@ -260,9 +268,7 @@ class Display(tk.Frame):
 				self.video_play.wait()
 				ret, frame = self.video_cap.read()
 				if ret:
-					frame = cv2.resize(frame, self.image_dims)
-					disp = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-					self.cur_frame = disp
+					self.cur_frame = cv2.resize(frame, self.image_dims)
 					time.sleep(1 / fps)
 		except RuntimeError:
 			print("Caught a RuntimeError")
@@ -271,9 +277,32 @@ class Display(tk.Frame):
 
 	def process(self):
 		if self.models_loaded:
-			pass
+			self.processing_thread = Thread(target=self.process_handler)
+			self.processing_thread.daemon = True
+			self.processing_thread.start()
 		else:
 			showerror("Error", "Models are still loading, try again in a few seconds.")
+
+	def process_handler(self):
+		if self.mode == "video":
+			self.video_play.clear()
+		elif self.mode == "live_video":
+			self.live_video_play.clear()
+		self.processing = True
+
+		st_locate_time = time.time()
+		lines, corners = board_locator.find_chessboard(self.cur_frame, self.lattice_point_model)
+		print("Located board in {} s".format(time.time() - st_locate_time))
+
+		board = identify_pieces.classify_pieces(self.cur_frame, corners, self.piece_model, TARGET_SIZE)
+		board_string = "".join("".join(row) for row in board)
+		diagram = query_diagram.diagram_from_board_string(board_string)
+
+		render = ImageTk.PhotoImage(diagram)
+		self.diagram_label.configure(image=render)
+		self.diagram_label.image = render
+
+		self.processing = False
 
 	def back(self):
 		pass

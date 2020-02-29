@@ -39,7 +39,7 @@ TARGET_SIZE = (224, 112)
 # For single image
 cv2.namedWindow("original")
 
-img_path = "board_detection/images/chessboard1.jpg"
+img_path = "board_detection/images/chessboard3.jpg"
 img = cv2.imread(img_path)
 cv2.imshow("original", img)
 cv2.waitKey()
@@ -55,18 +55,18 @@ for corner in corners:
 cv2.imshow("corners", disp)
 cv2.waitKey()
 
-# prev_state = [['-', '-', '-', '-', '-', '-', '-', '-'],
-# 			  ['-', '-', '-', '-', 'N', '-', '-', '-'],
-# 			  ['-', '-', '-', '-', '-', '-', '-', '-'],
-# 			  ['-', '-', '-', '-', 'R', '-', 'q', 'P'],
-# 			  ['-', '-', '-', 'r', '-', '-', '-', '-'],
-# 			  ['-', '-', '-', '-', '-', 'R', 'Q', '-'],
-# 			  ['-', '-', '-', 'N', '-', '-', '-', '-'],
-# 			  ['-', '-', '-', '-', 'B', '-', '-', '-']]
-#
-# print("prev state:")
-# pgn_helper.display(prev_state)
-# print(prev_state)
+prev_state = [['-', '-', '-', '-', '-', '-', '-', '-'],
+			  ['-', '-', '-', '-', 'N', '-', '-', '-'],
+			  ['-', '-', '-', '-', '-', '-', '-', '-'],
+			  ['-', '-', '-', '-', 'R', '-', 'q', 'P'],
+			  ['-', '-', '-', 'r', '-', '-', '-', '-'],
+			  ['-', '-', '-', '-', '-', 'R', 'Q', '-'],
+			  ['-', '-', '-', 'N', '-', '-', '-', '-'],
+			  ['-', '-', '-', '-', 'B', '-', '-', '-']]
+
+print("prev state:")
+pgn_helper.display(prev_state)
+print(prev_state)
 
 """
 #calling twice no work
@@ -79,7 +79,7 @@ pgn_helper.display(board)
 print("-"*60)
 """
 
-board = identify_pieces.classify_pieces(img, corners, piece_model, TARGET_SIZE)
+board = identify_pieces.classify_pieces(img, corners, piece_model, TARGET_SIZE, prev_state)
 pgn_helper.display(board)
 print()
 print(board)

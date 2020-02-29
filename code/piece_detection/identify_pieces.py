@@ -333,18 +333,21 @@ def pred_squares(TARGET_SIZE, net, squares, indices, flat_poss=None):
 
 	for i in range(len(preds)):
 		pred = preds[i].argsort()[::-1] #most to least likely classes, based on pred
-		poss = poss_sets[i]
+		if poss_sets:
+			poss = poss_sets[i]
+		else:
+			poss = None
 		ptr = 0
 		pred_SAN = CLASS_TO_SAN[ALL_CLASSES[pred[ptr]]]
 
 		#move down prediction list if prediction is impossible (by chess logic)
 		if poss:
 			while pred_SAN not in poss:
-				print("collision of pred:", pred_SAN)
-				print("poss_set:", poss)
-				print("moving down list:", pred)
+				# print("collision of pred:", pred_SAN)
+				# print("poss_set:", poss)
+				# print("moving down list:", pred)
 				if ptr >= len(preds):
-					print("ran out of predictions")
+					# print("ran out of predictions")
 					pred_SAN = "?"
 				ptr += 1
 				pred_SAN = CLASS_TO_SAN[ALL_CLASSES[pred[ptr]]]
