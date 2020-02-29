@@ -168,7 +168,6 @@ class Display(tk.Frame):
 
 	def show_image(self, image_path):
 		load = cv2.imread(image_path)
-		load = cv2.resize(load, self.image_dims)
 		self.cur_frame = load
 
 	@staticmethod
@@ -201,7 +200,6 @@ class Display(tk.Frame):
 				self.live_video_play.wait()
 				ret, frame = self.live_cap.read()
 				if ret:
-					frame = cv2.resize(frame, self.image_dims)
 					self.cur_frame = frame
 				else:
 					break
@@ -217,7 +215,7 @@ class Display(tk.Frame):
 
 	def display_handler(self):
 		while not self.display_stop.is_set():
-			disp = Image.fromarray(cv2.cvtColor(self.cur_frame, cv2.COLOR_BGR2RGB))
+			disp = Image.fromarray(cv2.cvtColor(cv2.resize(self.cur_frame, self.image_dims), cv2.COLOR_BGR2RGB))
 			render = ImageTk.PhotoImage(disp)
 			self.image_label.configure(image=render)
 			self.image_label.image = render
@@ -245,7 +243,7 @@ class Display(tk.Frame):
 	def disp_next_frame(self):
 		ret, frame = self.video_cap.read()
 		if ret:
-			self.cur_frame = cv2.resize(frame, self.image_dims)
+			self.cur_frame = frame
 
 	def start_video(self, video_path):
 		self.video_controls.pack()
@@ -268,7 +266,7 @@ class Display(tk.Frame):
 				self.video_play.wait()
 				ret, frame = self.video_cap.read()
 				if ret:
-					self.cur_frame = cv2.resize(frame, self.image_dims)
+					self.cur_frame = frame
 					time.sleep(1 / fps)
 		except RuntimeError:
 			print("Caught a RuntimeError")
@@ -276,26 +274,30 @@ class Display(tk.Frame):
 		self.video_stop.clear()
 
 	def process(self):
-		if self.models_loaded:
-			self.processing_thread = Thread(target=self.process_handler)
-			self.processing_thread.daemon = True
-			self.processing_thread.start()
-		else:
-			showerror("Error", "Models are still loading, try again in a few seconds.")
+		if not self.processing:
+			if self.models_loaded:
+				self.processing_thread = Thread(target=self.process_handler)
+				self.processing_thread.daemon = True
+				self.processing_thread.start()
+			else:
+				showerror("Error", "Models are still loading, try again in a few seconds.")
 
 	def process_handler(self):
 		if self.mode == "video":
 			self.video_play.clear()
 		elif self.mode == "live_video":
 			self.live_video_play.clear()
+
 		self.processing = True
 
 		st_locate_time = time.time()
 		lines, corners = board_locator.find_chessboard(self.cur_frame, self.lattice_point_model)
 		print("Located board in {} s".format(time.time() - st_locate_time))
 
-		board = identify_pieces.classify_pieces(self.cur_frame, corners, self.piece_model, TARGET_SIZE)
+		board = identify_pieces.classify_pieces(self.cur_frame, corners, self.piece_model, TARGET_SIZE, "./assets/intermediate_imgs/piece_shearing")
+
 		board_string = "".join("".join(row) for row in board)
+
 		diagram = query_diagram.diagram_from_board_string(board_string)
 
 		render = ImageTk.PhotoImage(diagram)
@@ -303,6 +305,11 @@ class Display(tk.Frame):
 		self.diagram_label.image = render
 
 		self.processing = False
+
+		if self.mode == "video":
+			self.video_play.set()
+		elif self.mode == "live_video":
+			self.live_video_play.set()
 
 	def back(self):
 		pass
