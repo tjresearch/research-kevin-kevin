@@ -228,11 +228,6 @@ def estimate_bounds(img, square_bounds, piece_height, graphics_on=False):
 			disp_pix_bounds.append(my_group)
 
 		disp = img.copy()
-		"""
-		top-right anchor
-		0-1-2-3 front face
-		4-5-6-7 back face
-		"""
 		for bound in disp_pix_bounds:
 			#draw front face
 			for i in range(4):
@@ -249,10 +244,9 @@ def estimate_bounds(img, square_bounds, piece_height, graphics_on=False):
 
 	return pix_bounds
 
-def corners_to_imgs(img, poss_pieces, square_bounds, piece_height, SQ_SIZE):
+def corners_to_imgs(img, poss_pieces, square_bounds, piece_height, SQ_SIZE, graphics_on=False):
 	imgs = []
 	indices = []
-	graphics_on = True
 	bounds = estimate_bounds(img, square_bounds, piece_height, graphics_on)
 
 	for i in range(len(square_bounds)):
@@ -275,6 +269,30 @@ def corners_to_imgs(img, poss_pieces, square_bounds, piece_height, SQ_SIZE):
 		imgs.append(unshear)
 		indices.append(i)
 
+		#for ui
+		if graphics_on:
+			arrow = cv2.imread("./piece_detection/arrow_blank.png")
+
+			small_sz = (112, 224)
+			disp_unshear = unshear.copy()
+			disp_unshear = cv2.resize(disp_unshear, dsize=small_sz, interpolation=cv2.INTER_CUBIC)
+
+			#get outer bounding box
+			tl_r = min([p[1] for p in shear_box])
+			tl_c = min([p[0] for p in shear_box])
+			tr_r = max([p[1] for p in shear_box])
+			tr_c = max([p[0] for p in shear_box])
+			para = img[tl_r:tr_r,tl_c:tr_c]
+			para = cv2.resize(para, dsize=small_sz, interpolation=cv2.INTER_CUBIC)
+
+			l_st = (150, 150)
+			r_st = (150, 700)
+			arrow[l_st[0]:l_st[0]+small_sz[1],l_st[1]:l_st[1]+small_sz[0]] = para
+			arrow[r_st[0]:r_st[0]+small_sz[1],r_st[1]:r_st[1]+small_sz[0]] = disp_unshear
+
+			cv2.imshow("arr", arrow)
+			cv2.waitKey()
+
 	return imgs, indices
 
 """
@@ -285,7 +303,7 @@ for given file, corners of board...
 
 return list of img arrays
 """
-def split_chessboard(img, corners):
+def split_chessboard(img, corners, graphics_on=False):
 	#downsize large resolutions
 	scale_to = (960, 720)
 	old_shape = img.shape
@@ -310,7 +328,7 @@ def split_chessboard(img, corners):
 
 	#turn corner coords into list of imgs
 	piece_height = 2 #squares tall
-	return corners_to_imgs(img, ortho_guesses, sqr_corners, piece_height, SQ_SIZE)
+	return corners_to_imgs(img, ortho_guesses, sqr_corners, piece_height, SQ_SIZE, graphics_on)
 
 #load model
 def local_load_model(net_path):
@@ -395,8 +413,8 @@ def pred_squares(TARGET_SIZE, net, squares, indices, flat_poss=None):
 classify pieces in img given these: board corners, piece_nnet, TARGET_SIZE of nnet
 optional arg: prev state--in same form as output of this method (array of ltrs)
 """
-def classify_pieces(img, corners, net, TARGET_SIZE, prev_state=None):
-	squares, indices = split_chessboard(img, corners)
+def classify_pieces(img, corners, net, TARGET_SIZE, graphics_on, prev_state=None):
+	squares, indices = split_chessboard(img, corners, graphics_on)
 
 	#compute possible next moves from prev state, flatten to 1D list
 	flat_poss = []
