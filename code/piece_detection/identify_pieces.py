@@ -156,7 +156,7 @@ use solvePnPRansac, projectPoints on 9x9 array of sqr intersections
 to estimate piece height
 return estimated height for every square of board
 """
-def estimate_bounds(img, square_bounds, piece_height, graphics_on=False):
+def estimate_bounds(img, square_bounds, piece_height, graphics_dir=None):
 	#get imgpts of chessboard intersections
 	board_corners = []	#left to right, top to bottom
 	for r in range(8):
@@ -205,7 +205,7 @@ def estimate_bounds(img, square_bounds, piece_height, graphics_on=False):
 		pix_bounds.append(my_group)
 
 	#for display, find full 3D bounds
-	if graphics_on:
+	if graphics_dir:
 		disp_bounds = []
 		for r in range(8):
 			for c in range(8):
@@ -241,13 +241,15 @@ def estimate_bounds(img, square_bounds, piece_height, graphics_on=False):
 
 		cv2.imshow("disp", disp)
 		cv2.waitKey()
+		print(graphics_dir)
+		cv2.imwrite(os.path.join(graphics_dir, "bounding_boxes.jpg"), disp)
 
 	return pix_bounds
 
-def corners_to_imgs(img, poss_pieces, square_bounds, piece_height, SQ_SIZE, graphics_on=False):
+def corners_to_imgs(img, poss_pieces, square_bounds, piece_height, SQ_SIZE, graphics_dir=None):
 	imgs = []
 	indices = []
-	bounds = estimate_bounds(img, square_bounds, piece_height, graphics_on)
+	bounds = estimate_bounds(img, square_bounds, piece_height, graphics_dir)
 
 	for i in range(len(square_bounds)):
 		if not poss_pieces[i]: continue
@@ -270,7 +272,7 @@ def corners_to_imgs(img, poss_pieces, square_bounds, piece_height, SQ_SIZE, grap
 		indices.append(i)
 
 		#for ui
-		if graphics_on:
+		if graphics_dir:
 			arrow = cv2.imread("./piece_detection/arrow_blank.png")
 
 			small_sz = (112, 224)
@@ -278,11 +280,18 @@ def corners_to_imgs(img, poss_pieces, square_bounds, piece_height, SQ_SIZE, grap
 			disp_unshear = cv2.resize(disp_unshear, dsize=small_sz, interpolation=cv2.INTER_CUBIC)
 
 			#get outer bounding box
+			print(shear_box)
 			tl_r = min([p[1] for p in shear_box])
 			tl_c = min([p[0] for p in shear_box])
 			tr_r = max([p[1] for p in shear_box])
 			tr_c = max([p[0] for p in shear_box])
-			para = img[tl_r:tr_r,tl_c:tr_c]
+
+			print(img)
+			print(img.shape)
+			para = img[max(tl_r,0):tr_r,max(tl_c,0):tr_c]
+			print(para)
+			print(para.shape)
+			cv2.imshow("para", para)
 			para = cv2.resize(para, dsize=small_sz, interpolation=cv2.INTER_CUBIC)
 
 			l_st = (150, 150)
@@ -292,6 +301,7 @@ def corners_to_imgs(img, poss_pieces, square_bounds, piece_height, SQ_SIZE, grap
 
 			cv2.imshow("arr", arrow)
 			cv2.waitKey()
+			cv2.imwrite(os.path.join(graphics_dir, "unshearing_pieces.jpg"), arrow)
 
 	return imgs, indices
 
@@ -303,7 +313,7 @@ for given file, corners of board...
 
 return list of img arrays
 """
-def split_chessboard(img, corners, graphics_on=False):
+def split_chessboard(img, corners, graphics_dir=None):
 	#downsize large resolutions
 	scale_to = (960, 720)
 	old_shape = img.shape
@@ -328,7 +338,7 @@ def split_chessboard(img, corners, graphics_on=False):
 
 	#turn corner coords into list of imgs
 	piece_height = 2 #squares tall
-	return corners_to_imgs(img, ortho_guesses, sqr_corners, piece_height, SQ_SIZE, graphics_on)
+	return corners_to_imgs(img, ortho_guesses, sqr_corners, piece_height, SQ_SIZE, graphics_dir)
 
 #load model
 def local_load_model(net_path):
@@ -413,8 +423,8 @@ def pred_squares(TARGET_SIZE, net, squares, indices, flat_poss=None):
 classify pieces in img given these: board corners, piece_nnet, TARGET_SIZE of nnet
 optional arg: prev state--in same form as output of this method (array of ltrs)
 """
-def classify_pieces(img, corners, net, TARGET_SIZE, graphics_on, prev_state=None):
-	squares, indices = split_chessboard(img, corners, graphics_on)
+def classify_pieces(img, corners, net, TARGET_SIZE, graphics_dir, prev_state=None):
+	squares, indices = split_chessboard(img, corners, graphics_dir)
 
 	#compute possible next moves from prev state, flatten to 1D list
 	flat_poss = []
