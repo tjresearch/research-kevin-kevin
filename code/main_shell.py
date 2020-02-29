@@ -30,8 +30,8 @@ print("Loaded in {} s".format(time.time() - st_load_time))
 # Load piece models
 print("Loading piece model...")
 st_load_time = time.time()
-piece_model = identify_pieces.local_load_model(os.path.join(model_dir, "piece_detection_model.h5"))
-# piece_model = None
+# piece_model = identify_pieces.local_load_model(os.path.join(model_dir, "piece_detection_model.h5"))
+piece_model = None
 print("Loaded in {} s".format(time.time() - st_load_time))
 
 TARGET_SIZE = (224, 112)
@@ -39,7 +39,7 @@ TARGET_SIZE = (224, 112)
 # For single image
 cv2.namedWindow("original")
 
-img_path = "board_detection/images/chessboard3.jpg"
+img_path = "piece_detection/to_be_labelled/**1_14/*IMG_8324.jpeg"
 img = cv2.imread(img_path)
 cv2.imshow("original", img)
 cv2.waitKey()
@@ -79,7 +79,7 @@ pgn_helper.display(board)
 print("-"*60)
 """
 
-board = identify_pieces.classify_pieces(img, corners, piece_model, TARGET_SIZE, prev_state)
+board = identify_pieces.classify_pieces(img, corners, piece_model, TARGET_SIZE, False, prev_state)
 pgn_helper.display(board)
 print()
 print(board)
