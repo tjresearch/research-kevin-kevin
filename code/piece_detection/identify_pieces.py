@@ -259,19 +259,14 @@ def corners_to_imgs(img, poss_pieces, square_bounds, piece_height, SQ_SIZE, grap
 		disp = img.copy()
 		alpha = 0.25
 
-		print(poss_pieces)
 		for i in range(len(square_bounds)):
 			if not poss_pieces[i]: continue
 			corners = square_bounds[i].astype(int) #cw from top-left
-			# shear_box = bounds[i]
-			print(corners)
 			cv2.fillConvexPoly(overlay, corners, (50,200,255))
-		# cv2.imshow("overlay", overlay)
-		# cv2.waitKey()
 
 		cv2.addWeighted(overlay, alpha, disp, 1-alpha, 0, disp)
-		cv2.imshow("disp", disp)
-		cv2.waitKey()
+		# cv2.imshow("disp", disp)
+		# cv2.waitKey()
 		cv2.imwrite(os.path.join(graphics_IO[1], "orthophoto_guesses.jpg"), disp)
 
 		#for unsheared_sqrs below
