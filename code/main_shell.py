@@ -39,7 +39,7 @@ TARGET_SIZE = (224, 112)
 # For single image
 cv2.namedWindow("original")
 
-img_path = "piece_detection/to_be_labelled/**1_14/*IMG_8324.jpeg"
+img_path = "piece_detection/to_be_labelled/*1_14/*IMG_8324.jpeg"
 img = cv2.imread(img_path)
 cv2.imshow("original", img)
 cv2.waitKey()
@@ -79,12 +79,15 @@ pgn_helper.display(board)
 print("-"*60)
 """
 
-graphics_dir = "./graphics_dir"
-if not os.path.exists(graphics_dir):
-	os.mkdir(graphics_dir)
-print("Saving graphics to {}".format(graphics_dir))
+graphics_IO = ("./assets", "./graphics_out")
+if not os.path.exists(graphics_IO[0]):
+	print("missing assets folder")
+if not os.path.exists(graphics_IO[1]):
+	os.mkdir(graphics_IO[1])
+print("Pulling assets from {}".format(graphics_IO[0]))
+print("Saving graphics to {}".format(graphics_IO[1]))
 
-board = identify_pieces.classify_pieces(img, corners, piece_model, TARGET_SIZE, graphics_dir, prev_state)
+board = identify_pieces.classify_pieces(img, corners, piece_model, TARGET_SIZE, graphics_IO, prev_state)
 pgn_helper.display(board)
 print()
 print(board)

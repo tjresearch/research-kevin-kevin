@@ -156,7 +156,7 @@ use solvePnPRansac, projectPoints on 9x9 array of sqr intersections
 to estimate piece height
 return estimated height for every square of board
 """
-def estimate_bounds(img, square_bounds, piece_height, graphics_dir=None):
+def estimate_bounds(img, square_bounds, piece_height, graphics_IO=None):
 	#get imgpts of chessboard intersections
 	board_corners = []	#left to right, top to bottom
 	for r in range(8):
@@ -205,7 +205,7 @@ def estimate_bounds(img, square_bounds, piece_height, graphics_dir=None):
 		pix_bounds.append(my_group)
 
 	#for display, find full 3D bounds
-	if graphics_dir:
+	if graphics_IO:
 		disp_bounds = []
 		for r in range(8):
 			for c in range(8):
@@ -241,14 +241,23 @@ def estimate_bounds(img, square_bounds, piece_height, graphics_dir=None):
 
 		# cv2.imshow("disp", disp)
 		# cv2.waitKey()
-		cv2.imwrite(os.path.join(graphics_dir, "bounding_boxes.jpg"), disp)
+		cv2.imwrite(os.path.join(graphics_IO[1], "bounding_boxes.jpg"), disp)
 
 	return pix_bounds
 
-def corners_to_imgs(img, poss_pieces, square_bounds, piece_height, SQ_SIZE, graphics_dir=None):
+def corners_to_imgs(img, poss_pieces, square_bounds, piece_height, SQ_SIZE, graphics_IO=None):
 	imgs = []
 	indices = []
-	bounds = estimate_bounds(img, square_bounds, piece_height, graphics_dir)
+	bounds = estimate_bounds(img, square_bounds, piece_height, graphics_IO)
+
+	subfolder = None
+	if graphics_IO:
+		subfolder = os.path.join(graphics_IO[1], "unsheared_sqrs")
+		if not os.path.exists(subfolder):
+			os.mkdir(subfolder)
+		else:
+			for file in os.listdir(subfolder):
+				os.remove(os.path.join(subfolder, file))
 
 	for i in range(len(square_bounds)):
 		if not poss_pieces[i]: continue
@@ -271,8 +280,8 @@ def corners_to_imgs(img, poss_pieces, square_bounds, piece_height, SQ_SIZE, grap
 		indices.append(i)
 
 		#for ui
-		if graphics_dir:
-			arrow = cv2.imread("./piece_detection/arrow_blank.png")
+		if graphics_IO:
+			arrow = cv2.imread(os.path.join(graphics_IO[0], "arrow_blank.png"))
 
 			small_sz = (112, 224)
 			disp_unshear = unshear.copy()
@@ -294,7 +303,7 @@ def corners_to_imgs(img, poss_pieces, square_bounds, piece_height, SQ_SIZE, grap
 
 			# cv2.imshow("arr", arrow)
 			# cv2.waitKey()
-			cv2.imwrite(os.path.join(graphics_dir, "sq_{}_unsheared.jpg".format(i)), arrow)
+			cv2.imwrite(os.path.join(subfolder, "sq_{}.jpg".format(i)), arrow)
 
 	return imgs, indices
 
@@ -306,7 +315,7 @@ for given file, corners of board...
 
 return list of img arrays
 """
-def split_chessboard(img, corners, graphics_dir=None):
+def split_chessboard(img, corners, graphics_IO=None):
 	#downsize large resolutions
 	scale_to = (960, 720)
 	old_shape = img.shape
@@ -331,7 +340,7 @@ def split_chessboard(img, corners, graphics_dir=None):
 
 	#turn corner coords into list of imgs
 	piece_height = 2 #squares tall
-	return corners_to_imgs(img, ortho_guesses, sqr_corners, piece_height, SQ_SIZE, graphics_dir)
+	return corners_to_imgs(img, ortho_guesses, sqr_corners, piece_height, SQ_SIZE, graphics_IO)
 
 #load model
 def local_load_model(net_path):
@@ -416,8 +425,8 @@ def pred_squares(TARGET_SIZE, net, squares, indices, flat_poss=None):
 classify pieces in img given these: board corners, piece_nnet, TARGET_SIZE of nnet
 optional arg: prev state--in same form as output of this method (array of ltrs)
 """
-def classify_pieces(img, corners, net, TARGET_SIZE, graphics_dir, prev_state=None):
-	squares, indices = split_chessboard(img, corners, graphics_dir)
+def classify_pieces(img, corners, net, TARGET_SIZE, graphics_IO, prev_state=None):
+	squares, indices = split_chessboard(img, corners, graphics_IO)
 
 	#compute possible next moves from prev state, flatten to 1D list
 	flat_poss = []
