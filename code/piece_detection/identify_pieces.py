@@ -210,8 +210,9 @@ def estimate_bounds(img, square_bounds, piece_height, graphics_on=False):
 		for r in range(8):
 			for c in range(8):
 				#points of interest: front pts of base, front pts of top
-				POI = [[r+0.75,c,piece_height],[r+0.75,c+1,piece_height],[r+0.75,c+1,0],[r+0.75,c,0],
-						[r-0.25,c,piece_height],[r-0.25,c+1,piece_height],[r-0.25,c+1,0],[r-0.25,c,0]]
+				offset = 0.1
+				POI = [[r+1-offset,c,piece_height],[r+1-offset,c+1,piece_height],[r+1-offset,c+1,0],[r+1-offset,c,0],
+						[r-offset,c,piece_height],[r-offset,c+1,piece_height],[r-offset,c+1,0],[r-offset,c,0]]
 				for pt in POI:
 					disp_bounds.append(pt)
 		disp_bounds = np.asarray(disp_bounds).astype(np.float32)
@@ -223,17 +224,36 @@ def estimate_bounds(img, square_bounds, piece_height, graphics_on=False):
 		for i in range(0, len(disp_bounds_proj), 8):
 			my_group = []
 			for shift in range(8):
-				my_group.append(disp_bounds_proj[i+shift][0])
+				my_group.append(tuple(disp_bounds_proj[i+shift][0]))
 			disp_pix_bounds.append(my_group)
 
-		print("work with disp_pix_bounds list to draw bounding boxes")
+		disp = img.copy()
+		"""
+		top-right anchor
+		0-1-2-3 front face
+		4-5-6-7 back face
+		"""
+		for bound in disp_pix_bounds:
+			#draw front face
+			for i in range(4):
+				cv2.line(disp, bound[i%4], bound[(i+1)%4], (255,0,0), 1) #teal: (255,195,0)
+			#back face
+			for i in range(4):
+				cv2.line(disp, bound[i%4+4], bound[(i+1)%4+4], (255,0,0), 1)
+			#connect front face to back
+			for i in range(4):
+				cv2.line(disp, bound[i], bound[i+4], (255,0,0), 1)
+
+		cv2.imshow("disp", disp)
+		cv2.waitKey()
 
 	return pix_bounds
 
 def corners_to_imgs(img, poss_pieces, square_bounds, piece_height, SQ_SIZE):
 	imgs = []
 	indices = []
-	bounds = estimate_bounds(img, square_bounds, piece_height)
+	graphics_on = True
+	bounds = estimate_bounds(img, square_bounds, piece_height, graphics_on)
 
 	for i in range(len(square_bounds)):
 		if not poss_pieces[i]: continue
