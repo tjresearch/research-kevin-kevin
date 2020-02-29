@@ -239,8 +239,8 @@ def estimate_bounds(img, square_bounds, piece_height, graphics_on=False):
 			for i in range(4):
 				cv2.line(disp, bound[i], bound[i+4], (255,0,0), 1)
 
-		cv2.imshow("disp", disp)
-		cv2.waitKey()
+		# cv2.imshow("disp", disp)
+		# cv2.waitKey()
 
 	return pix_bounds
 
@@ -271,7 +271,7 @@ def corners_to_imgs(img, poss_pieces, square_bounds, piece_height, SQ_SIZE, grap
 
 		#for ui
 		if graphics_on:
-			arrow = cv2.imread("./piece_detection/arrow_blank.png")
+			arrow = cv2.imread("../piece_detection/arrow_blank.png")
 
 			small_sz = (112, 224)
 			disp_unshear = unshear.copy()
@@ -290,8 +290,8 @@ def corners_to_imgs(img, poss_pieces, square_bounds, piece_height, SQ_SIZE, grap
 			arrow[l_st[0]:l_st[0]+small_sz[1],l_st[1]:l_st[1]+small_sz[0]] = para
 			arrow[r_st[0]:r_st[0]+small_sz[1],r_st[1]:r_st[1]+small_sz[0]] = disp_unshear
 
-			cv2.imshow("arr", arrow)
-			cv2.waitKey()
+			# cv2.imshow("arr", arrow)
+			# cv2.waitKey()
 
 	return imgs, indices
 

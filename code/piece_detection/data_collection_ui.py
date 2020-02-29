@@ -12,8 +12,8 @@ sys.path.insert(1, "../board_detection")
 import board_locator, board_segmentation
 
 immortals = {}
-notation = {"white_pawn":"p", "white_knight":"n", "white_bishop":"b", "white_rook":"r", "white_queen":"q", "white_king":"k",
-			"black_pawn":"P", "black_knight":"N", "black_bishop":"B", "black_rook":"R", "black_queen":"Q", "black_king":"K"}
+notation = {"white_pawn":"P", "white_knight":"N", "white_bishop":"B", "white_rook":"R", "white_queen":"Q", "white_king":"K",
+			"black_pawn":"p", "black_knight":"n", "black_bishop":"b", "black_rook":"r", "black_queen":"q", "black_king":"k"}
 
 class DataCollectionDisp(tk.Frame):
 	def __init__(self, parent, img, squares, indices, save_dir):
