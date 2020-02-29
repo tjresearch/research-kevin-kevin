@@ -274,27 +274,27 @@ class Display(tk.Frame):
 		self.video_stop.clear()
 
 	def process(self):
-		if self.models_loaded:
-			self.processing_thread = Thread(target=self.process_handler)
-			self.processing_thread.daemon = True
-			self.processing_thread.start()
-		else:
-			showerror("Error", "Models are still loading, try again in a few seconds.")
+		if not self.processing:
+			if self.models_loaded:
+				self.processing_thread = Thread(target=self.process_handler)
+				self.processing_thread.daemon = True
+				self.processing_thread.start()
+			else:
+				showerror("Error", "Models are still loading, try again in a few seconds.")
 
 	def process_handler(self):
 		if self.mode == "video":
 			self.video_play.clear()
 		elif self.mode == "live_video":
 			self.live_video_play.clear()
+
 		self.processing = True
 
 		st_locate_time = time.time()
 		lines, corners = board_locator.find_chessboard(self.cur_frame, self.lattice_point_model)
 		print("Located board in {} s".format(time.time() - st_locate_time))
 
-		print(corners)
-
-		board = identify_pieces.classify_pieces(self.cur_frame, corners, self.piece_model, TARGET_SIZE, True)
+		board = identify_pieces.classify_pieces(self.cur_frame, corners, self.piece_model, TARGET_SIZE, "./assets/intermediate_imgs/piece_shearing")
 
 		board_string = "".join("".join(row) for row in board)
 
@@ -305,6 +305,11 @@ class Display(tk.Frame):
 		self.diagram_label.image = render
 
 		self.processing = False
+
+		if self.mode == "video":
+			self.video_play.set()
+		elif self.mode == "live_video":
+			self.live_video_play.set()
 
 	def back(self):
 		pass

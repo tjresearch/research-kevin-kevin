@@ -63,14 +63,14 @@ class DataCollectionDisp(tk.Frame):
 		pieces = ["pawn", "knight", "bishop", "rook", "queen", "king"]
 
 		for piece in pieces:
-			img = Image.open("piece_images/white_{}.png".format(piece))
+			img = Image.open("../assets/piece_images/white_{}.png".format(piece))
 			img = img.resize((self.square_size, self.square_size))
 			render = ImageTk.PhotoImage(img)
 			button = tk.Button(self.white_frame, command=lambda i="white_{}".format(piece): self.piece_button_callback(i), image=render, highlightbackground="black")
 			button.image = render
 			button.pack(side=tk.TOP)
 
-			img = Image.open("piece_images/black_{}.png".format(piece))
+			img = Image.open("../assets/piece_images/black_{}.png".format(piece))
 			img = img.resize((self.square_size, self.square_size))
 			render = ImageTk.PhotoImage(img)
 			button = tk.Button(self.black_frame, command=lambda i="black_{}".format(piece): self.piece_button_callback(i), image=render, highlightbackground="black")
@@ -121,7 +121,7 @@ class DataCollectionDisp(tk.Frame):
 		x = c * self.square_size + self.square_size // 2
 		y = r * self.square_size + self.square_size // 2
 		if self.selected_piece:
-			img = Image.open("piece_images/{}.png".format(self.selected_piece))
+			img = Image.open("../assets/piece_images/{}.png".format(self.selected_piece))
 			img = img.resize((self.square_size, self.square_size))
 			render = ImageTk.PhotoImage(img)
 			self.board_canvas.delete(self.board_ids[r][c])

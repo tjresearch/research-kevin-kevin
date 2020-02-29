@@ -79,7 +79,12 @@ pgn_helper.display(board)
 print("-"*60)
 """
 
-board = identify_pieces.classify_pieces(img, corners, piece_model, TARGET_SIZE, False, prev_state)
+graphics_dir = "./graphics_dir"
+if not os.path.exists(graphics_dir):
+	os.mkdir(graphics_dir)
+print("Saving graphics to {}".format(graphics_dir))
+
+board = identify_pieces.classify_pieces(img, corners, piece_model, TARGET_SIZE, graphics_dir, prev_state)
 pgn_helper.display(board)
 print()
 print(board)
