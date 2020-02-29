@@ -239,9 +239,8 @@ def estimate_bounds(img, square_bounds, piece_height, graphics_dir=None):
 			for i in range(4):
 				cv2.line(disp, bound[i], bound[i+4], (255,0,0), 1)
 
-		cv2.imshow("disp", disp)
-		cv2.waitKey()
-		print(graphics_dir)
+		# cv2.imshow("disp", disp)
+		# cv2.waitKey()
 		cv2.imwrite(os.path.join(graphics_dir, "bounding_boxes.jpg"), disp)
 
 	return pix_bounds
@@ -280,18 +279,12 @@ def corners_to_imgs(img, poss_pieces, square_bounds, piece_height, SQ_SIZE, grap
 			disp_unshear = cv2.resize(disp_unshear, dsize=small_sz, interpolation=cv2.INTER_CUBIC)
 
 			#get outer bounding box
-			print(shear_box)
 			tl_r = min([p[1] for p in shear_box])
 			tl_c = min([p[0] for p in shear_box])
 			tr_r = max([p[1] for p in shear_box])
 			tr_c = max([p[0] for p in shear_box])
 
-			print(img)
-			print(img.shape)
 			para = img[max(tl_r,0):tr_r,max(tl_c,0):tr_c]
-			print(para)
-			print(para.shape)
-			cv2.imshow("para", para)
 			para = cv2.resize(para, dsize=small_sz, interpolation=cv2.INTER_CUBIC)
 
 			l_st = (150, 150)
@@ -299,9 +292,9 @@ def corners_to_imgs(img, poss_pieces, square_bounds, piece_height, SQ_SIZE, grap
 			arrow[l_st[0]:l_st[0]+small_sz[1],l_st[1]:l_st[1]+small_sz[0]] = para
 			arrow[r_st[0]:r_st[0]+small_sz[1],r_st[1]:r_st[1]+small_sz[0]] = disp_unshear
 
-			cv2.imshow("arr", arrow)
-			cv2.waitKey()
-			cv2.imwrite(os.path.join(graphics_dir, "unshearing_pieces.jpg"), arrow)
+			# cv2.imshow("arr", arrow)
+			# cv2.waitKey()
+			cv2.imwrite(os.path.join(graphics_dir, "sq_{}_unsheared.jpg".format(i)), arrow)
 
 	return imgs, indices
 
