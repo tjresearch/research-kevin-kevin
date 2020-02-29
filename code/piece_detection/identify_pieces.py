@@ -250,8 +250,31 @@ def corners_to_imgs(img, poss_pieces, square_bounds, piece_height, SQ_SIZE, grap
 	indices = []
 	bounds = estimate_bounds(img, square_bounds, piece_height, graphics_IO)
 
+	#for ui
 	subfolder = None
 	if graphics_IO:
+		#for orthophoto
+		# https://www.pyimagesearch.com/2016/03/07/transparent-overlays-with-opencv/
+		overlay = img.copy()
+		disp = img.copy()
+		alpha = 0.25
+
+		print(poss_pieces)
+		for i in range(len(square_bounds)):
+			if not poss_pieces[i]: continue
+			corners = square_bounds[i].astype(int) #cw from top-left
+			# shear_box = bounds[i]
+			print(corners)
+			cv2.fillConvexPoly(overlay, corners, (50,200,255))
+		# cv2.imshow("overlay", overlay)
+		# cv2.waitKey()
+
+		cv2.addWeighted(overlay, alpha, disp, 1-alpha, 0, disp)
+		cv2.imshow("disp", disp)
+		cv2.waitKey()
+		cv2.imwrite(os.path.join(graphics_IO[1], "orthophoto_guesses.jpg"), disp)
+
+		#for unsheared_sqrs below
 		subfolder = os.path.join(graphics_IO[1], "unsheared_sqrs")
 		if not os.path.exists(subfolder):
 			os.mkdir(subfolder)
@@ -259,10 +282,10 @@ def corners_to_imgs(img, poss_pieces, square_bounds, piece_height, SQ_SIZE, grap
 			for file in os.listdir(subfolder):
 				os.remove(os.path.join(subfolder, file))
 
+	#crop square out of full image
 	for i in range(len(square_bounds)):
 		if not poss_pieces[i]: continue
 
-		#crop square out of full image
 		corners = square_bounds[i] #cw from top-left
 		shear_box = bounds[i]
 
