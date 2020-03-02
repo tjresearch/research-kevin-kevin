@@ -243,7 +243,7 @@ def locate_corners(files, cache_file_path, lattice_point_model):
 	if os.path.exists(cache_file_path):
 		with open(cache_file_path, "r") as infile:
 			for line in infile.readlines():
-				line = line.strip().split(" ")
+				line = line.strip().split(" - ")
 				cache[line[0]] = eval(line[1])
 		cache_file = open(cache_file_path, "a")
 	else:
@@ -261,7 +261,7 @@ def locate_corners(files, cache_file_path, lattice_point_model):
 			img = cv2.imread(file)
 			lines, corners = board_locator.find_chessboard(img, lattice_point_model)
 			out_dict[file] = corners
-			cache_file.write("{} {}\n".format(file, str(corners)))
+			cache_file.write("{} - {}\n".format(file, str(corners)))
 			cache_file.flush()
 			print("Located in {} s".format(time.time() - st_time))
 
