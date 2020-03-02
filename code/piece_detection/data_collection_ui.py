@@ -288,7 +288,6 @@ def main():
 	print("save dir: {}".format(save_dir))
 
 	ct = 0
-	print(len(os.listdir(img_dir_path)))
 
 	files = []
 	for file in os.listdir(img_dir_path):
@@ -303,12 +302,12 @@ def main():
 	# save squares of each file
 	for file in files:
 		ct += 1
-		print("img {}/{}".format(ct, len(os.listdir(img_dir_path))))
+		print("img {}/{}".format(ct, len(files)))
 		print("file: {}".format(file))
 
 		root = tk.Tk()
 		root.title("Data Collection")
-		save_squares(file, save_dir, lattice_point_model, root, board_corners, located_event)
+		save_squares(file, save_dir, lattice_point_model, root, board_corners)
 		corners = []  # clear for next board
 		os.rename(file, os.path.join(img_dir_path, "*{}".format(os.path.basename(file))))  # mark as done
 
