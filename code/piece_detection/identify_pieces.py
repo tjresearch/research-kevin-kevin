@@ -257,7 +257,7 @@ def corners_to_imgs(img, poss_pieces, square_bounds, piece_height, SQ_SIZE, grap
 		# https://www.pyimagesearch.com/2016/03/07/transparent-overlays-with-opencv/
 		overlay = img.copy()
 		disp = img.copy()
-		alpha = 0.20
+		alpha = 0.40
 
 		for i in range(len(square_bounds)):
 			if not poss_pieces[i]: continue
