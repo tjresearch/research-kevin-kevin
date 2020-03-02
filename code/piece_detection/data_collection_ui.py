@@ -43,7 +43,8 @@ class DataCollectionDisp(tk.Frame):
 		self.board_canvas.bind("<Button-1>", self.mouse_callback)
 
 		self.image_label = tk.Label(self.top_frame)
-		disp = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+
+		disp = Image.fromarray(cv2.cvtColor(cv2.resize(img, None, fx=0.75, fy=0.75), cv2.COLOR_BGR2RGB))
 		render = ImageTk.PhotoImage(disp)
 		self.image_label.configure(image=render)
 		self.image_label.image = render
@@ -159,7 +160,7 @@ def mark_point(event, x, y, flags, params):
 		print("Marked: {}, {}".format(x, y))
 		corners.append((x, y))
 
-def find_board(img, lattice_point_model):
+def find_board(img, file, board_corners):
 	cv2.namedWindow("full_image")
 	global corners
 
@@ -167,10 +168,7 @@ def find_board(img, lattice_point_model):
 
 	disp = img.copy()
 
-	print("finding board...")
-	st_locate_time = time.time()
-	lines, corners = board_locator.find_chessboard(img, lattice_point_model)
-	print("Located board in {} s".format(time.time() - st_locate_time))
+	corners = board_corners[file]
 
 	for corner in corners:
 		cv2.circle(disp, (int(corner[0]), int(corner[1])), 3, (255, 0, 0), 2)
@@ -224,7 +222,7 @@ def label_subimgs(img, squares, indices, save_dir, root):
 	window = DataCollectionDisp(root, img, squares, indices, save_dir)
 	root.mainloop()
 
-def save_squares(file, outer_dir, lattice_point_model, root):
+def save_squares(file, outer_dir, lattice_point_model, root, board_corners):
 	#setup file IO
 	save_dir = os.path.join(outer_dir, file[file.rfind("/")+1:file.rfind(".")])
 	os.mkdir(save_dir)
@@ -232,12 +230,43 @@ def save_squares(file, outer_dir, lattice_point_model, root):
 	img = cv2.imread(file)
 
 	#find corners of board
-	corners = find_board(img, lattice_point_model)
+	corners = find_board(img, file, board_corners)
 
 	#take corners, split image into subimgs of viable squares & their indicies
 	squares, indices = split_chessboard(img, corners)
 	#label squares with pieces, save
 	label_subimgs(img, squares, indices, save_dir, root)
+
+def locate_corners(files, cache_file_path, lattice_point_model):
+
+	cache = {}
+	if os.path.exists(cache_file_path):
+		with open(cache_file_path, "r") as infile:
+			for line in infile.readlines():
+				line = line.strip().split(" ")
+				cache[line[0]] = eval(line[1])
+		cache_file = open(cache_file_path, "a")
+	else:
+		cache_file = open(cache_file_path, "w")
+
+	out_dict = {}
+	for i in range(len(files)):
+		file = files[i]
+		print("Locating corners for file {}/{} - {}".format(i + 1, len(files), file))
+		if file in cache:
+			out_dict[file] = cache[file]
+			print("File in cache - skipping...")
+		else:
+			st_time = time.time()
+			img = cv2.imread(file)
+			lines, corners = board_locator.find_chessboard(img, lattice_point_model)
+			out_dict[file] = corners
+			cache_file.write("{} {}\n".format(file, str(corners)))
+			cache_file.flush()
+			print("Located in {} s".format(time.time() - st_time))
+
+	cache_file.close()
+	return out_dict
 
 def main():
 	print("Loading board model...")
@@ -261,20 +290,27 @@ def main():
 	ct = 0
 	print(len(os.listdir(img_dir_path)))
 
-	# save squares of each file
+	files = []
 	for file in os.listdir(img_dir_path):
-		ct += 1
-		print("img {}/{}".format(ct, len(os.listdir(img_dir_path))))
-		if file.startswith("*"): continue  # skip if marked as done
+		if file.startswith("*"):
+			continue
 		if file.endswith(".jpg") or file.endswith(".jpeg") or file.endswith(".png"):
 			filepath = os.path.join(img_dir_path, file)
-			print("file: {}".format(filepath))
+			files.append(filepath)
 
-			root = tk.Tk()
-			root.title("Data Collection")
-			save_squares(filepath, save_dir, lattice_point_model, root)
-			corners = []  # clear for next board
-			os.rename(filepath, os.path.join(img_dir_path, "*{}".format(file)))  # mark as done
+	board_corners = locate_corners(files, "cache.txt", lattice_point_model)
+
+	# save squares of each file
+	for file in files:
+		ct += 1
+		print("img {}/{}".format(ct, len(os.listdir(img_dir_path))))
+		print("file: {}".format(file))
+
+		root = tk.Tk()
+		root.title("Data Collection")
+		save_squares(file, save_dir, lattice_point_model, root, board_corners, located_event)
+		corners = []  # clear for next board
+		os.rename(file, os.path.join(img_dir_path, "*{}".format(os.path.basename(file))))  # mark as done
 
 	# mark whole dir as done
 	last_dir_i = img_dir_path[0:len(img_dir_path) - 1].rfind("/")

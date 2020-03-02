@@ -162,9 +162,13 @@ class Display(tk.Frame):
 			elif self.mode == "video":
 				file = self.choose_file()
 				if file is not None and any(file.endswith(ext) for ext in supported_video_formats):
-					self.start_video(file)
+					ret = self.start_video(file)
+					if not ret:
+						self.mode = old_mode
 			elif self.mode == "live_video":
-				self.start_live_video()
+				ret = self.start_live_video()
+				if not ret:
+					self.mode = old_mode
 
 	def show_image(self, image_path):
 		load = cv2.imread(image_path)
@@ -180,11 +184,15 @@ class Display(tk.Frame):
 	def start_live_video(self):
 		ip = simpledialog.askstring("IP", "IP Address:")
 
+		if ip is None:
+			return False
+
 		url = "http://" + ip + "/live?type=some.mp4"
 		self.live_cap = cv2.VideoCapture(url)
 		if not self.live_cap.isOpened():
 			showerror("Error", "Could not connect capture device at {}".format(ip))
-			return
+			return False
+
 		fps = self.live_cap.get(cv2.CAP_PROP_FPS)
 		resolution = (int(self.live_cap.get(cv2.CAP_PROP_FRAME_HEIGHT)), int(self.live_cap.get(cv2.CAP_PROP_FRAME_WIDTH)))
 		self.caption["text"] = "IP: {}\nFPS: {}\nResolution {}".format(ip, fps, resolution)
@@ -193,6 +201,8 @@ class Display(tk.Frame):
 		self.live_video_thread = Thread(target=self.live_video_handler)
 		self.live_video_thread.daemon = True
 		self.live_video_thread.start()
+
+		return True
 
 	def live_video_handler(self):
 		try:
@@ -250,7 +260,7 @@ class Display(tk.Frame):
 		self.video_cap = cv2.VideoCapture(video_path)
 		if not self.video_cap.isOpened():
 			showerror("Error", "Could not open video at {}".format(video_path))
-			return
+			return False
 		fps = self.video_cap.get(cv2.CAP_PROP_FPS)
 		resolution = (int(self.video_cap.get(cv2.CAP_PROP_FRAME_HEIGHT)), int(self.video_cap.get(cv2.CAP_PROP_FRAME_WIDTH)))
 		self.caption["text"] = "File: {}\nFPS: {}\nResolution {}".format(video_path, fps, resolution)
@@ -259,6 +269,8 @@ class Display(tk.Frame):
 		self.video_thread = Thread(target=self.video_handler, args=(fps,))
 		self.video_thread.daemon = True
 		self.video_thread.start()
+
+		return True
 
 	def video_handler(self, fps):
 		try:
@@ -294,7 +306,7 @@ class Display(tk.Frame):
 		lines, corners = board_locator.find_chessboard(self.cur_frame, self.lattice_point_model)
 		print("Located board in {} s".format(time.time() - st_locate_time))
 
-		board = identify_pieces.classify_pieces(self.cur_frame, corners, self.piece_model, TARGET_SIZE, "./assets/intermediate_imgs/piece_shearing")
+		board = identify_pieces.classify_pieces(self.cur_frame, corners, self.piece_model, TARGET_SIZE, ("../assets", "./assets/intermediate_images"))
 
 		board_string = "".join("".join(row) for row in board)
 
