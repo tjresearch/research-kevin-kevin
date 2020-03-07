@@ -15,6 +15,8 @@ immortals = {}
 notation = {"white_pawn":"P", "white_knight":"N", "white_bishop":"B", "white_rook":"R", "white_queen":"Q", "white_king":"K",
 			"black_pawn":"p", "black_knight":"n", "black_bishop":"b", "black_rook":"r", "black_queen":"q", "black_king":"k"}
 
+hotkeys = {"<space>":"toggle", "f":"clear", "q":"pawn", "w":"knight", "e":"bishop", "a":"rook", "s":"queen", "d":"king"}
+
 class DataCollectionDisp(tk.Frame):
 	def __init__(self, parent, img, squares, indices, save_dir):
 
@@ -42,6 +44,11 @@ class DataCollectionDisp(tk.Frame):
 		self.board_canvas.pack(side=tk.LEFT)
 		self.board_canvas.bind("<Button-1>", self.mouse_callback)
 
+		for key in hotkeys:
+			self.board_canvas.bind(key, lambda event, i=hotkeys[key]: self.hotkey_handler(event, i))
+
+		self.board_canvas.focus_set()
+
 		self.image_label = tk.Label(self.top_frame)
 
 		disp = Image.fromarray(cv2.cvtColor(cv2.resize(img, None, fx=0.75, fy=0.75), cv2.COLOR_BGR2RGB))
@@ -55,7 +62,7 @@ class DataCollectionDisp(tk.Frame):
 
 		self.button_frame = tk.Frame(self.middle_frame)
 
-		self.selected_piece_label = tk.Label(self.middle_frame, text="Selected piece: clear")
+		self.selected_piece_label = tk.Label(self.middle_frame, text="Selected: clear")
 		self.selected_piece_label.pack(side=tk.TOP)
 
 		self.white_frame = tk.Frame(self.button_frame)
@@ -111,7 +118,23 @@ class DataCollectionDisp(tk.Frame):
 
 	def piece_button_callback(self, piece):
 		self.selected_piece = piece
-		new_text = "Selected piece: {}".format(piece if piece else "clear")
+		new_text = "Selected: {}".format(piece if piece else "clear")
+		self.selected_piece_label.configure(text=new_text)
+		self.selected_piece_label.text = new_text
+
+	def hotkey_handler(self, event, command):
+		if command == "toggle":
+			cur_color = self.selected_piece[:self.selected_piece.find("_")]
+			new_color = "black" if cur_color == "white" else "white"
+			self.selected_piece = new_color + self.selected_piece[self.selected_piece.find("_"):]
+		elif command == "clear":
+			self.selected_piece = ""
+		else:
+			if self.selected_piece:
+				self.selected_piece = self.selected_piece[:self.selected_piece.find("_") + 1] + command
+			else:
+				self.selected_piece = "white_{}".format(command)
+		new_text = "Selected: {}".format(self.selected_piece if self.selected_piece else "clear")
 		self.selected_piece_label.configure(text=new_text)
 		self.selected_piece_label.text = new_text
 

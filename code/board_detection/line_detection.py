@@ -1,9 +1,9 @@
 import cv2
+import os
 import math
 import numpy as np
 import line_linking
 import utils
-from sklearn.cluster import dbscan
 
 CLAHE_PARAMS = [[3, (2, 6), 5],
 				[3, (6, 2), 5],
@@ -77,7 +77,29 @@ def union(index1, index2, lines):
 		lines[root1][2] += 1
 
 
-def find_lines(img):
+def disp_lines_ab(lines, img):
+	disp = img.copy()
+	for line in lines:
+		a, b = line
+		if a == 0:
+			endpoints = [(0, 1 / b), (img.shape[1], (1 - img.shape[1] * a) / b)]
+		elif b == 0:
+			endpoints = [(1 / a, 0), ((1 - img.shape[0] * b) / a, img.shape[0])]
+		else:
+			intercepts = [(1 / a, 0),
+						  ((1 - img.shape[0] * b) / a, img.shape[0]),
+						  (0, 1 / b),
+						  (img.shape[1], (1 - img.shape[1] * a) / b)]
+			endpoints = []
+			for intercept in intercepts:
+				if 0 <= intercept[0] <= img.shape[1] and 0 <= intercept[1] <= img.shape[0]:
+					endpoints.append(intercept)
+		cv2.line(disp, (int(endpoints[0][0]), int(endpoints[0][1])),
+				 (int(endpoints[1][0]), int(endpoints[1][1])), (255, 0, 0), 2)
+	return disp
+
+
+def find_lines(img, out_dir):
 	gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
 	i = 0
@@ -94,6 +116,8 @@ def find_lines(img):
 
 	for line in lines:
 		cv2.line(line_disp, tuple(line[0]), tuple(line[1]), (255, 0, 0), 2)
+
+	cv2.imwrite(os.path.join(out_dir, "line_detection.jpg"), line_disp)
 
 	for i in range(len(lines)):
 		lines[i] = [lines[i], i, 0]  # Line, parent, rank
@@ -119,34 +143,16 @@ def find_lines(img):
 	for group in groups.values():
 		linked_lines.append(line_linking.link(group))
 
-	# cv2.imshow("board", line_disp)
+	linked_disp = disp_lines_ab(linked_lines, img)
+
+	cv2.imwrite(os.path.join(out_dir, "line_linking.jpg"), linked_disp)
 
 	return linked_lines
 
 
-def disp_lines_ab(lines, img):
-	disp = img.copy()
-	for line in lines:
-		a, b = line
-		if a == 0:
-			endpoints = [(0, 1 / b), (img.shape[1], (1 - img.shape[1] * a) / b)]
-		elif b == 0:
-			endpoints = [(1 / a, 0), ((1 - img.shape[0] * b) / a, img.shape[0])]
-		else:
-			intercepts = [(1 / a, 0),
-						  ((1 - img.shape[0] * b) / a, img.shape[0]),
-						  (0, 1 / b),
-						  (img.shape[1], (1 - img.shape[1] * a) / b)]
-			endpoints = []
-			for intercept in intercepts:
-				if 0 <= intercept[0] <= img.shape[1] and 0 <= intercept[1] <= img.shape[0]:
-					endpoints.append(intercept)
-		cv2.line(disp, (int(endpoints[0][0]), int(endpoints[0][1])),
-				 (int(endpoints[1][0]), int(endpoints[1][1])), (255, 0, 0), 2)
 
-
-def find_lines_rho_theta(img):
-	lines = find_lines(img)
+def find_lines_rho_theta(img, out_dir):
+	lines = find_lines(img, out_dir)
 	rho_theta_lines = []
 	for line in lines:
 		rho_theta_lines.append(utils.convert_ab_to_rho_theta(line))

@@ -3,6 +3,8 @@ import cv2
 import time
 import os
 import sys
+import shutil
+import random
 from tkinter import filedialog, simpledialog
 from tkinter.messagebox import showerror
 from threading import Thread, Event
@@ -37,20 +39,28 @@ class Display(tk.Frame):
 		self.video_play = Event()
 
 		self.display_thread = None
-		self.cur_frame = None
+		self.cur_raw_image = None
 		self.display_stop = Event()
 
 		self.processing = False
 		self.processing_thread = None
 
-		self.intermediate_image_order = ["raw.png",
-										 "line_detection.png",
-										 "line_linking.png",
-										 "lattice_points.png",
-										 "board_localization.png",
-										 "board_segmentation.png",
-										 "piece_classification.png"]
+		self.intermediate_index = 0
+		self.intermediate_image_order = ["raw.jpg",
+										 "line_detection.jpg",
+										 "line_linking.jpg",
+										 "lattice_points.jpg",
+										 "board_localization.jpg",
+										 "board_segmentation.jpg",
+										 "orthophoto_guesses.jpg",
+										 "unsheared_sqrs"]
 		self.intermediate_image_dir = "./assets/intermediate_images"
+
+		self.cur_animate_image = None
+		self.animate_cycle = 50
+		self.animate_index = 0
+
+		self.reset_placeholders("./assets/intermediate_images/placeholders")
 
 		tk.Frame.__init__(self, parent)
 
@@ -73,8 +83,8 @@ class Display(tk.Frame):
 
 		# Initialize the buttons that will tab through intermediate images
 		self.nav_button_frame = tk.Frame(self.bottom_button_frame)
-		self.back_button = tk.Button(self.nav_button_frame, text="Back", height=2, width=8)
-		self.next_button = tk.Button(self.nav_button_frame, text="Next", height=2, width=8)
+		self.back_button = tk.Button(self.nav_button_frame, command=self.back, text="Back", height=2, width=8)
+		self.next_button = tk.Button(self.nav_button_frame, command=self.next, text="Next", height=2, width=8)
 
 		self.back_button.pack(side=tk.LEFT)
 		self.next_button.pack(side=tk.RIGHT)
@@ -91,7 +101,7 @@ class Display(tk.Frame):
 		self.image_label = tk.Label(self.display_frame)
 		self.caption = tk.Label(self.display_frame)
 
-		self.show_image("assets/intermediate_images/raw.png")
+		self.show_image("assets/intermediate_images/placeholders/raw.jpg")
 
 		self.video_controls = tk.Frame(self.display_frame)
 		self.prev_frame_button = tk.Button(self.video_controls, command=self.prev_frame, text="Prev Frame", height=2, width=8)
@@ -124,6 +134,16 @@ class Display(tk.Frame):
 		self.model_thread = Thread(target=self.load_models)
 		self.model_thread.daemon = True
 		self.model_thread.start()
+
+	def reset_placeholders(self, placeholder_dir):
+		for path in self.intermediate_image_order:
+			if path.endswith(".jpg"):
+				placeholder_image = path
+			else:
+				if os.path.isdir(os.path.join(self.intermediate_image_dir, path)):
+					shutil.rmtree(os.path.join(self.intermediate_image_dir, path))
+				placeholder_image = "{}.jpg".format(path)
+			shutil.copy(os.path.join(placeholder_dir, placeholder_image), os.path.join(self.intermediate_image_dir, placeholder_image))
 
 	def load_models(self):
 		model_dir = "../models"
@@ -172,7 +192,7 @@ class Display(tk.Frame):
 
 	def show_image(self, image_path):
 		load = cv2.imread(image_path)
-		self.cur_frame = load
+		self.cur_raw_image = load
 
 	@staticmethod
 	def choose_file():
@@ -210,7 +230,7 @@ class Display(tk.Frame):
 				self.live_video_play.wait()
 				ret, frame = self.live_cap.read()
 				if ret:
-					self.cur_frame = frame
+					self.cur_raw_image = frame
 				else:
 					break
 		except RuntimeError:
@@ -225,7 +245,27 @@ class Display(tk.Frame):
 
 	def display_handler(self):
 		while not self.display_stop.is_set():
-			disp = Image.fromarray(cv2.cvtColor(cv2.resize(self.cur_frame, self.image_dims), cv2.COLOR_BGR2RGB))
+			if self.intermediate_index == 0:
+				disp = Image.fromarray(cv2.cvtColor(cv2.resize(self.cur_raw_image, self.image_dims), cv2.COLOR_BGR2RGB))
+			else:
+				intermediate_path = self.intermediate_image_order[self.intermediate_index]
+				if intermediate_path.endswith(".jpg"):
+					image = Image.open(os.path.join(self.intermediate_image_dir, intermediate_path))
+				else:
+					cur_dir = os.path.join(self.intermediate_image_dir, intermediate_path)
+					if os.path.isdir(cur_dir):
+						if self.animate_index == 0:
+							image_path = os.path.join(cur_dir, random.choice(os.listdir(cur_dir)))
+							image = Image.open(image_path)
+							self.cur_animate_image = image
+						else:
+							image = self.cur_animate_image
+						self.animate_index += 1
+						if self.animate_index == self.animate_cycle:
+							self.animate_index = 0
+					else:
+						image = Image.open(cur_dir + ".jpg")
+				disp = image.resize(self.image_dims)
 			render = ImageTk.PhotoImage(disp)
 			self.image_label.configure(image=render)
 			self.image_label.image = render
@@ -253,7 +293,7 @@ class Display(tk.Frame):
 	def disp_next_frame(self):
 		ret, frame = self.video_cap.read()
 		if ret:
-			self.cur_frame = frame
+			self.cur_raw_image = frame
 
 	def start_video(self, video_path):
 		self.video_controls.pack()
@@ -278,7 +318,7 @@ class Display(tk.Frame):
 				self.video_play.wait()
 				ret, frame = self.video_cap.read()
 				if ret:
-					self.cur_frame = frame
+					self.cur_raw_image = frame
 					time.sleep(1 / fps)
 		except RuntimeError:
 			print("Caught a RuntimeError")
@@ -303,10 +343,10 @@ class Display(tk.Frame):
 		self.processing = True
 
 		st_locate_time = time.time()
-		lines, corners = board_locator.find_chessboard(self.cur_frame, self.lattice_point_model)
+		lines, corners = board_locator.find_chessboard(self.cur_raw_image, self.lattice_point_model, "./assets/intermediate_images")
 		print("Located board in {} s".format(time.time() - st_locate_time))
 
-		board = identify_pieces.classify_pieces(self.cur_frame, corners, self.piece_model, TARGET_SIZE, ("../assets", "./assets/intermediate_images"))
+		board = identify_pieces.classify_pieces(self.cur_raw_image, corners, self.piece_model, TARGET_SIZE, ("../assets", "./assets/intermediate_images"))
 
 		board_string = "".join("".join(row) for row in board)
 
@@ -324,10 +364,12 @@ class Display(tk.Frame):
 			self.live_video_play.set()
 
 	def back(self):
-		pass
+		if self.intermediate_index > 0:
+			self.intermediate_index -= 1
 
-	def forward(self):
-		pass
+	def next(self):
+		if self.intermediate_index < len(self.intermediate_image_order) - 1:
+			self.intermediate_index += 1
 
 
 root = tk.Tk()

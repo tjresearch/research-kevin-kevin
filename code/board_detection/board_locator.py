@@ -4,8 +4,9 @@ import pyclipper
 import matplotlib.path
 import utils
 import math
+import os
 import cv2
-import sklearn
+import sklearn.cluster
 import scipy.spatial, scipy.cluster
 import collections
 import line_detection
@@ -70,34 +71,21 @@ def cluster_points(points, max_dist=10):
 	return list(clusters)
 
 
-def find_lattice_points(img, lines, lattice_point_model):
+def find_lattice_points(img, lines, lattice_point_model, out_dir):
 
 	intersections = [p for p in get_intersections(lines) if 0 <= p[0] < img.shape[1] and 0 <= p[1] < img.shape[0]]
-
-	# lattice_disp = img.copy()
-	#
-	# for line in lines:
-	# 	rho, theta = line
-	# 	a = np.cos(theta)
-	# 	b = np.sin(theta)
-	# 	x0 = a * rho
-	# 	y0 = b * rho
-	# 	x1 = int(x0 + 1000 * -b)
-	# 	y1 = int(y0 + 1000 * a)
-	# 	x2 = int(x0 - 1000 * -b)
-	# 	y2 = int(y0 - 1000 * a)
-	# 	cv2.line(lattice_disp, (x1, y1), (x2, y2), (255, 0, 0), 4)
 
 	poss_points, conf = validate_lattice_points(lattice_point_model, intersections, img)
 	lattice_points = np.array(poss_points)[np.nonzero(conf)]
 
 	lattice_points = cluster_points(lattice_points)
 
-	# for point in lattice_points:
-	# 	cv2.circle(lattice_disp, (int(point[0]), int(point[1])), 5, (0, 255, 0), -1)
-	#
-	# cv2.imshow("lattice", lattice_disp)
-	# cv2.waitKey()
+	lattice_disp = img.copy()
+
+	for point in lattice_points:
+		cv2.circle(lattice_disp, (int(point[0]), int(point[1])), 3, (0, 255, 0), -1)
+
+	cv2.imwrite(os.path.join(out_dir, "lattice_points.jpg"), lattice_disp)
 
 	return lattice_points
 
@@ -150,10 +138,10 @@ def polyscore(corners, lattice_points, centroid, alpha, beta):
 	return math.pow(num_points_inside, 4) / math.pow(area, 2) * W(3, avg_dist) * W(5, centroid_dist)
 
 
-def find_chessboard(img, lattice_point_model):
-	lines = line_detection.find_lines_rho_theta(img)
+def find_chessboard(img, lattice_point_model, out_dir):
+	lines = line_detection.find_lines_rho_theta(img, out_dir)
 
-	lattice_points = find_lattice_points(img, lines, lattice_point_model)
+	lattice_points = find_lattice_points(img, lines, lattice_point_model, out_dir)
 
 	lattice_points = utils.sorted_ccw(lattice_points)
 
@@ -204,28 +192,28 @@ def find_chessboard(img, lattice_point_model):
 			corners = [corner for corner in corners if 0 <= corner[0] < img.shape[1] and 0 <= corner[1] < img.shape[0]]
 			if len(corners) == 4:
 				p = polyscore(corners, lattice_points, centroid, alpha / 2, beta)
-				# print(p, corners)
 				if p > best_polyscore:
 					best_board = [board_lines, corners]
 					best_polyscore = p
 
-	# print(best_board)
+	board_disp = img.copy()
 
-	# line_disp = img.copy()
-	# for line in best_board[0]:
-	# 	rho, theta = line
-	# 	a = np.cos(theta)
-	# 	b = np.sin(theta)
-	# 	x0 = a * rho
-	# 	y0 = b * rho
-	# 	x1 = int(x0 + 1000 * -b)
-	# 	y1 = int(y0 + 1000 * a)
-	# 	x2 = int(x0 - 1000 * -b)
-	# 	y2 = int(y0 - 1000 * a)
-	# 	cv2.line(line_disp, (x1, y1), (x2, y2), (255, 0, 0), 4)
-	#
-	# cv2.imshow("lines", line_disp)
-	# cv2.waitKey()
+	for line in best_board[0]:
+		rho, theta = line
+		a = np.cos(theta)
+		b = np.sin(theta)
+		x0 = a * rho
+		y0 = b * rho
+		x1 = int(x0 + 1000 * -b)
+		y1 = int(y0 + 1000 * a)
+		x2 = int(x0 - 1000 * -b)
+		y2 = int(y0 - 1000 * a)
+		cv2.line(board_disp, (x1, y1), (x2, y2), (255, 0, 0), 4)
+
+	for corner in best_board[1]:
+		cv2.circle(board_disp, (int(corner[0]), int(corner[1])), 3, (0, 255, 0), -1)
+
+	cv2.imwrite(os.path.join(out_dir, "board_localization.jpg"), board_disp)
 
 	best_board[1] = utils.sorted_ccw(best_board[1])
 
