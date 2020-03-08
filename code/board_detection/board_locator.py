@@ -71,7 +71,7 @@ def cluster_points(points, max_dist=10):
 	return list(clusters)
 
 
-def find_lattice_points(img, lines, lattice_point_model, out_dir):
+def find_lattice_points(img, lines, lattice_point_model, out_dir=None):
 
 	intersections = [p for p in get_intersections(lines) if 0 <= p[0] < img.shape[1] and 0 <= p[1] < img.shape[0]]
 
@@ -80,12 +80,13 @@ def find_lattice_points(img, lines, lattice_point_model, out_dir):
 
 	lattice_points = cluster_points(lattice_points)
 
-	lattice_disp = img.copy()
+	if out_dir:
+		lattice_disp = img.copy()
 
-	for point in lattice_points:
-		cv2.circle(lattice_disp, (int(point[0]), int(point[1])), 3, (0, 255, 0), -1)
+		for point in lattice_points:
+			cv2.circle(lattice_disp, (int(point[0]), int(point[1])), 3, (0, 255, 0), -1)
 
-	cv2.imwrite(os.path.join(out_dir, "lattice_points.jpg"), lattice_disp)
+		cv2.imwrite(os.path.join(out_dir, "lattice_points.jpg"), lattice_disp)
 
 	return lattice_points
 
@@ -138,7 +139,7 @@ def polyscore(corners, lattice_points, centroid, alpha, beta):
 	return math.pow(num_points_inside, 4) / math.pow(area, 2) * W(3, avg_dist) * W(5, centroid_dist)
 
 
-def find_chessboard(img, lattice_point_model, out_dir):
+def find_chessboard(img, lattice_point_model, out_dir=None):
 	lines = line_detection.find_lines_rho_theta(img, out_dir)
 
 	lattice_points = find_lattice_points(img, lines, lattice_point_model, out_dir)
@@ -196,24 +197,25 @@ def find_chessboard(img, lattice_point_model, out_dir):
 					best_board = [board_lines, corners]
 					best_polyscore = p
 
-	board_disp = img.copy()
+	if out_dir:
+		board_disp = img.copy()
 
-	for line in best_board[0]:
-		rho, theta = line
-		a = np.cos(theta)
-		b = np.sin(theta)
-		x0 = a * rho
-		y0 = b * rho
-		x1 = int(x0 + 1000 * -b)
-		y1 = int(y0 + 1000 * a)
-		x2 = int(x0 - 1000 * -b)
-		y2 = int(y0 - 1000 * a)
-		cv2.line(board_disp, (x1, y1), (x2, y2), (255, 0, 0), 4)
+		for line in best_board[0]:
+			rho, theta = line
+			a = np.cos(theta)
+			b = np.sin(theta)
+			x0 = a * rho
+			y0 = b * rho
+			x1 = int(x0 + 1000 * -b)
+			y1 = int(y0 + 1000 * a)
+			x2 = int(x0 - 1000 * -b)
+			y2 = int(y0 - 1000 * a)
+			cv2.line(board_disp, (x1, y1), (x2, y2), (255, 0, 0), 4)
 
-	for corner in best_board[1]:
-		cv2.circle(board_disp, (int(corner[0]), int(corner[1])), 3, (0, 255, 0), -1)
+		for corner in best_board[1]:
+			cv2.circle(board_disp, (int(corner[0]), int(corner[1])), 3, (0, 255, 0), -1)
 
-	cv2.imwrite(os.path.join(out_dir, "board_localization.jpg"), board_disp)
+		cv2.imwrite(os.path.join(out_dir, "board_localization.jpg"), board_disp)
 
 	best_board[1] = utils.sorted_ccw(best_board[1])
 

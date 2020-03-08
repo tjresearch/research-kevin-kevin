@@ -99,7 +99,7 @@ def disp_lines_ab(lines, img):
 	return disp
 
 
-def find_lines(img, out_dir):
+def find_lines(img, out_dir=None):
 	gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
 	i = 0
@@ -112,12 +112,13 @@ def find_lines(img, out_dir):
 			if line not in lines:
 				lines.append(line)
 
-	line_disp = img.copy()
+	if out_dir:
+		line_disp = img.copy()
 
-	for line in lines:
-		cv2.line(line_disp, tuple(line[0]), tuple(line[1]), (255, 0, 0), 2)
+		for line in lines:
+			cv2.line(line_disp, tuple(line[0]), tuple(line[1]), (255, 0, 0), 2)
 
-	cv2.imwrite(os.path.join(out_dir, "line_detection.jpg"), line_disp)
+		cv2.imwrite(os.path.join(out_dir, "line_detection.jpg"), line_disp)
 
 	for i in range(len(lines)):
 		lines[i] = [lines[i], i, 0]  # Line, parent, rank
@@ -151,7 +152,7 @@ def find_lines(img, out_dir):
 
 
 
-def find_lines_rho_theta(img, out_dir):
+def find_lines_rho_theta(img, out_dir=None):
 	lines = find_lines(img, out_dir)
 	rho_theta_lines = []
 	for line in lines:
