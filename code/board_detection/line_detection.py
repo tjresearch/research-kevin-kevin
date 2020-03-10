@@ -146,7 +146,8 @@ def find_lines(img, out_dir=None):
 
 	linked_disp = disp_lines_ab(linked_lines, img)
 
-	cv2.imwrite(os.path.join(out_dir, "line_linking.jpg"), linked_disp)
+	if out_dir:
+		cv2.imwrite(os.path.join(out_dir, "line_linking.jpg"), linked_disp)
 
 	return linked_lines
 
