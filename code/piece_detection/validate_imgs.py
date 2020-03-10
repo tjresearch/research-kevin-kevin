@@ -6,7 +6,7 @@ import sys, time
 import cv2
 import os
 import numpy as np
-from piece_labelling import piece_label_handler
+from data_collection import piece_label_handler
 
 """
 turn filename (SAN) into human-readable piece name

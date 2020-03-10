@@ -13,7 +13,7 @@ def main():
     red_num = int(sys.argv[3])
     print(sys.argv)
     if len(sys.argv) < 3:
-        exit("Usage: python class_reducer.py [in_dir] [out_dir] [reduction_pct]")
+        exit("Usage: python class_reducer.py [in_dir] [out_dir] [max_cls_size]")
 
     if not os.path.exists(output_dir):
         os.mkdir(output_dir)
