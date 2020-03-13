@@ -99,7 +99,7 @@ def disp_lines_ab(lines, img):
 	return disp
 
 
-def find_lines(img, out_dir=None):
+def find_lines(img, out_dir=""):
 	gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
 	i = 0
@@ -142,19 +142,18 @@ def find_lines(img, out_dir=None):
 
 	linked_lines = []
 	for group in groups.values():
-		linked_lines.append(line_linking.link(group))
-
-	linked_disp = disp_lines_ab(linked_lines, img)
+		if len(group) > 1:
+			linked_lines.append(line_linking.link(group))
 
 	if out_dir:
+		linked_disp = disp_lines_ab(linked_lines, img)
+
 		cv2.imwrite(os.path.join(out_dir, "line_linking.jpg"), linked_disp)
 
 	return linked_lines
 
-
-
-def find_lines_rho_theta(img, out_dir=None):
-	lines = find_lines(img, out_dir)
+def find_lines_rho_theta(img, out_dir=""):
+	lines = find_lines(img, out_dir=out_dir)
 	rho_theta_lines = []
 	for line in lines:
 		rho_theta_lines.append(utils.convert_ab_to_rho_theta(line))

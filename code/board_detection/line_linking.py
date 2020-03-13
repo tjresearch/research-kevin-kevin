@@ -46,7 +46,6 @@ def linkable(l1, l2, img, t):
 	else:
 		return (mag1 / gamma > delta) and (mag2 / gamma > delta)
 
-
 def link(lines):
 	points = []
 	for line in lines:
