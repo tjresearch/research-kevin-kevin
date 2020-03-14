@@ -1,4 +1,5 @@
 import cv2
+import os
 import numpy as np
 import utils
 
@@ -26,7 +27,7 @@ def quadrilateral_slice(points, arr):
 """
 called by split_chessboard() in identify_pieces
 """
-def regioned_segment_board(img, corners, SQ_SIZE):
+def regioned_segment_board(img, corners, SQ_SIZE, out_dir=""):
 	dst_size = SQ_SIZE * 8
 	dst_points = [(SQ_SIZE, SQ_SIZE), (SQ_SIZE, dst_size - SQ_SIZE), (dst_size - SQ_SIZE, dst_size - SQ_SIZE), (dst_size - SQ_SIZE, SQ_SIZE)]
 	H = utils.find_homography(corners, dst_points)
@@ -52,8 +53,17 @@ def regioned_segment_board(img, corners, SQ_SIZE):
 				(raw_corners[3][0]-margin[2], raw_corners[3][1]+margin[3])
 			)
 			# warped_region_corners = [utils.inverse_warp_point(region_corners[k], H) for k in range(4)]
-
 			sqr_corners.append(np.array(warped_corners))
 			top_ortho_regions.append(np.array(region_corners))
+
+	if out_dir:
+		segment_disp = img.copy()
+
+		for square in sqr_corners:
+			int_square = np.int0(square)
+			for i in range(4):
+				cv2.line(segment_disp, tuple(int_square[i]), tuple(int_square[(i + 1) % 4]), (255, 0, 0), 3)
+
+		cv2.imwrite(os.path.join(out_dir, "board_segmentation.jpg"), segment_disp)
 	
 	return sqr_corners, top_ortho_regions, H

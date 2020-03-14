@@ -53,6 +53,7 @@ class Display(tk.Frame):
 										 "board_localization.jpg",
 										 "board_segmentation.jpg",
 										 "orthophoto_guesses.jpg",
+										 "bounding_boxes.jpg",
 										 "unsheared_sqrs"]
 		self.intermediate_image_dir = "./assets/intermediate_images"
 
@@ -112,11 +113,31 @@ class Display(tk.Frame):
 		self.pause_play_button.pack(side=tk.LEFT)
 		self.next_frame_button.pack(side=tk.LEFT)
 
-		# Intialize the FEN/PGN display
-		self.diagram_label = tk.Label(self, padx=20, pady=10, anchor="nw")
-		self.diagram_label.configure(font=("Helvetica", 20))
+		self.side_display_frame = tk.Frame(self)
 
-		self.diagram_label.pack(side=tk.RIGHT)
+		self.status_frame = tk.Frame(self.side_display_frame)
+
+		self.status_label = tk.Text(self.status_frame, width=40, height=12, font="Helvetica 16")
+		self.status_label.tag_configure("bold", font="Helvetica 16 bold")
+		self.status_label.insert("end", "Status:\n", "bold")
+		self.status_label.configure(state="disabled")
+
+		self.status_scroll = tk.Scrollbar(self.status_frame, orient="vertical", command=self.status_label.yview)
+		self.status_label.configure(yscrollcommand=self.status_scroll.set)
+
+		self.status_label.grid(row=0, column=0, rowspan=12, sticky="w")
+		self.status_scroll.grid(row=0, column=1, rowspan=12, sticky="ns")
+
+
+		# Intialize the FEN/PGN display
+		self.diagram_frame = tk.Frame(self.side_display_frame, width=320, height=320)
+		self.diagram_label = tk.Label(self.diagram_frame)
+		self.diagram_label.place(anchor="center", relx=0.5, rely=0.5)
+
+		self.status_frame.pack(side=tk.TOP)
+		self.diagram_frame.pack(side=tk.BOTTOM)
+
+		self.side_display_frame.pack(side=tk.RIGHT, padx=10, pady=10)
 
 		self.image_label.pack(side=tk.TOP)
 		self.caption.pack(side=tk.TOP)
@@ -145,21 +166,27 @@ class Display(tk.Frame):
 				placeholder_image = "{}.jpg".format(path)
 			shutil.copy(os.path.join(placeholder_dir, placeholder_image), os.path.join(self.intermediate_image_dir, placeholder_image))
 
+	def status_update(self, text):
+		print(text)
+		self.status_label.configure(state="normal")
+		self.status_label.insert("end", text + "\n")
+		self.status_label.configure(state="disabled")
+
 	def load_models(self):
 		model_dir = "../models"
 
 		# Load board models
-		print("Loading board model...")
+		self.status_update("Loading board model...")
 		st_load_time = time.time()
 		self.lattice_point_model = board_locator.load_model(os.path.join(model_dir, "lattice_points_model.json"),
 													   os.path.join(model_dir, "lattice_points_model.h5"))
-		print("Loaded in {} s".format(time.time() - st_load_time))
+		self.status_update("> Loaded in {} s".format(time.time() - st_load_time))
 
 		# Load piece models
-		print("Loading piece model...")
+		self.status_update("Loading piece model...")
 		st_load_time = time.time()
 		self.piece_model = identify_pieces.local_load_model(os.path.join(model_dir, "piece_detection_model.h5"))
-		print("Loaded in {} s".format(time.time() - st_load_time))
+		self.status_update("> Loaded in {} s".format(time.time() - st_load_time))
 
 		self.models_loaded = True
 
@@ -342,11 +369,15 @@ class Display(tk.Frame):
 
 		self.processing = True
 
+		self.status_update("Locating board...")
 		st_locate_time = time.time()
 		lines, corners = board_locator.find_chessboard(self.cur_raw_image, self.lattice_point_model, "./assets/intermediate_images")
-		print("Located board in {} s".format(time.time() - st_locate_time))
+		self.status_update("> Located board in {} s".format(time.time() - st_locate_time))
 
+		self.status_update("Identifying pieces...")
+		st_identify_time = time.time()
 		board = identify_pieces.classify_pieces(self.cur_raw_image, corners, self.piece_model, TARGET_SIZE, ("../assets", "./assets/intermediate_images"))
+		self.status_update("> Identified pieces in {} s".format(time.time() - st_identify_time))
 
 		board_string = "".join("".join(row) for row in board)
 
