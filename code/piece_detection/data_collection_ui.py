@@ -6,16 +6,23 @@ import time
 from tkinter.messagebox import askyesno
 from datetime import datetime
 from PIL import Image, ImageTk
+import numpy as np
 
-from identify_pieces import split_chessboard, order_points
+from identify_pieces import split_chessboard, order_points, local_load_model, pred_squares
 sys.path.insert(1, "../board_detection")
 import board_locator, board_segmentation
 
 immortals = {}
 notation = {"white_pawn":"P", "white_knight":"N", "white_bishop":"B", "white_rook":"R", "white_queen":"Q", "white_king":"K",
 			"black_pawn":"p", "black_knight":"n", "black_bishop":"b", "black_rook":"r", "black_queen":"q", "black_king":"k"}
+rev_notation = {v:k for k, v in notation.items()}
 
-hotkeys = {"<space>":"toggle", "f":"clear", "q":"pawn", "w":"knight", "e":"bishop", "a":"rook", "s":"queen", "d":"king"}
+hotkeys = {"<space>":"toggle", "x":"clear", "q":"pawn", "a":"knight", "s":"bishop", "d":"rook", "w":"queen", "e":"king"}
+
+print("loading piece detection model...")
+piece_detection_model = local_load_model("../models/piece_detection_model.h5")
+TARGET_SIZE = (224, 112)
+print("piece detection model loaded")
 
 class DataCollectionDisp(tk.Frame):
 	def __init__(self, parent, img, squares, indices, save_dir):
@@ -29,7 +36,7 @@ class DataCollectionDisp(tk.Frame):
 
 		self.colors = ["#FFE1BB", "#EBD297"]
 
-		self.square_size = 80
+		self.square_size = 60
 
 		self.selected_piece = ""
 
@@ -38,6 +45,17 @@ class DataCollectionDisp(tk.Frame):
 		self.board_canvas = tk.Canvas(self.top_frame, borderwidth=0, highlightthickness=0, width=self.square_size * 8, height=self.square_size * 8)
 		self.board_ids = []
 		self.board = []
+
+		pred_board = pred_squares(TARGET_SIZE, piece_detection_model, squares, indices) #get nnet preds
+		#rotate board for std display (white on bottom)
+		#converting to numpy and back takes 0.0 s (rounded to 3 digits)
+		pred_board = np.asarray(pred_board)
+		pred_board = np.resize(pred_board, (8,8))
+		pred_board = np.rot90(pred_board, 3)
+		self.preds = [[None for j in range(8)] for i in range(8)]
+		for i in range(8):
+			for j in range(8):
+				self.preds[i][j] = pred_board[i][j]
 
 		self.init_board()
 
@@ -51,7 +69,8 @@ class DataCollectionDisp(tk.Frame):
 
 		self.image_label = tk.Label(self.top_frame)
 
-		disp = Image.fromarray(cv2.cvtColor(cv2.resize(img, None, fx=0.75, fy=0.75), cv2.COLOR_BGR2RGB))
+		# disp = Image.fromarray(cv2.cvtColor(cv2.resize(img, None, fx=0.75, fy=0.75), cv2.COLOR_BGR2RGB))
+		disp = Image.fromarray(cv2.cvtColor(cv2.resize(img, None, fx=0.6, fy=0.6), cv2.COLOR_BGR2RGB))
 		render = ImageTk.PhotoImage(disp)
 		self.image_label.configure(image=render)
 		self.image_label.image = render
@@ -62,8 +81,8 @@ class DataCollectionDisp(tk.Frame):
 
 		self.button_frame = tk.Frame(self.middle_frame)
 
-		self.selected_piece_label = tk.Label(self.middle_frame, text="Selected: clear")
-		self.selected_piece_label.pack(side=tk.TOP)
+		# self.selected_piece_label = tk.Label(self.middle_frame, text="Selected: clear")
+		# self.selected_piece_label.pack(side=tk.TOP)
 
 		self.white_frame = tk.Frame(self.button_frame)
 		self.black_frame = tk.Frame(self.button_frame)
@@ -103,6 +122,10 @@ class DataCollectionDisp(tk.Frame):
 		self.pack(fill="both", expand="true")
 
 	def init_board(self):
+		# temp
+		for temp in self.preds:
+			print(temp)
+
 		for r in range(8):
 			row = []
 			row_ids = []
@@ -116,11 +139,26 @@ class DataCollectionDisp(tk.Frame):
 			self.board.append(row)
 			self.board_ids.append(row_ids)
 
+		# start board with nnet preds
+		for r in range(8):
+			for c in range(8):
+				if self.preds[r][c] == "-": continue
+				x = c * self.square_size + self.square_size // 2
+				y = r * self.square_size + self.square_size // 2
+				self.selected_piece = rev_notation[self.preds[r][c]]
+				img = Image.open("../assets/piece_images/{}.png".format(self.selected_piece))
+				img = img.resize((self.square_size, self.square_size))
+				render = ImageTk.PhotoImage(img)
+				self.board_canvas.delete(self.board_ids[r][c])
+				self.board[r][c] = notation[self.selected_piece]
+				self.board_ids[r][c] = self.board_canvas.create_image((x, y), image=render)
+				immortals[self.board_ids[r][c]] = render
+
 	def piece_button_callback(self, piece):
 		self.selected_piece = piece
 		new_text = "Selected: {}".format(piece if piece else "clear")
-		self.selected_piece_label.configure(text=new_text)
-		self.selected_piece_label.text = new_text
+		# self.selected_piece_label.configure(text=new_text)
+		# self.selected_piece_label.text = new_text
 
 	def hotkey_handler(self, event, command):
 		if command == "toggle":
@@ -135,8 +173,8 @@ class DataCollectionDisp(tk.Frame):
 			else:
 				self.selected_piece = "white_{}".format(command)
 		new_text = "Selected: {}".format(self.selected_piece if self.selected_piece else "clear")
-		self.selected_piece_label.configure(text=new_text)
-		self.selected_piece_label.text = new_text
+		# self.selected_piece_label.configure(text=new_text)
+		# self.selected_piece_label.text = new_text
 
 	def mouse_callback(self, event):
 		global immortals
@@ -255,7 +293,7 @@ def save_squares(file, outer_dir, lattice_point_model, root, board_corners):
 	#find corners of board
 	corners = find_board(img, file, board_corners)
 
-	#take corners, split image into subimgs of viable squares & their indicies
+	#take corners, split image into subimgs of viable squares & their indices
 	squares, indices = split_chessboard(img, corners)
 	#label squares with pieces, save
 	label_subimgs(img, squares, indices, save_dir, root)

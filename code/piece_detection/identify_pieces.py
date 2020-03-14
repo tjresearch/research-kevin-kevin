@@ -365,7 +365,7 @@ def split_chessboard(img, corners, graphics_IO=None):
 	#segment board
 	SQ_SIZE = 112
 	# sqr_corners, top_ortho_regions, bot_ortho_regions, H, ext_H = regioned_segment_board(img, corners, SQ_SIZE)
-	sqr_corners, top_ortho_regions, H = regioned_segment_board(img, corners, SQ_SIZE, out_dir=graphics_IO[1])
+	sqr_corners, top_ortho_regions, H = regioned_segment_board(img, corners, SQ_SIZE, graphics_IO)
 
 	#use orthophoto to find poss piece locations
 	# ortho_guesses = get_ortho_guesses(img, top_ortho_regions, H, bot_ortho_regions, ext_H, SQ_SIZE)
