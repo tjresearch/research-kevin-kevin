@@ -29,6 +29,7 @@ def main():
     shutil.copytree(input_dir, train_dir)
 
     for classname in os.listdir(train_dir):
+        if classname.startswith("."): continue
         #make new class in validation set if needed
         valid_class_dir = os.path.join(valid_dir, classname)
         if classname not in os.listdir(valid_dir):
