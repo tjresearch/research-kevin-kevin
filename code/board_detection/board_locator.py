@@ -83,10 +83,10 @@ def find_lattice_points(img, lines, lattice_point_model, out_dir=None):
 	if out_dir:
 		lattice_disp = img.copy()
 
-	for point in lattice_points:
-		cv2.circle(lattice_disp, (int(point[0]), int(point[1])), 5, (0, 255, 0), -1)
+		for point in lattice_points:
+			cv2.circle(lattice_disp, (int(point[0]), int(point[1])), 5, (0, 255, 0), -1)
 
-	cv2.imwrite(os.path.join(out_dir, "lattice_points.jpg"), lattice_disp)
+		cv2.imwrite(os.path.join(out_dir, "lattice_points.jpg"), lattice_disp)
 
 	return lattice_points
 
