@@ -45,23 +45,24 @@ CLASS_TO_SAN = {
 ALL_CLASSES = [*CLASS_TO_SAN.keys()]
 
 def find_longest_contour(img):
-    img = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
+	src = img.copy()
+	img = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
 
-    ret, thresh = cv2.threshold(img,127,255,0)
-    ctrs, hierarchy = cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+	ret, thresh = cv2.threshold(img,127,255,0)
+	ctrs, hierarchy = cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
 
-    print(len(ctrs))
-    # disp = cv2.drawContours(src, ctrs, -1, (0,255,0), 3)
-    # cv2.imshow("disp",disp)
-    # cv2.waitKey()
+	print(len(ctrs))
+	# disp = cv2.drawContours(src, ctrs, -1, (0,255,0), 3)
+	# cv2.imshow("disp",disp)
+	# cv2.waitKey()
 
-    peri_map = {cv2.arcLength(ctrs[i],False):i for i in range(len(ctrs))}
-    max_ctr_i = peri_map[max(peri_map.keys())]
-    # disp = cv2.drawContours(src, ctrs, max_ctr_i, (255,0,0), 3)
-    # cv2.imshow("disp",disp)
-    # cv2.waitKey()
+	peri_map = {cv2.arcLength(ctrs[i],False):i for i in range(len(ctrs))}
+	max_ctr_i = peri_map[max(peri_map.keys())]
+	disp = cv2.drawContours(src, ctrs, max_ctr_i, (255,0,0), 3)
+	cv2.imshow("disp",disp)
+	cv2.waitKey()
 
-    return ctrs[max_ctr_i]
+	return ctrs[max_ctr_i]
 
 """
 resize to width/height while keeping aspect ratio
@@ -126,21 +127,25 @@ return 8x8 binary np array
 	piece = 1, empty = 0
 """
 def get_ortho_guesses(img, top_ortho_regions, H, SQ_SIZE):
-	img = increase_color_contrast(img, 3.5)
+	high_contrast = increase_color_contrast(img, 3.5)
 
 	#same as canny() in line_detection.py but no lower hysteresis thresh
 	#and no medianBlur, to find black pieces
 	sigma = 0.25
-	v = np.median(img)
+	v = np.median(high_contrast)
 	lower = 0
 	upper = int(min(255, (1.0 + sigma) * v))
-	canny_edge_img = cv2.Canny(img, lower, upper)
+	canny_edge_img = cv2.Canny(high_contrast, lower, upper)
 
 	#get topdown projection of Canny
 	dims = (SQ_SIZE*8, SQ_SIZE*8)
 	topdown = cv2.transpose(cv2.warpPerspective(canny_edge_img, H, dims))
-	# cv2.imshow("topdown", topdown)
+
+	# color_topdown = cv2.transpose(cv2.warpPerspective(img, H, dims))
+	# cv2.imshow("color_topdown", color_topdown)
 	# cv2.waitKey()
+	#
+	# find_longest_contour(color_topdown)
 
 	#identify number of significant canny points based on white_pix_thresh
 	canny_cts = []
@@ -370,8 +375,8 @@ def split_chessboard(img, corners, graphics_IO=None):
 	#use orthophoto to find poss piece locations
 	# ortho_guesses = get_ortho_guesses(img, top_ortho_regions, H, bot_ortho_regions, ext_H, SQ_SIZE)
 	ortho_guesses = get_ortho_guesses(img, top_ortho_regions, H, SQ_SIZE)
-	print("ortho_guesses:")
-	print(ortho_guesses)
+	# print("ortho_guesses:")
+	# print(ortho_guesses)
 	ortho_guesses = ortho_guesses.flatten()
 
 	#turn corner coords into list of imgs
@@ -390,10 +395,9 @@ def local_load_model(net_path):
 """
 predict squares, given segmented and orthophoto-pared
 """
-def pred_squares(TARGET_SIZE, net, squares, indices, flat_poss=None):
-	print("pred_squares start")
+def pred_squares(TARGET_SIZE, net, squares, indices, flat_poss=None, graphics_IO=None):
 	global CLASS_TO_SAN, ALL_CLASSES
-	st_pred_time = time.time()
+	# st_pred_time = time.time()
 
 	#populate poss sets for given squares
 	poss_sets = []
@@ -416,9 +420,10 @@ def pred_squares(TARGET_SIZE, net, squares, indices, flat_poss=None):
 	#feed preds through poss set checks, repred as needed
 	#get SAN and fill pred_board
 	pred_board = ["-" for i in range(64)] #flattened 8x8 chessboard
-
+	sorted_conf = []
 	for i in range(len(preds)):
 		pred = preds[i].argsort()[::-1] #most to least likely classes, based on pred
+		sorted_conf.append(pred[:5])
 		if poss_sets:
 			poss = poss_sets[i]
 		else:
@@ -441,6 +446,9 @@ def pred_squares(TARGET_SIZE, net, squares, indices, flat_poss=None):
 
 		pred_board[indices[i]] = pred_SAN
 
+	if graphics_IO:
+		pass #see corners_to_imgs subimgs
+
 	#rotate board for std display (white on bottom)
 	#converting to numpy and back takes 0.0 s (rounded to 3 digits)
 	pred_board = np.asarray(pred_board)
@@ -451,9 +459,9 @@ def pred_squares(TARGET_SIZE, net, squares, indices, flat_poss=None):
 		for j in range(8):
 			board[i][j] = str(pred_board[i][j])
 
-	#print time
-	pred_time = time.time()-st_pred_time
-	print("\nPrediction time: {} s.".format(round(pred_time, 3)))
+	# #print time
+	# pred_time = time.time()-st_pred_time
+	# print("\nPrediction time: {} s.".format(round(pred_time, 3)))
 
 	return board #return nested lists
 
@@ -461,7 +469,7 @@ def pred_squares(TARGET_SIZE, net, squares, indices, flat_poss=None):
 classify pieces in img given these: board corners, piece_nnet, TARGET_SIZE of nnet
 optional arg: prev state--in same form as output of this method (array of ltrs)
 """
-def classify_pieces(img, corners, net, TARGET_SIZE, graphics_IO, prev_state=None):
+def classify_pieces(img, corners, net, TARGET_SIZE, prev_state=None, graphics_IO=None):
 	squares, indices = split_chessboard(img, corners, graphics_IO)
 
 	#compute possible next moves from prev state, flatten to 1D list
@@ -480,7 +488,7 @@ def classify_pieces(img, corners, net, TARGET_SIZE, graphics_IO, prev_state=None
 				print(flat_poss[r*8+c], end=', ')
 			print()
 
-	board = pred_squares(TARGET_SIZE, net, squares, indices, flat_poss)
+	board = pred_squares(TARGET_SIZE, net, squares, indices, flat_poss=flat_poss, graphics_IO=graphics_IO)
 	return board
 
 if __name__ == '__main__':

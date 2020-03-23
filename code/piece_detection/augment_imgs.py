@@ -34,21 +34,21 @@ image = imread(filename)
 # Creating a dataset which contains just one image.
 images = image.reshape((1, image.shape[0], image.shape[1], image.shape[2]))
 
-imshow(images[0])
-show()
+# imshow(images[0])
+# show()
+
 # some values tweaked off:
-# https://github.com/jkjung-avt/keras-cats-dogs-tutorial/blob/master/train_cropped.py
 data_generator = ImageDataGenerator(
     # preprocessing_function=preprocess_input,
-    rotation_range=30,
-    shear_range=30,
+    rotation_range=0,
+    shear_range=10,
 
-    width_shift_range=0.2,
-    height_shift_range=0.2,
+    width_shift_range=0.1,
+    height_shift_range=0.1,
     zoom_range=0.3,
 
-    brightness_range=(0.75, 1.0),
-    channel_shift_range=75.0,
+    brightness_range=(0.8, 1.0),
+    channel_shift_range=50.0,
 
     horizontal_flip=True,
 )

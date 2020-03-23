@@ -402,7 +402,7 @@ class Display(tk.Frame):
 
 		self.status_update("Identifying pieces...")
 		st_identify_time = time.time()
-		board = identify_pieces.classify_pieces(self.cur_raw_image, corners, self.piece_model, TARGET_SIZE, ("../assets", "./assets/intermediate_images"))
+		board = identify_pieces.classify_pieces(self.cur_raw_image, corners, self.piece_model, TARGET_SIZE, graphics_IO=("../assets", "./assets/intermediate_images"))
 		self.status_update("> Identified pieces in {} s".format(time.time() - st_identify_time))
 
 		board_string = "".join("".join(row) for row in board)
