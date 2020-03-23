@@ -45,23 +45,24 @@ CLASS_TO_SAN = {
 ALL_CLASSES = [*CLASS_TO_SAN.keys()]
 
 def find_longest_contour(img):
-    img = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
+	src = img.copy()
+	img = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
 
-    ret, thresh = cv2.threshold(img,127,255,0)
-    ctrs, hierarchy = cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+	ret, thresh = cv2.threshold(img,127,255,0)
+	ctrs, hierarchy = cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
 
-    print(len(ctrs))
-    # disp = cv2.drawContours(src, ctrs, -1, (0,255,0), 3)
-    # cv2.imshow("disp",disp)
-    # cv2.waitKey()
+	print(len(ctrs))
+	# disp = cv2.drawContours(src, ctrs, -1, (0,255,0), 3)
+	# cv2.imshow("disp",disp)
+	# cv2.waitKey()
 
-    peri_map = {cv2.arcLength(ctrs[i],False):i for i in range(len(ctrs))}
-    max_ctr_i = peri_map[max(peri_map.keys())]
-    # disp = cv2.drawContours(src, ctrs, max_ctr_i, (255,0,0), 3)
-    # cv2.imshow("disp",disp)
-    # cv2.waitKey()
+	peri_map = {cv2.arcLength(ctrs[i],False):i for i in range(len(ctrs))}
+	max_ctr_i = peri_map[max(peri_map.keys())]
+	disp = cv2.drawContours(src, ctrs, max_ctr_i, (255,0,0), 3)
+	cv2.imshow("disp",disp)
+	cv2.waitKey()
 
-    return ctrs[max_ctr_i]
+	return ctrs[max_ctr_i]
 
 """
 resize to width/height while keeping aspect ratio
@@ -126,21 +127,25 @@ return 8x8 binary np array
 	piece = 1, empty = 0
 """
 def get_ortho_guesses(img, top_ortho_regions, H, SQ_SIZE):
-	img = increase_color_contrast(img, 3.5)
+	high_contrast = increase_color_contrast(img, 3.5)
 
 	#same as canny() in line_detection.py but no lower hysteresis thresh
 	#and no medianBlur, to find black pieces
 	sigma = 0.25
-	v = np.median(img)
+	v = np.median(high_contrast)
 	lower = 0
 	upper = int(min(255, (1.0 + sigma) * v))
-	canny_edge_img = cv2.Canny(img, lower, upper)
+	canny_edge_img = cv2.Canny(high_contrast, lower, upper)
 
 	#get topdown projection of Canny
 	dims = (SQ_SIZE*8, SQ_SIZE*8)
 	topdown = cv2.transpose(cv2.warpPerspective(canny_edge_img, H, dims))
-	# cv2.imshow("topdown", topdown)
+
+	# color_topdown = cv2.transpose(cv2.warpPerspective(img, H, dims))
+	# cv2.imshow("color_topdown", color_topdown)
 	# cv2.waitKey()
+	#
+	# find_longest_contour(color_topdown)
 
 	#identify number of significant canny points based on white_pix_thresh
 	canny_cts = []
