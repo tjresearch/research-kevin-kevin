@@ -1,17 +1,9 @@
 import numpy as np
 import utils
 
-def get_line_eq(line):
-	p1, p2 = line
-
-	A = np.linalg.inv(np.array([[p1[0], p1[1]], [p2[0], p2[1]]]))
-	B = np.array([[1], [1]])
-
-	return np.round(np.matmul(A, B)[:, 0].tolist(), 10)
-
 def find_intersection(l1, l2):
-	a1, b1 = get_line_eq(l1)
-	a2, b2 = get_line_eq(l2)
+	a1, b1 = utils.get_line_eq_ab(l1)
+	a2, b2 = utils.get_line_eq_ab(l2)
 
 	try:
 		A = np.linalg.inv(np.array([[a1, b1], [a2, b2]]))

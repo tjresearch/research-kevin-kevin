@@ -49,6 +49,7 @@ class Display(tk.Frame):
 		self.intermediate_image_order = ["raw.jpg",
 										 "line_detection.jpg",
 										 "line_linking.jpg",
+										 "line_filtering.jpg",
 										 "lattice_points.jpg",
 										 "board_localization.jpg",
 										 "board_segmentation.jpg",
@@ -80,7 +81,18 @@ class Display(tk.Frame):
 
 		# Initialize the buttons to work with the backend
 		self.bottom_button_frame = tk.Frame(self.button_frame)
-		self.process_button = tk.Button(self.bottom_button_frame, command=self.process, text="Process", height=3, width=16)
+
+		self.process_frame = tk.Frame(self.bottom_button_frame)
+		self.process_button = tk.Button(self.process_frame, command=self.process, text="Process", height=3, width=16)
+
+		self.prev_corners = None
+		self.prev_raw_image = None
+
+		self.use_prev_corners = tk.IntVar()
+		self.prev_check = tk.Checkbutton(self.process_frame, text="Use Previous Corners", variable=self.use_prev_corners)
+
+		self.process_button.pack(side=tk.TOP)
+		# self.prev_check.pack(side=tk.BOTTOM)
 
 		# Initialize the buttons that will tab through intermediate images
 		self.nav_button_frame = tk.Frame(self.bottom_button_frame)
@@ -91,7 +103,7 @@ class Display(tk.Frame):
 		self.next_button.pack(side=tk.RIGHT)
 		self.nav_button_frame.pack(side=tk.BOTTOM)
 
-		self.process_button.pack(side=tk.TOP)
+		self.process_frame.pack(side=tk.TOP)
 		self.bottom_button_frame.pack(side=tk.BOTTOM, pady=20)
 
 		self.button_frame.pack(side=tk.LEFT)
@@ -105,7 +117,7 @@ class Display(tk.Frame):
 		self.show_image("assets/intermediate_images/placeholders/raw.jpg")
 
 		self.video_controls = tk.Frame(self.display_frame)
-		self.prev_frame_button = tk.Button(self.video_controls, command=self.prev_frame, text="Prev Frame", height=2, width=8)
+		self.prev_frame_button = tk.Button(self.video_controls, command=self.prev_raw_image, text="Prev Frame", height=2, width=8)
 		self.pause_play_button = tk.Button(self.video_controls, command=self.pause_play, text="Pause/Play", height=2, width=8)
 		self.next_frame_button = tk.Button(self.video_controls, command=self.next_frame, text="Next Frame", height=2, width=8)
 
@@ -127,7 +139,6 @@ class Display(tk.Frame):
 
 		self.status_label.grid(row=0, column=0, rowspan=12, sticky="w")
 		self.status_scroll.grid(row=0, column=1, rowspan=12, sticky="ns")
-
 
 		# Intialize the FEN/PGN display
 		self.diagram_frame = tk.Frame(self.side_display_frame, width=320, height=320)
@@ -195,15 +206,21 @@ class Display(tk.Frame):
 			old_mode = self.mode
 			self.mode = new_mode
 
-			if old_mode == "live_video":
-				self.live_video_stop.set()
-			elif old_mode == "video":
+			if old_mode == "video":
 				self.video_controls.pack_forget()
 				self.video_stop.set()
+			elif old_mode == "live_video":
+				self.live_video_stop.set()
+			elif old_mode == "image":
+				if new_mode == "image":
+					self.prev_raw_image = self.cur_raw_image
+				else:
+					self.prev_check.pack_forget()
 
 			if self.mode == "image":
 				file = self.choose_file()
 				if file is not None and any(file.endswith(ext) for ext in supported_image_formats):
+					self.prev_check.pack(side=tk.BOTTOM)
 					self.caption["text"] = file
 					self.show_image(file)
 			elif self.mode == "video":
@@ -216,6 +233,8 @@ class Display(tk.Frame):
 				ret = self.start_live_video()
 				if not ret:
 					self.mode = old_mode
+
+			self.intermediate_index = 0
 
 	def show_image(self, image_path):
 		load = cv2.imread(image_path)
@@ -371,7 +390,14 @@ class Display(tk.Frame):
 
 		self.status_update("Locating board...")
 		st_locate_time = time.time()
-		lines, corners = board_locator.find_chessboard(self.cur_raw_image, self.lattice_point_model, "./assets/intermediate_images")
+		if self.use_prev_corners.get():
+			self.status_update("Using previous corners...")
+			if self.prev_raw_image is None or self.prev_corners is None:
+				self.status_update("No previous data found. Calculating from scratch...")
+			lines, corners = board_locator.find_chessboard(self.cur_raw_image, self.lattice_point_model, "./assets/intermediate_images", (self.prev_raw_image, self.prev_corners))
+		else:
+			lines, corners = board_locator.find_chessboard(self.cur_raw_image, self.lattice_point_model, "./assets/intermediate_images")
+		self.prev_corners = [(corner[0], corner[1]) for corner in corners]
 		self.status_update("> Located board in {} s".format(time.time() - st_locate_time))
 
 		self.status_update("Identifying pieces...")

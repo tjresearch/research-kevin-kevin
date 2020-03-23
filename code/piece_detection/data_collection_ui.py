@@ -36,7 +36,7 @@ class DataCollectionDisp(tk.Frame):
 
 		self.colors = ["#FFE1BB", "#EBD297"]
 
-		self.square_size = 60
+		self.square_size = 80
 
 		self.selected_piece = ""
 

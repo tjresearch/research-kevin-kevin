@@ -139,84 +139,120 @@ def polyscore(corners, lattice_points, centroid, alpha, beta):
 	return math.pow(num_points_inside, 4) / math.pow(area, 2) * W(3, avg_dist) * W(5, centroid_dist)
 
 
-def find_chessboard(img, lattice_point_model, out_dir=""):
-	lines = line_detection.find_lines_rho_theta(img, out_dir)
+def find_chessboard(img, lattice_point_model, out_dir="", prev=(None, None)):
+	if prev[0] is None or prev[1] is None:
+		lines = line_detection.find_lines_rho_theta(img, out_dir)
 
-	lattice_points = find_lattice_points(img, lines, lattice_point_model, out_dir)
+		lattice_points = find_lattice_points(img, lines, lattice_point_model, out_dir)
 
-	lattice_points = utils.sorted_ccw(lattice_points)
+		lattice_points = utils.sorted_ccw(lattice_points)
 
-	for i in range(len(lattice_points)):
-		lattice_points[i] = (int(lattice_points[i][0]), int(lattice_points[i][1]))
+		for i in range(len(lattice_points)):
+			lattice_points[i] = (int(lattice_points[i][0]), int(lattice_points[i][1]))
 
-	alpha = math.sqrt(cv2.contourArea(np.asarray(lattice_points)) / 49)
-	beta = len(lattice_points) / 20
+		alpha = math.sqrt(cv2.contourArea(np.asarray(lattice_points)) / 49)
+		beta = len(lattice_points) / 20
 
-	X = sklearn.cluster.DBSCAN(eps=alpha * 4).fit(lattice_points)
+		X = sklearn.cluster.DBSCAN(eps=alpha * 4).fit(lattice_points)
 
-	point_clusters = {}
-	for i in range(len(lattice_points)):
-		if X.labels_[i] != -1:
-			if X.labels_[i] in point_clusters:
-				point_clusters[X.labels_[i]].append(lattice_points[i])
-			else:
-				point_clusters[X.labels_[i]] = [lattice_points[i]]
-
-	points = []
-	for i in point_clusters:
-		if len(point_clusters[i]) > len(points):
-			points = point_clusters[i]
-
-	centroid = list(np.mean(np.array(points), axis=0))
-	alpha = math.sqrt(cv2.contourArea(np.array(points)) / 49)
-
-	vertical = []
-	horizontal = []
-	for line in lines:
-		for point in points:
-			t1 = utils.rho_theta_line_point_dist(line, point) < alpha
-			t2 = utils.rho_theta_line_point_dist(line, centroid) > 2.5 * alpha
-			if t1 and t2:
-				if np.pi / 4 < line[1] < 3 * np.pi / 4:
-					if line not in horizontal:
-						horizontal.append(line)
+		point_clusters = {}
+		for i in range(len(lattice_points)):
+			if X.labels_[i] != -1:
+				if X.labels_[i] in point_clusters:
+					point_clusters[X.labels_[i]].append(lattice_points[i])
 				else:
-					if line not in vertical:
-						vertical.append(line)
+					point_clusters[X.labels_[i]] = [lattice_points[i]]
 
-	best_board = []
-	best_polyscore = 0
-	for v in itertools.combinations(vertical, 2):
-		for h in itertools.combinations(horizontal, 2):
-			board_lines = [v[0], v[1], h[0], h[1]]
-			corners = get_intersections(board_lines)
-			corners = [corner for corner in corners if 0 <= corner[0] < img.shape[1] and 0 <= corner[1] < img.shape[0]]
-			if len(corners) == 4:
-				p = polyscore(corners, lattice_points, centroid, alpha / 2, beta)
-				if p > best_polyscore:
-					best_board = [board_lines, corners]
-					best_polyscore = p
+		points = []
+		for i in point_clusters:
+			if len(point_clusters[i]) > len(points):
+				points = point_clusters[i]
 
-	if out_dir:
-		board_disp = img.copy()
+		centroid = list(np.mean(np.array(points), axis=0))
+		alpha = math.sqrt(cv2.contourArea(np.array(points)) / 49)
 
-		for line in best_board[0]:
-			rho, theta = line
-			a = np.cos(theta)
-			b = np.sin(theta)
-			x0 = a * rho
-			y0 = b * rho
-			x1 = int(x0 + 1000 * -b)
-			y1 = int(y0 + 1000 * a)
-			x2 = int(x0 - 1000 * -b)
-			y2 = int(y0 - 1000 * a)
-			cv2.line(board_disp, (x1, y1), (x2, y2), (255, 0, 0), 4)
+		vertical = []
+		horizontal = []
+		for line in lines:
+			for point in points:
+				t1 = utils.rho_theta_line_point_dist(line, point) < alpha
+				t2 = utils.rho_theta_line_point_dist(line, centroid) > 2.5 * alpha
+				if t1 and t2:
+					if np.pi / 4 < line[1] < 3 * np.pi / 4:
+						if line not in horizontal:
+							horizontal.append(line)
+					else:
+						if line not in vertical:
+							vertical.append(line)
 
-		for corner in best_board[1]:
-			cv2.circle(board_disp, (int(corner[0]), int(corner[1])), 3, (0, 255, 0), -1)
+		if out_dir:
+			filter_disp = img.copy()
+			for rho, theta in vertical:
+				a = np.cos(theta)
+				b = np.sin(theta)
+				x0 = a * rho
+				y0 = b * rho
+				x1 = int(x0 + 1000 * -b)
+				y1 = int(y0 + 1000 * a)
+				x2 = int(x0 - 1000 * -b)
+				y2 = int(y0 - 1000 * a)
+				cv2.line(filter_disp, (x1, y1), (x2, y2), (255, 0, 0), 4)
+			for rho, theta in horizontal:
+				a = np.cos(theta)
+				b = np.sin(theta)
+				x0 = a * rho
+				y0 = b * rho
+				x1 = int(x0 + 1000 * -b)
+				y1 = int(y0 + 1000 * a)
+				x2 = int(x0 - 1000 * -b)
+				y2 = int(y0 - 1000 * a)
+				cv2.line(filter_disp, (x1, y1), (x2, y2), (0, 255, 0), 4)
+			cv2.imwrite(os.path.join(out_dir, "line_filtering.jpg"), filter_disp)
 
-		cv2.imwrite(os.path.join(out_dir, "board_localization.jpg"), board_disp)
+		best_board = []
+		best_polyscore = 0
+		for v in itertools.combinations(vertical, 2):
+			for h in itertools.combinations(horizontal, 2):
+				board_lines = [v[0], v[1], h[0], h[1]]
+				corners = get_intersections(board_lines)
+				corners = [corner for corner in corners if 0 <= corner[0] < img.shape[1] and 0 <= corner[1] < img.shape[0]]
+				if len(corners) == 4:
+					p = polyscore(corners, lattice_points, centroid, alpha / 2, beta)
+					if p > best_polyscore:
+						best_board = [board_lines, corners]
+						best_polyscore = p
 
-	best_board[1] = utils.sorted_ccw(best_board[1])
+		if out_dir:
+			board_disp = img.copy()
 
-	return best_board
+			for line in best_board[0]:
+				rho, theta = line
+				a = np.cos(theta)
+				b = np.sin(theta)
+				x0 = a * rho
+				y0 = b * rho
+				x1 = int(x0 + 1000 * -b)
+				y1 = int(y0 + 1000 * a)
+				x2 = int(x0 - 1000 * -b)
+				y2 = int(y0 - 1000 * a)
+				cv2.line(board_disp, (x1, y1), (x2, y2), (255, 0, 0), 4)
+
+			for corner in best_board[1]:
+				cv2.circle(board_disp, (int(corner[0]), int(corner[1])), 3, (0, 255, 0), -1)
+
+			cv2.imwrite(os.path.join(out_dir, "board_localization.jpg"), board_disp)
+
+		best_board[1] = utils.sorted_ccw(best_board[1])
+
+		return best_board
+
+	else:
+		prev_frame, prev_corners = prev
+		new_corners, status, _ = cv2.calcOpticalFlowPyrLK(prev_frame, img, np.array(prev_corners).astype(np.float32), None)
+		new_corners = list(map(tuple, np.round(new_corners).astype(np.uint32).tolist()))
+
+		new_lines = []
+		for i in range(4):
+			new_lines.append(utils.convert_ab_to_rho_theta(utils.get_line_eq_ab((new_corners[i], new_corners[(i + 1) % 4]))))
+
+		return new_lines, new_corners
