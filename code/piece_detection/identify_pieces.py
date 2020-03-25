@@ -397,7 +397,6 @@ predict squares, given segmented and orthophoto-pared
 """
 def pred_squares(TARGET_SIZE, net, squares, indices, flat_poss=None, graphics_IO=None):
 	global CLASS_TO_SAN, ALL_CLASSES
-	# st_pred_time = time.time()
 
 	#populate poss sets for given squares
 	poss_sets = []
@@ -417,13 +416,20 @@ def pred_squares(TARGET_SIZE, net, squares, indices, flat_poss=None, graphics_IO
 	#predict on full stack of inputs
 	preds = net.predict(input_stack)
 
+	#ui representation of confidence intervals
+	if graphics_IO:
+		subfolder = os.path.join(graphics_IO[1], "conf_intervals")
+		if not os.path.exists(subfolder):
+			os.mkdir(subfolder)
+		else:
+			for file in os.listdir(subfolder):
+				os.remove(os.path.join(subfolder, file))
+
 	#feed preds through poss set checks, repred as needed
 	#get SAN and fill pred_board
 	pred_board = ["-" for i in range(64)] #flattened 8x8 chessboard
-	sorted_conf = []
 	for i in range(len(preds)):
 		pred = preds[i].argsort()[::-1] #most to least likely classes, based on pred
-		sorted_conf.append(pred[:5])
 		if poss_sets:
 			poss = poss_sets[i]
 		else:
@@ -446,8 +452,58 @@ def pred_squares(TARGET_SIZE, net, squares, indices, flat_poss=None, graphics_IO
 
 		pred_board[indices[i]] = pred_SAN
 
+	#ui representation of confidence intervals
+	# TODO: add poss set checking to visualization
 	if graphics_IO:
-		pass #see corners_to_imgs subimgs
+		for i in range(len(preds)):
+			# sq_num = indices[i]
+			raw_conf = list(preds[i])
+			pred = preds[i].argsort()[::-1] #most to least likely classes, based on pred
+			piece_map = {raw_conf[i]:ALL_CLASSES[i] for i in range(len(raw_conf))}
+			# print(raw_conf)
+			# print(pred)
+			# print(piece_map)
+			# print(type(raw_conf))
+			# print(type(pred))
+
+			arrow = cv2.imread(os.path.join(graphics_IO[0], "arrow_blank.png"))
+			small_sz = (112, 224)
+
+			sqr_img = squares[i]
+			disp_sqr = sqr_img.copy()
+			disp_sqr = cv2.resize(disp_sqr, dsize=small_sz, interpolation=cv2.INTER_CUBIC)
+			ds_shape = (disp_sqr.shape[1], disp_sqr.shape[0])
+
+			piece_filename = "{}.png".format(piece_map[raw_conf[pred[0]]])
+			# print(piece_filename)
+			# print(os.path.join(graphics_IO[0], "piece_images", piece_filename))
+			piece_icon = cv2.imread(os.path.join(graphics_IO[0], "piece_images", piece_filename))
+			pc_shape = (piece_icon.shape[1], piece_icon.shape[0])
+
+			l_st = (150, 200)
+			r_st = (150, 600)
+			arrow[l_st[0]:l_st[0]+ds_shape[1],l_st[1]:l_st[1]+ds_shape[0]] = disp_sqr
+			arrow[r_st[0]:r_st[0]+pc_shape[1],r_st[1]:r_st[1]+pc_shape[0]] = piece_icon
+
+			disp_conf = []
+			for indx in pred:
+				conf = raw_conf[indx]
+				pc = piece_map[conf]
+				disp_conf.append("{}: {}".format(pc, str(round(conf, 3))))
+
+			text_orig = (400, 400)
+			for disp_i in range(5):
+				line = disp_conf[disp_i]
+				print(line)
+				dy = disp_i*30
+				cv2.putText(arrow, line, (text_orig[0], text_orig[1]+dy), \
+						 	cv2.FONT_HERSHEY_TRIPLEX, 0.5, (0,0,0))
+
+			print(indices[i])
+			# cv2.imshow("arr", arrow)
+			# cv2.waitKey()
+			cv2.imwrite(os.path.join(subfolder, "sq_{}.jpg".format(indices[i])), arrow)
+
 
 	#rotate board for std display (white on bottom)
 	#converting to numpy and back takes 0.0 s (rounded to 3 digits)
@@ -458,10 +514,6 @@ def pred_squares(TARGET_SIZE, net, squares, indices, flat_poss=None, graphics_IO
 	for i in range(8):
 		for j in range(8):
 			board[i][j] = str(pred_board[i][j])
-
-	# #print time
-	# pred_time = time.time()-st_pred_time
-	# print("\nPrediction time: {} s.".format(round(pred_time, 3)))
 
 	return board #return nested lists
 
