@@ -27,23 +27,6 @@ sys.path.insert(2, '../chess_logic')
 from pgn_helper import display
 from next_moves import get_stacked_poss
 
-CLASS_TO_SAN = {
-	'black_bishop':'b',
-	'black_king':'k',
-	'black_knight':'n',
-	'black_pawn':'p',
-	'black_queen':'q',
-	'black_rook':'r',
-	'empty':'-',
-	'white_bishop':'B',
-	'white_king':'K',
-	'white_knight':'N',
-	'white_pawn':'P',
-	'white_queen':'Q',
-	'white_rook':'R'
-}
-ALL_CLASSES = [*CLASS_TO_SAN.keys()]
-
 def find_longest_contour(img):
 	src = img.copy()
 	img = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
@@ -396,7 +379,22 @@ def local_load_model(net_path):
 predict squares, given segmented and orthophoto-pared
 """
 def pred_squares(TARGET_SIZE, net, squares, indices, flat_poss=None, graphics_IO=None):
-	global CLASS_TO_SAN, ALL_CLASSES
+	CLASS_TO_SAN = {
+		'black_bishop':'b',
+		'black_king':'k',
+		'black_knight':'n',
+		'black_pawn':'p',
+		'black_queen':'q',
+		'black_rook':'r',
+		'empty':'-',
+		'white_bishop':'B',
+		'white_king':'K',
+		'white_knight':'N',
+		'white_pawn':'P',
+		'white_queen':'Q',
+		'white_rook':'R'
+	}
+	ALL_CLASSES = [*CLASS_TO_SAN.keys()]
 
 	#populate poss sets for given squares
 	poss_sets = []
