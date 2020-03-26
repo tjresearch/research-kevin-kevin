@@ -25,7 +25,8 @@ def quadrilateral_slice(points, arr):
 	return arr * np.repeat(indices[..., np.newaxis], 3, axis=2)
 
 """
-called by split_chessboard() in identify_pieces
+segments board into squares and orthophoto regions given inside corners
+called by split_chessboard() in piece_detection/square_splitter.py
 """
 def regioned_segment_board(img, corners, SQ_SIZE, graphics_IO=None):
 	dst_size = SQ_SIZE * 8

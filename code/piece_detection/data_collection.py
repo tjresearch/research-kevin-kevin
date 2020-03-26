@@ -1,4 +1,7 @@
 """
+DEPRECATED
+"""
+"""
 script to label pieces given an input image of a chessboard
 1. click on corners of board
 2. board is split into squares

@@ -16,8 +16,8 @@ import query_diagram
 sys.path.insert(1, "../board_detection")
 import board_locator
 
-sys.path.insert(1, "../piece_detection")
-import identify_pieces
+sys.path.insert(2, "../piece_detection")
+import piece_classifier
 
 supported_image_formats = [".bmp", ".pbm", ".pgm", ".ppm", ".sr", ".ras", ".jpeg", ".jpg", ".jpe", ".jp2", ".tiff", ".tif", ".png"]
 supported_video_formats = [".avi", ".flv", ".wmv", ".mov", ".mp4"]
@@ -196,7 +196,7 @@ class Display(tk.Frame):
 		# Load piece models
 		self.status_update("Loading piece model...")
 		st_load_time = time.time()
-		self.piece_model = identify_pieces.local_load_model(os.path.join(model_dir, "piece_detection_model.h5"))
+		self.piece_model = piece_classifier.local_load_model(os.path.join(model_dir, "piece_detection_model.h5"))
 		self.status_update("> Loaded in {} s".format(time.time() - st_load_time))
 
 		self.models_loaded = True
@@ -400,10 +400,10 @@ class Display(tk.Frame):
 		self.prev_corners = [(corner[0], corner[1]) for corner in corners]
 		self.status_update("> Located board in {} s".format(time.time() - st_locate_time))
 
-		self.status_update("Identifying pieces...")
-		st_identify_time = time.time()
-		board = identify_pieces.classify_pieces(self.cur_raw_image, corners, self.piece_model, TARGET_SIZE, graphics_IO=("../assets", "./assets/intermediate_images"))
-		self.status_update("> Identified pieces in {} s".format(time.time() - st_identify_time))
+		self.status_update("Classifying pieces...")
+		st_classify_time = time.time()
+		board = piece_classifier.classify_pieces(self.cur_raw_image, corners, self.piece_model, TARGET_SIZE, graphics_IO=("../assets", "./assets/intermediate_images"))
+		self.status_update("> Classified pieces in {} s".format(time.time() - st_classify_time))
 
 		board_string = "".join("".join(row) for row in board)
 

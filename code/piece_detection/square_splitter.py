@@ -1,51 +1,10 @@
-"""
-putting a piece-recognition nnet with the
-piece splitting system in data_collection.py (modified)
-
-1. wait for model to load (150 s on avg)
-2. click corners of board in chessboard_img
-3. board will be segmented and pieces identified and labelled
-4. (if verbose) probabilities shown
-"""
-
-import os, sys
-import time
+import sys, time
+import os
 import numpy as np
 import cv2
 
-from tensorflow.keras import backend as K
-from tensorflow.keras.models import load_model
-from tensorflow.keras.applications.resnet_v2 import preprocess_input
-from tensorflow.keras.preprocessing import image
-
 sys.path.insert(1, '../board_detection')
-#from /board_detection
 from board_segmentation import regioned_segment_board
-
-sys.path.insert(2, '../chess_logic')
-#from /chess_logic
-from pgn_helper import display
-from next_moves import get_stacked_poss
-
-def find_longest_contour(img):
-	src = img.copy()
-	img = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
-
-	ret, thresh = cv2.threshold(img,127,255,0)
-	ctrs, hierarchy = cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
-
-	print(len(ctrs))
-	# disp = cv2.drawContours(src, ctrs, -1, (0,255,0), 3)
-	# cv2.imshow("disp",disp)
-	# cv2.waitKey()
-
-	peri_map = {cv2.arcLength(ctrs[i],False):i for i in range(len(ctrs))}
-	max_ctr_i = peri_map[max(peri_map.keys())]
-	disp = cv2.drawContours(src, ctrs, max_ctr_i, (255,0,0), 3)
-	cv2.imshow("disp",disp)
-	cv2.waitKey()
-
-	return ctrs[max_ctr_i]
 
 """
 resize to width/height while keeping aspect ratio
@@ -99,8 +58,7 @@ def increase_color_contrast(img, clim, tgs=(8,8)):
 
 	lab = cv2.merge((l2,a,b))  # merge channels
 	img2 = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)  # convert from LAB to BGR
-	# cv2.imshow('Increased contrast', img2)
-	# cv2.waitKey()
+
 	return img2
 
 """
@@ -124,18 +82,11 @@ def get_ortho_guesses(img, top_ortho_regions, H, SQ_SIZE):
 	dims = (SQ_SIZE*8, SQ_SIZE*8)
 	topdown = cv2.transpose(cv2.warpPerspective(canny_edge_img, H, dims))
 
-	# color_topdown = cv2.transpose(cv2.warpPerspective(img, H, dims))
-	# cv2.imshow("color_topdown", color_topdown)
-	# cv2.waitKey()
-	#
-	# find_longest_contour(color_topdown)
-
 	#identify number of significant canny points based on white_pix_thresh
 	canny_cts = []
 	white_pix_thresh = topdown[topdown!=0].mean() #take upper half of canny pix
 	# white_pix_thresh = topdown.mean() #take upper half of ALL pix
 	for reg in top_ortho_regions: #bounds are transposed
-		# subimg = topdown[int(reg[0][0]):int(reg[3][0]), int(reg[0][1]):int(reg[1][1])]
 		ct = 0
 		for c in range(reg[0][1], reg[1][1]):
 			for r in range(reg[0][0], reg[3][0]):
@@ -210,13 +161,13 @@ def estimate_bounds(img, square_bounds, piece_height, graphics_IO=None):
 			my_group.append(bounds_proj[i+shift][0])
 		pix_bounds.append(my_group)
 
-	#for display, find full 3D bounds
+	#for bounding boxes ui, find full 3D bounds
 	if graphics_IO:
 		disp_bounds = []
 		for r in range(8):
 			for c in range(8):
-				#points of interest: front pts of base, front pts of top
 				offset = 0.1
+				#points of interest: front pts of base, front pts of top
 				POI = [[r+1-offset,c,piece_height],[r+1-offset,c+1,piece_height],[r+1-offset,c+1,0],[r+1-offset,c,0],
 						[r-offset,c,piece_height],[r-offset,c+1,piece_height],[r-offset,c+1,0],[r-offset,c,0]]
 				for pt in POI:
@@ -235,18 +186,13 @@ def estimate_bounds(img, square_bounds, piece_height, graphics_IO=None):
 
 		disp = img.copy()
 		for bound in disp_pix_bounds:
-			#draw front face
-			for i in range(4):
+			for i in range(4): #draw front face
 				cv2.line(disp, bound[i%4], bound[(i+1)%4], (255,0,0), 1) #teal: (255,195,0)
-			#back face
-			for i in range(4):
+			for i in range(4): #back face
 				cv2.line(disp, bound[i%4+4], bound[(i+1)%4+4], (255,0,0), 1)
-			#connect front face to back
-			for i in range(4):
+			for i in range(4): #front face to back
 				cv2.line(disp, bound[i], bound[i+4], (255,0,0), 1)
 
-		# cv2.imshow("disp", disp)
-		# cv2.waitKey()
 		cv2.imwrite(os.path.join(graphics_IO[1], "bounding_boxes.jpg"), disp)
 
 	return pix_bounds
@@ -256,10 +202,9 @@ def corners_to_imgs(img, poss_pieces, square_bounds, piece_height, SQ_SIZE, grap
 	indices = []
 	bounds = estimate_bounds(img, square_bounds, piece_height, graphics_IO)
 
-	#for ui
+	#for orthophoto ui img
 	subfolder = None
 	if graphics_IO:
-		#for orthophoto
 		# https://www.pyimagesearch.com/2016/03/07/transparent-overlays-with-opencv/
 		overlay = img.copy()
 		disp = img.copy()
@@ -296,8 +241,6 @@ def corners_to_imgs(img, poss_pieces, square_bounds, piece_height, SQ_SIZE, grap
 		dst_box = [(0,0), (dims[0],0), dims, (0,dims[1])] #cw, xy origin top-left
 		H, _ = cv2.findHomography(np.array(shear_box), np.array(dst_box))
 		unshear = cv2.warpPerspective(img, H, dims)
-		# cv2.imshow("unshear sqr", unshear)
-		# cv2.waitKey()
 
 		#add rectangle to img list
 		imgs.append(unshear)
@@ -325,8 +268,6 @@ def corners_to_imgs(img, poss_pieces, square_bounds, piece_height, SQ_SIZE, grap
 			arrow[l_st[0]:l_st[0]+small_sz[1],l_st[1]:l_st[1]+small_sz[0]] = para
 			arrow[r_st[0]:r_st[0]+small_sz[1],r_st[1]:r_st[1]+small_sz[0]] = disp_unshear
 
-			# cv2.imshow("arr", arrow)
-			# cv2.waitKey()
 			cv2.imwrite(os.path.join(subfolder, "sq_{}.jpg".format(i)), arrow)
 
 	return imgs, indices
@@ -352,194 +293,12 @@ def split_chessboard(img, corners, graphics_IO=None):
 
 	#segment board
 	SQ_SIZE = 112
-	# sqr_corners, top_ortho_regions, bot_ortho_regions, H, ext_H = regioned_segment_board(img, corners, SQ_SIZE)
 	sqr_corners, top_ortho_regions, H = regioned_segment_board(img, corners, SQ_SIZE, graphics_IO)
 
 	#use orthophoto to find poss piece locations
-	# ortho_guesses = get_ortho_guesses(img, top_ortho_regions, H, bot_ortho_regions, ext_H, SQ_SIZE)
 	ortho_guesses = get_ortho_guesses(img, top_ortho_regions, H, SQ_SIZE)
-	# print("ortho_guesses:")
-	# print(ortho_guesses)
 	ortho_guesses = ortho_guesses.flatten()
 
 	#turn corner coords into list of imgs
 	piece_height = 2 #squares tall
 	return corners_to_imgs(img, ortho_guesses, sqr_corners, piece_height, SQ_SIZE, graphics_IO)
-
-#load model
-def local_load_model(net_path):
-	if os.path.isdir(net_path):
-		net_file = sorted(os.listdir(net_path))[-1] #lowest alphabetically = highest acc
-		net_path = os.path.join(net_path, net_file)
-
-	net = load_model(net_path)
-	return net
-
-"""
-predict squares, given segmented and orthophoto-pared
-"""
-def pred_squares(TARGET_SIZE, net, squares, indices, flat_poss=None, graphics_IO=None):
-	CLASS_TO_SAN = {
-		'black_bishop':'b',
-		'black_king':'k',
-		'black_knight':'n',
-		'black_pawn':'p',
-		'black_queen':'q',
-		'black_rook':'r',
-		'empty':'-',
-		'white_bishop':'B',
-		'white_king':'K',
-		'white_knight':'N',
-		'white_pawn':'P',
-		'white_queen':'Q',
-		'white_rook':'R'
-	}
-	ALL_CLASSES = [*CLASS_TO_SAN.keys()]
-
-	#populate poss sets for given squares
-	poss_sets = []
-	if flat_poss:
-		for i in range(len(squares)):
-			poss_sets.append(flat_poss[indices[i]])
-
-	#preprocess images, flatten into stack for resnet
-	input_stack = []
-	for img in squares:
-		#convert img to numpy array, preprocess for resnet
-		resized_img = cv2.resize(img, dsize=(TARGET_SIZE[1],TARGET_SIZE[0]), interpolation=cv2.INTER_NEAREST)
-		x = preprocess_input(resized_img)
-		input_stack.append(x)
-	input_stack = np.array(input_stack)
-
-	#predict on full stack of inputs
-	preds = net.predict(input_stack)
-
-	#ui representation of confidence intervals
-	if graphics_IO:
-		subfolder = os.path.join(graphics_IO[1], "conf_intervals")
-		if not os.path.exists(subfolder):
-			os.mkdir(subfolder)
-		else:
-			for file in os.listdir(subfolder):
-				os.remove(os.path.join(subfolder, file))
-
-	#feed preds through poss set checks, repred as needed
-	#get SAN and fill pred_board
-	pred_board = ["-" for i in range(64)] #flattened 8x8 chessboard
-	for i in range(len(preds)):
-		pred = preds[i].argsort()[::-1] #most to least likely classes, based on pred
-		if poss_sets:
-			poss = poss_sets[i]
-		else:
-			poss = None
-		ptr = 0
-		pred_SAN = CLASS_TO_SAN[ALL_CLASSES[pred[ptr]]]
-
-		#move down prediction list if prediction is impossible (by chess logic)
-		if poss:
-			while pred_SAN not in poss:
-				# print("collision of pred:", pred_SAN)
-				# print("poss_set:", poss)
-				# print("moving down list:", pred)
-				if ptr >= len(preds):
-					# print("ran out of predictions")
-					pred_SAN = "?"
-				ptr += 1
-				pred_SAN = CLASS_TO_SAN[ALL_CLASSES[pred[ptr]]]
-				print(ptr, pred_SAN)
-
-		pred_board[indices[i]] = pred_SAN
-
-	#ui representation of confidence intervals
-	# TODO: add poss set checking to visualization
-	if graphics_IO:
-		for i in range(len(preds)):
-			# sq_num = indices[i]
-			raw_conf = list(preds[i])
-			pred = preds[i].argsort()[::-1] #most to least likely classes, based on pred
-			piece_map = {raw_conf[i]:ALL_CLASSES[i] for i in range(len(raw_conf))}
-			# print(raw_conf)
-			# print(pred)
-			# print(piece_map)
-			# print(type(raw_conf))
-			# print(type(pred))
-
-			arrow = cv2.imread(os.path.join(graphics_IO[0], "arrow_blank.png"))
-			small_sz = (112, 224)
-
-			sqr_img = squares[i]
-			disp_sqr = sqr_img.copy()
-			disp_sqr = cv2.resize(disp_sqr, dsize=small_sz, interpolation=cv2.INTER_CUBIC)
-			ds_shape = (disp_sqr.shape[1], disp_sqr.shape[0])
-
-			piece_filename = "{}.png".format(piece_map[raw_conf[pred[0]]])
-			# print(piece_filename)
-			# print(os.path.join(graphics_IO[0], "piece_images", piece_filename))
-			piece_icon = cv2.imread(os.path.join(graphics_IO[0], "piece_images", piece_filename))
-			pc_shape = (piece_icon.shape[1], piece_icon.shape[0])
-
-			l_st = (150, 200)
-			r_st = (150, 600)
-			arrow[l_st[0]:l_st[0]+ds_shape[1],l_st[1]:l_st[1]+ds_shape[0]] = disp_sqr
-			arrow[r_st[0]:r_st[0]+pc_shape[1],r_st[1]:r_st[1]+pc_shape[0]] = piece_icon
-
-			disp_conf = []
-			for indx in pred:
-				conf = raw_conf[indx]
-				pc = piece_map[conf]
-				disp_conf.append("{}: {}".format(pc, str(round(conf, 3))))
-
-			text_orig = (400, 400)
-			for disp_i in range(5):
-				line = disp_conf[disp_i]
-				print(line)
-				dy = disp_i*30
-				cv2.putText(arrow, line, (text_orig[0], text_orig[1]+dy), \
-						 	cv2.FONT_HERSHEY_TRIPLEX, 0.5, (0,0,0))
-
-			print(indices[i])
-			# cv2.imshow("arr", arrow)
-			# cv2.waitKey()
-			cv2.imwrite(os.path.join(subfolder, "sq_{}.jpg".format(indices[i])), arrow)
-
-
-	#rotate board for std display (white on bottom)
-	#converting to numpy and back takes 0.0 s (rounded to 3 digits)
-	pred_board = np.asarray(pred_board)
-	pred_board = np.resize(pred_board, (8,8))
-	pred_board = np.rot90(pred_board)
-	board = [[None for j in range(8)] for i in range(8)]
-	for i in range(8):
-		for j in range(8):
-			board[i][j] = str(pred_board[i][j])
-
-	return board #return nested lists
-
-"""
-classify pieces in img given these: board corners, piece_nnet, TARGET_SIZE of nnet
-optional arg: prev state--in same form as output of this method (array of ltrs)
-"""
-def classify_pieces(img, corners, net, TARGET_SIZE, prev_state=None, graphics_IO=None):
-	squares, indices = split_chessboard(img, corners, graphics_IO)
-
-	#compute possible next moves from prev state, flatten to 1D list
-	flat_poss = []
-	if prev_state:
-		stacked_poss = get_stacked_poss(prev_state)
-
-		#matching same orientation as board
-		for c in range(8):
-			for r in range(7, -1, -1):
-				flat_poss.append(stacked_poss[r][c])
-
-		print("flat poss, pic oriented")
-		for r in range(8):
-			for c in range(8):
-				print(flat_poss[r*8+c], end=', ')
-			print()
-
-	board = pred_squares(TARGET_SIZE, net, squares, indices, flat_poss=flat_poss, graphics_IO=graphics_IO)
-	return board
-
-if __name__ == '__main__':
-	print("no main method")

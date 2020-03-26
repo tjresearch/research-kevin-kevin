@@ -1,3 +1,7 @@
+"""
+DEPRECATED
+"""
+
 import os
 import sys
 import cv2
@@ -11,8 +15,8 @@ from board_detection import board_locator
 from piece_detection import identify_pieces
 from chess_logic import pgn_helper
 
-if len(sys.argv) != 3:
-	print("usage: python main_shell.py [phone ip] [shared models dir]")
+if len(sys.argv) != 4:
+	print("usage: python main_shell.py [phone ip] [shared models dir] [img_path]")
 	exit(1)
 
 phone_ip = sys.argv[1]
@@ -39,7 +43,7 @@ TARGET_SIZE = (224, 112)
 # For single image
 cv2.namedWindow("original")
 
-img_path = "piece_detection/to_be_labelled/*1_14/*IMG_8324.jpeg"
+img_path = sys.argv[3]
 img = cv2.imread(img_path)
 cv2.imshow("original", img)
 cv2.waitKey()
@@ -63,9 +67,9 @@ prev_state = [['-', '-', '-', '-', '-', '-', '-', '-'],
 			  ['-', '-', '-', '-', '-', 'R', 'Q', '-'],
 			  ['-', '-', '-', 'N', '-', '-', '-', '-'],
 			  ['-', '-', '-', '-', 'B', '-', '-', '-']]
-
+prev_state = None
 print("prev state:")
-pgn_helper.display(prev_state)
+# pgn_helper.display(prev_state)
 print(prev_state)
 
 """

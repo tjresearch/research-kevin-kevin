@@ -8,7 +8,8 @@ from datetime import datetime
 from PIL import Image, ImageTk
 import numpy as np
 
-from identify_pieces import split_chessboard, order_points, local_load_model, pred_squares
+from square_splitter import split_chessboard, order_points
+from piece_classifier import local_load_model, pred_squares
 sys.path.insert(1, "../board_detection")
 import board_locator, board_segmentation
 
