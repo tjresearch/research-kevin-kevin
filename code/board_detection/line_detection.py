@@ -123,7 +123,7 @@ def find_lines(img, out_dir=""):
 	for i in range(len(lines)):
 		lines[i] = [lines[i], i, 0]  # Line, parent, rank
 
-	omega = np.pi / (2 * math.pow(math.pow(min(img.shape[0], img.shape[1]), 2), 1 / 4))
+	omega = np.pi / (2 * math.pow(img.shape[0] * img.shape[1], 1/4))
 	p = 0.9
 	t = p * omega
 

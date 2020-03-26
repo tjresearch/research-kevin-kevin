@@ -127,12 +127,6 @@ def rho_theta_line_point_dist(line, point):
 	ptheta = math.atan2(y, x)
 	return abs(rho - pr * math.cos(ptheta - theta))
 
-cache = {}
 def line_point_dist(line, point):
-	idx = hash("dis" + str(line[0]) + str(line[1]))
-	if idx in cache:
-		mag = cache[idx]
-	else:
-		mag = np.hypot(line[0][0] - line[1][0], line[0][1] - line[1][1])
-		cache[idx] = mag
+	mag = np.hypot(line[0][0] - line[1][0], line[0][1] - line[1][1])
 	return abs(np.cross(np.array(line[1]) - np.array(line[0]), np.array(line[0]) - np.array(point))) / mag

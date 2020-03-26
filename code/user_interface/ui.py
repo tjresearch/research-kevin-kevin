@@ -212,9 +212,7 @@ class Display(tk.Frame):
 			elif old_mode == "live_video":
 				self.live_video_stop.set()
 			elif old_mode == "image":
-				if new_mode == "image":
-					self.prev_raw_image = self.cur_raw_image
-				else:
+				if new_mode != "image":
 					self.prev_check.pack_forget()
 
 			if self.mode == "image":
@@ -374,35 +372,61 @@ class Display(tk.Frame):
 	def process(self):
 		if not self.processing:
 			if self.models_loaded:
+				if self.mode == "video" or self.mode == "live_video":
+					self.process_button.configure(text="Stop Process")
+					self.process_button["text"] = "Stop Process"
+					self.process_stop.clear()
 				self.processing_thread = Thread(target=self.process_handler)
 				self.processing_thread.daemon = True
 				self.processing_thread.start()
 			else:
 				showerror("Error", "Models are still loading, try again in a few seconds.")
+		elif self.mode == "video" or self.mode == "live_video":
+			self.process_button.configure(text="Process")
+			self.process_button["text"] = "Process"
+			self.process_stop.set()
 
 	def process_handler(self):
-		if self.mode == "video":
-			self.video_play.clear()
-		elif self.mode == "live_video":
-			self.live_video_play.clear()
-
 		self.processing = True
 
+		if self.mode == "video" or self.mode == "live_video":
+			while not self.process_stop.is_set():
+				self.process_single_frame()
+		else:
+			self.process_single_frame()
+
+		self.processing = False
+
+	def process_single_frame(self):
 		self.status_update("Locating board...")
 		st_locate_time = time.time()
-		if self.use_prev_corners.get():
-			self.status_update("Using previous corners...")
-			if self.prev_raw_image is None or self.prev_corners is None:
-				self.status_update("No previous data found. Calculating from scratch...")
-			lines, corners = board_locator.find_chessboard(self.cur_raw_image, self.lattice_point_model, "./assets/intermediate_images", (self.prev_raw_image, self.prev_corners))
+
+		if self.mode == "image":
+			if self.use_prev_corners.get():
+				self.status_update("Using previous corners...")
+				if self.prev_raw_image is None or self.prev_corners is None:
+					self.status_update("No previous data found. Calculating from scratch...")
+				lines, corners = board_locator.find_chessboard(self.cur_raw_image, self.lattice_point_model,
+															   "./assets/intermediate_images",
+															   (self.prev_raw_image, self.prev_corners))
+			else:
+				lines, corners = board_locator.find_chessboard(self.cur_raw_image, self.lattice_point_model,
+															   "./assets/intermediate_images")
 		else:
-			lines, corners = board_locator.find_chessboard(self.cur_raw_image, self.lattice_point_model, "./assets/intermediate_images")
+			lines, corners = board_locator.find_chessboard(self.cur_raw_image, self.lattice_point_model, prev=(self.prev_raw_image, self.prev_corners))
+
 		self.prev_corners = [(corner[0], corner[1]) for corner in corners]
+		self.prev_raw_image = self.cur_raw_image
+
 		self.status_update("> Located board in {} s".format(time.time() - st_locate_time))
 
 		self.status_update("Classifying pieces...")
 		st_classify_time = time.time()
-		board = piece_classifier.classify_pieces(self.cur_raw_image, corners, self.piece_model, TARGET_SIZE, graphics_IO=("../assets", "./assets/intermediate_images"))
+		if self.mode == "image":
+			board = piece_classifier.classify_pieces(self.cur_raw_image, corners, self.piece_model, TARGET_SIZE,
+												graphics_IO=("../assets", "./assets/intermediate_images"))
+		else:
+			board = piece_classifier.classify_pieces(self.cur_raw_image, corners, self.piece_model, TARGET_SIZE)
 		self.status_update("> Classified pieces in {} s".format(time.time() - st_classify_time))
 
 		board_string = "".join("".join(row) for row in board)
@@ -412,13 +436,6 @@ class Display(tk.Frame):
 		render = ImageTk.PhotoImage(diagram)
 		self.diagram_label.configure(image=render)
 		self.diagram_label.image = render
-
-		self.processing = False
-
-		if self.mode == "video":
-			self.video_play.set()
-		elif self.mode == "live_video":
-			self.live_video_play.set()
 
 	def back(self):
 		if self.intermediate_index > 0:

@@ -17,10 +17,7 @@ def linkable(l1, l2, img, t):
 	mag2 = np.sqrt((l2[1][0] - l2[0][0]) ** 2 + (l2[1][1] - l2[0][1]) ** 2)
 	delta = (mag1 + mag2) * t
 	gamma = calc_gamma(l1, l2)
-	if gamma is None:
-		return False
-	else:
-		return (mag1 / gamma > delta) and (mag2 / gamma > delta)
+	return (mag1 / gamma > delta) and (mag2 / gamma > delta)
 
 def link(lines):
 	points = []
