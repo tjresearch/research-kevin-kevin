@@ -476,7 +476,7 @@ class Display(tk.Frame):
 				y2 = y1 + square_size
 				self.diagram_canvas.delete("square")
 				self.selected_square = square_idx
-				self.diagram_canvas.create_rectangle(x1, y1, x2, y2, outline="red", width=3, tags="square")
+				self.diagram_canvas.create_rectangle(x1, y1, x2, y2, outline="blue", width=3, tags="square")
 			else:
 				self.status_update("Square is not in orthophoto; pick a different square!")
 

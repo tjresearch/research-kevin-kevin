@@ -9,7 +9,7 @@ from PIL import Image, ImageTk
 import numpy as np
 
 from square_splitter import split_chessboard, order_points
-from piece_classifier import local_load_model, pred_squares
+from piece_classifier import local_load_model, get_pred_board
 sys.path.insert(1, "../board_detection")
 import board_locator, board_segmentation
 
@@ -47,7 +47,7 @@ class DataCollectionDisp(tk.Frame):
 		self.board_ids = []
 		self.board = []
 
-		pred_board = pred_squares(TARGET_SIZE, piece_detection_model, squares, indices) #get nnet preds
+		pred_board = get_pred_board(piece_detection_model, TARGET_SIZE, squares, indices) #get nnet preds
 		#rotate board for std display (white on bottom)
 		#converting to numpy and back takes 0.0 s (rounded to 3 digits)
 		pred_board = np.asarray(pred_board)
