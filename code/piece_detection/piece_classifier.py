@@ -152,7 +152,7 @@ classify pieces in img given these: board corners, piece_nnet, TARGET_SIZE of nn
 optional arg: prev state--in same form as output of this method (array of ltrs)
 """
 def classify_pieces(img, corners, net, TARGET_SIZE, prev_state=None, graphics_IO=None):
-	squares, indices = split_chessboard(img, corners, graphics_IO)
+	squares, indices, ortho_guesses = split_chessboard(img, corners, graphics_IO)
 
 	#compute possible next moves from prev state, flatten to 1D list
 	flat_poss = []
@@ -171,4 +171,4 @@ def classify_pieces(img, corners, net, TARGET_SIZE, prev_state=None, graphics_IO
 		# 	print()
 
 	board = pred_squares(TARGET_SIZE, net, squares, indices, flat_poss=flat_poss, graphics_IO=graphics_IO)
-	return board
+	return board, ortho_guesses

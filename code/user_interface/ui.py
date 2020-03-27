@@ -23,6 +23,8 @@ supported_image_formats = [".bmp", ".pbm", ".pgm", ".ppm", ".sr", ".ras", ".jpeg
 supported_video_formats = [".avi", ".flv", ".wmv", ".mov", ".mp4"]
 TARGET_SIZE = (224, 112)
 
+immortals = []
+
 class Display(tk.Frame):
 	def __init__(self, parent):
 		self.image_dims = (960, 540)
@@ -45,6 +47,9 @@ class Display(tk.Frame):
 		self.processing = False
 		self.processing_thread = None
 
+		self.board = None
+		self.ortho_guesses = None
+
 		self.intermediate_index = 0
 		self.intermediate_image_order = ["raw.jpg",
 										 "line_detection.jpg",
@@ -55,7 +60,8 @@ class Display(tk.Frame):
 										 "board_segmentation.jpg",
 										 "orthophoto_guesses.jpg",
 										 "bounding_boxes.jpg",
-										 "unsheared_sqrs"]
+										 "unsheared_sqrs",
+										 "conf_intervals"]
 		self.intermediate_image_dir = "./assets/intermediate_images"
 
 		self.cur_animate_image = None
@@ -82,6 +88,7 @@ class Display(tk.Frame):
 		# Initialize the buttons to work with the backend
 		self.bottom_button_frame = tk.Frame(self.button_frame)
 
+		self.process_stop = Event()
 		self.process_frame = tk.Frame(self.bottom_button_frame)
 		self.process_button = tk.Button(self.process_frame, command=self.process, text="Process", height=3, width=16)
 
@@ -141,12 +148,15 @@ class Display(tk.Frame):
 		self.status_scroll.grid(row=0, column=1, rowspan=12, sticky="ns")
 
 		# Intialize the FEN/PGN display
-		self.diagram_frame = tk.Frame(self.side_display_frame, width=320, height=320)
-		self.diagram_label = tk.Label(self.diagram_frame)
-		self.diagram_label.place(anchor="center", relx=0.5, rely=0.5)
+		self.diagram_id = None
+		self.diagram_dim = 320
+		self.selected_square = None
+
+		self.diagram_canvas = tk.Canvas(self.side_display_frame, borderwidth=0, highlightthickness=0, width=self.diagram_dim, height=self.diagram_dim)
+		self.diagram_canvas.bind("<Button-1>", self.diagram_mouse_callback)
 
 		self.status_frame.pack(side=tk.TOP)
-		self.diagram_frame.pack(side=tk.BOTTOM)
+		self.diagram_canvas.pack(side=tk.BOTTOM)
 
 		self.side_display_frame.pack(side=tk.RIGHT, padx=10, pady=10)
 
@@ -182,6 +192,7 @@ class Display(tk.Frame):
 		self.status_label.configure(state="normal")
 		self.status_label.insert("end", text + "\n")
 		self.status_label.configure(state="disabled")
+		self.status_label.see("end")
 
 	def load_models(self):
 		model_dir = "../models"
@@ -298,15 +309,19 @@ class Display(tk.Frame):
 				else:
 					cur_dir = os.path.join(self.intermediate_image_dir, intermediate_path)
 					if os.path.isdir(cur_dir):
-						if self.animate_index == 0:
-							image_path = os.path.join(cur_dir, random.choice(os.listdir(cur_dir)))
-							image = Image.open(image_path)
-							self.cur_animate_image = image
+						if self.selected_square is None:
+							if self.animate_index == 0:
+								image_path = os.path.join(cur_dir, random.choice(os.listdir(cur_dir)))
+								image = Image.open(image_path)
+								self.cur_animate_image = image
+							else:
+								image = self.cur_animate_image
+							self.animate_index += 1
+							if self.animate_index == self.animate_cycle:
+								self.animate_index = 0
 						else:
-							image = self.cur_animate_image
-						self.animate_index += 1
-						if self.animate_index == self.animate_cycle:
-							self.animate_index = 0
+							image_path = os.path.join(cur_dir, "sq_{}.jpg".format(self.selected_square))
+							image = Image.open(image_path)
 					else:
 						image = Image.open(cur_dir + ".jpg")
 				disp = image.resize(self.image_dims)
@@ -423,19 +438,47 @@ class Display(tk.Frame):
 		self.status_update("Classifying pieces...")
 		st_classify_time = time.time()
 		if self.mode == "image":
-			board = piece_classifier.classify_pieces(self.cur_raw_image, corners, self.piece_model, TARGET_SIZE,
+			self.board, self.ortho_guesses = piece_classifier.classify_pieces(self.cur_raw_image, corners, self.piece_model, TARGET_SIZE,
 												graphics_IO=("../assets", "./assets/intermediate_images"))
 		else:
-			board = piece_classifier.classify_pieces(self.cur_raw_image, corners, self.piece_model, TARGET_SIZE)
+			self.board, self.ortho_guesses = piece_classifier.classify_pieces(self.cur_raw_image, corners, self.piece_model, TARGET_SIZE)
 		self.status_update("> Classified pieces in {} s".format(time.time() - st_classify_time))
 
-		board_string = "".join("".join(row) for row in board)
+		board_string = "".join("".join(row) for row in self.board)
 
+		self.status_update("Querying diagram...")
+		st_query_time = time.time()
 		diagram = query_diagram.diagram_from_board_string(board_string)
+		self.status_update("> Queried diagram in {} s".format(time.time() - st_query_time))
 
 		render = ImageTk.PhotoImage(diagram)
-		self.diagram_label.configure(image=render)
-		self.diagram_label.image = render
+		if self.diagram_id is not None:
+			self.diagram_canvas.delete(self.diagram_id)
+		self.diagram_id = self.diagram_canvas.create_image((self.diagram_dim // 2, self.diagram_dim // 2), image=render)
+		immortals.append(render)
+
+		self.diagram_canvas.delete("square")
+		self.selected_square = None
+
+	def diagram_mouse_callback(self, event):
+		square_size = self.diagram_dim // 8
+		r = event.y // square_size
+		c = event.x // square_size
+		square_idx = c * 8 + (7 - r) # Account for rotation of diagram
+		if self.selected_square == square_idx:
+			self.diagram_canvas.delete("square")
+			self.selected_square = None
+		elif self.diagram_id is not None:
+			if self.ortho_guesses[square_idx]:
+				x1 = c * square_size
+				y1 = r * square_size
+				x2 = x1 + square_size
+				y2 = y1 + square_size
+				self.diagram_canvas.delete("square")
+				self.selected_square = square_idx
+				self.diagram_canvas.create_rectangle(x1, y1, x2, y2, outline="red", width=3, tags="square")
+			else:
+				self.status_update("Square is not in orthophoto; pick a different square!")
 
 	def back(self):
 		if self.intermediate_index > 0:

@@ -301,4 +301,4 @@ def split_chessboard(img, corners, graphics_IO=None):
 
 	#turn corner coords into list of imgs
 	piece_height = 2 #squares tall
-	return corners_to_imgs(img, ortho_guesses, sqr_corners, piece_height, SQ_SIZE, graphics_IO)
+	return (*corners_to_imgs(img, ortho_guesses, sqr_corners, piece_height, SQ_SIZE, graphics_IO), ortho_guesses)
