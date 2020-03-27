@@ -295,12 +295,11 @@ def save_squares(file, outer_dir, lattice_point_model, root, board_corners):
 	corners = find_board(img, file, board_corners)
 
 	#take corners, split image into subimgs of viable squares & their indices
-	squares, indices = split_chessboard(img, corners)
+	squares, indices = split_chessboard(img, corners, TARGET_SIZE)
 	#label squares with pieces, save
 	label_subimgs(img, squares, indices, save_dir, root)
 
 def locate_corners(files, cache_file_path, lattice_point_model):
-
 	cache = {}
 	if os.path.exists(cache_file_path):
 		with open(cache_file_path, "r") as infile:

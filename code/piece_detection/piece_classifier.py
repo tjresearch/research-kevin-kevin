@@ -104,7 +104,7 @@ def pred_squares(TARGET_SIZE, net, squares, indices, flat_poss=None, graphics_IO
 			piece_map = {raw_conf[i]:ALL_CLASSES[i] for i in range(len(raw_conf))}
 
 			arrow = cv2.imread(os.path.join(graphics_IO[0], "arrow_blank.png"))
-			small_sz = (112, 224)
+			small_sz = (TARGET_SIZE[1], TARGET_SIZE[0])
 
 			sqr_img = squares[i]
 			disp_sqr = sqr_img.copy()
@@ -152,7 +152,7 @@ classify pieces in img given these: board corners, piece_nnet, TARGET_SIZE of nn
 optional arg: prev state--in same form as output of this method (array of ltrs)
 """
 def classify_pieces(img, corners, net, TARGET_SIZE, prev_state=None, graphics_IO=None):
-	squares, indices, ortho_guesses = split_chessboard(img, corners, graphics_IO)
+	squares, indices, ortho_guesses = split_chessboard(img, corners, TARGET_SIZE, graphics_IO)
 
 	#compute possible next moves from prev state, flatten to 1D list
 	flat_poss = []
