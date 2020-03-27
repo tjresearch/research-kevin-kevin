@@ -1,3 +1,8 @@
+"""
+piece identification =
+square_splitter.py -> piece_classifier.py
+"""
+
 import sys, time
 import os
 import numpy as np
@@ -17,17 +22,17 @@ from next_moves import get_stacked_poss
 """
 load model
 """
-def local_load_model(net_path):
-	if os.path.isdir(net_path):
-		print("directory given, full net_path required")
+def local_load_model(nnet_path):
+	if os.path.isdir(nnet_path):
+		print("directory given, full nnet_path required")
 		return None
-	net = load_model(net_path)
-	return net
+	nnet = load_model(nnet_path)
+	return nnet
 
 """
-predict squares, given segmented and orthophoto-pared
+predict board state, given segmented and orthophoto-pared sqr imgs
 """
-def pred_squares(TARGET_SIZE, net, squares, indices, flat_poss=None, graphics_IO=None):
+def get_pred_board(nnet, TARGET_SIZE, sqr_imgs, indices, flat_poss=None, graphics_IO=None):
 	CLASS_TO_SAN = {
 		'black_bishop':'b',
 		'black_king':'k',
@@ -48,20 +53,20 @@ def pred_squares(TARGET_SIZE, net, squares, indices, flat_poss=None, graphics_IO
 	#populate poss sets for given squares
 	poss_sets = []
 	if flat_poss:
-		for i in range(len(squares)):
+		for i in range(len(sqr_imgs)):
 			poss_sets.append(flat_poss[indices[i]])
 
 	#preprocess images, flatten into stack for resnet
 	input_stack = []
-	for img in squares:
-		#convert img to numpy array, preprocess for resnet
-		resized_img = cv2.resize(img, dsize=(TARGET_SIZE[1],TARGET_SIZE[0]), interpolation=cv2.INTER_NEAREST)
-		x = preprocess_input(resized_img)
+	for sqr_img in sqr_imgs:
+		#convert sqr_img to numpy array, preprocess for resnet
+		resized = cv2.resize(sqr_img, dsize=(TARGET_SIZE[1],TARGET_SIZE[0]), interpolation=cv2.INTER_NEAREST)
+		x = preprocess_input(resized)
 		input_stack.append(x)
 	input_stack = np.array(input_stack)
 
 	#predict on full stack of inputs
-	preds = net.predict(input_stack)
+	raw_preds = nnet.predict(input_stack)
 
 	#for ui representation of confidence intervals
 	if graphics_IO:
@@ -72,25 +77,25 @@ def pred_squares(TARGET_SIZE, net, squares, indices, flat_poss=None, graphics_IO
 			for file in os.listdir(subfolder):
 				os.remove(os.path.join(subfolder, file))
 
-	#feed preds through poss set checks, adjust preds as needed
+	#feed raw_preds through poss set checks, adjust raw_preds as needed
 	#get SAN and fill pred_board
 	pred_board = ["-" for i in range(64)] #flattened 8x8 chessboard
-	for i in range(len(preds)):
-		pred = preds[i].argsort()[::-1] #most to least likely classes, based on pred
+	for i in range(len(raw_preds)):
+		cls_preds = raw_preds[i].argsort()[::-1] #most to least likely classes, based on pred
 		if poss_sets:
 			poss = poss_sets[i]
 		else:
 			poss = None
 		ptr = 0
-		pred_SAN = CLASS_TO_SAN[ALL_CLASSES[pred[ptr]]]
+		pred_SAN = CLASS_TO_SAN[ALL_CLASSES[cls_preds[ptr]]]
 
 		#move down prediction list if prediction is impossible (by chess logic)
 		if poss:
 			while pred_SAN not in poss:
-				if ptr >= len(preds):
+				if ptr >= len(raw_preds): #no possible pieces, given poss set
 					pred_SAN = "?"
 				ptr += 1
-				pred_SAN = CLASS_TO_SAN[ALL_CLASSES[pred[ptr]]]
+				pred_SAN = CLASS_TO_SAN[ALL_CLASSES[cls_preds[ptr]]]
 				print(ptr, pred_SAN)
 
 		pred_board[indices[i]] = pred_SAN
@@ -98,20 +103,20 @@ def pred_squares(TARGET_SIZE, net, squares, indices, flat_poss=None, graphics_IO
 	#for ui representation of confidence intervals
 	# TODO: add poss set checking to visualization
 	if graphics_IO:
-		for i in range(len(preds)):
-			raw_conf = list(preds[i])
-			pred = preds[i].argsort()[::-1] #most to least likely classes, based on pred
+		for i in range(len(raw_preds)):
+			raw_conf = list(raw_preds[i])
+			cls_preds = raw_preds[i].argsort()[::-1] #most to least likely classes, based on pred
 			piece_map = {raw_conf[i]:ALL_CLASSES[i] for i in range(len(raw_conf))}
 
 			arrow = cv2.imread(os.path.join(graphics_IO[0], "arrow_blank.png"))
-			small_sz = (112, 224)
+			small_sz = (TARGET_SIZE[1], TARGET_SIZE[0])
 
-			sqr_img = squares[i]
+			sqr_img = sqr_imgs[i]
 			disp_sqr = sqr_img.copy()
 			disp_sqr = cv2.resize(disp_sqr, dsize=small_sz, interpolation=cv2.INTER_CUBIC)
 			ds_shape = (disp_sqr.shape[1], disp_sqr.shape[0])
 
-			piece_filename = "{}.png".format(piece_map[raw_conf[pred[0]]])
+			piece_filename = "{}.png".format(piece_map[raw_conf[cls_preds[0]]])
 			piece_icon = cv2.imread(os.path.join(graphics_IO[0], "piece_images", piece_filename))
 			pc_shape = (piece_icon.shape[1], piece_icon.shape[0])
 
@@ -121,7 +126,7 @@ def pred_squares(TARGET_SIZE, net, squares, indices, flat_poss=None, graphics_IO
 			arrow[r_st[0]:r_st[0]+pc_shape[1],r_st[1]:r_st[1]+pc_shape[0]] = piece_icon
 
 			disp_conf = []
-			for indx in pred:
+			for indx in cls_preds:
 				conf = raw_conf[indx]
 				pc = piece_map[conf]
 				disp_conf.append("{}: {}".format(pc, str(round(conf, 3))))
@@ -148,11 +153,11 @@ def pred_squares(TARGET_SIZE, net, squares, indices, flat_poss=None, graphics_IO
 	return board #return nested lists
 
 """
-classify pieces in img given these: board corners, piece_nnet, TARGET_SIZE of nnet
+classify pieces in src img given: board_corners, piece_nnet, TARGET_SIZE of nnet
 optional arg: prev state--in same form as output of this method (array of ltrs)
 """
-def classify_pieces(img, corners, net, TARGET_SIZE, prev_state=None, graphics_IO=None):
-	squares, indices, ortho_guesses = split_chessboard(img, corners, graphics_IO)
+def classify_pieces(src, board_corners, nnet, TARGET_SIZE, prev_state=None, graphics_IO=None):
+	sqr_imgs, indices, ortho_guesses = split_chessboard(src, board_corners, TARGET_SIZE, graphics_IO)
 
 	#compute possible next moves from prev state, flatten to 1D list
 	flat_poss = []
@@ -164,11 +169,5 @@ def classify_pieces(img, corners, net, TARGET_SIZE, prev_state=None, graphics_IO
 			for r in range(7, -1, -1):
 				flat_poss.append(stacked_poss[r][c])
 
-		# print("flat poss, pic oriented")
-		# for r in range(8):
-		# 	for c in range(8):
-		# 		print(flat_poss[r*8+c], end=', ')
-		# 	print()
-
-	board = pred_squares(TARGET_SIZE, net, squares, indices, flat_poss=flat_poss, graphics_IO=graphics_IO)
-	return board, ortho_guesses
+	pred_board = get_pred_board(nnet, TARGET_SIZE, sqr_imgs, indices, flat_poss=flat_poss, graphics_IO=graphics_IO)
+	return pred_board, ortho_guesses

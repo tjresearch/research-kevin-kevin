@@ -1,3 +1,8 @@
+"""
+piece identification =
+square_splitter.py -> piece_classifier.py
+"""
+
 import sys, time
 import os
 import numpy as np
@@ -48,18 +53,17 @@ def order_points(pts):
 	return rect
 
 # https://stackoverflow.com/questions/19363293/whats-the-fastest-way-to-increase-color-image-contrast-with-opencv-in-python-c
-def increase_color_contrast(img, clim, tgs=(8,8)):
-	clahe = cv2.createCLAHE(clipLimit=clim, tileGridSize=tgs)
+def increase_color_contrast(src, clim, tgs):
+	clahe = cv2.createCLAHE(clipLimit=clim, tileGridSize=tgs) #get CLAHE from normal img
 
-	lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)  # convert from BGR to LAB color space
+	lab = cv2.cvtColor(src, cv2.COLOR_BGR2LAB)  # convert from BGR to LAB color space
 	l, a, b = cv2.split(lab)  # split on 3 different channels
 
 	l2 = clahe.apply(l)  # apply CLAHE to the L-channel
-
 	lab = cv2.merge((l2,a,b))  # merge channels
-	img2 = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)  # convert from LAB to BGR
 
-	return img2
+	output = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)  # convert back to BGR
+	return output
 
 """
 transform Canny edge version of chessboard
@@ -67,26 +71,26 @@ identify possible squares w/ pieces based on # of canny pixels in square
 return 8x8 binary np array
 	piece = 1, empty = 0
 """
-def get_ortho_guesses(img, top_ortho_regions, H, SQ_SIZE):
-	high_contrast = increase_color_contrast(img, 3.5)
+def get_ortho_guesses(src, ortho_tops, H, SQ_SIZE):
+	high_contrast = increase_color_contrast(src, 3.5, (8,8))
 
-	#same as canny() in line_detection.py but no lower hysteresis thresh
-	#and no medianBlur, to find black pieces
+	#same as canny() in line_detection.py but
+	#no lower hysteresis thresh and no medianBlur, to find black pieces
 	sigma = 0.25
 	v = np.median(high_contrast)
 	lower = 0
 	upper = int(min(255, (1.0 + sigma) * v))
-	canny_edge_img = cv2.Canny(high_contrast, lower, upper)
+	canny = cv2.Canny(high_contrast, lower, upper)
 
 	#get topdown projection of Canny
-	dims = (SQ_SIZE*8, SQ_SIZE*8)
-	topdown = cv2.transpose(cv2.warpPerspective(canny_edge_img, H, dims))
+	td_size = (SQ_SIZE*8, SQ_SIZE*8)
+	topdown = cv2.transpose(cv2.warpPerspective(canny, H, td_size))
 
 	#identify number of significant canny points based on white_pix_thresh
 	canny_cts = []
 	white_pix_thresh = topdown[topdown!=0].mean() #take upper half of canny pix
 	# white_pix_thresh = topdown.mean() #take upper half of ALL pix
-	for reg in top_ortho_regions: #bounds are transposed
+	for reg in ortho_tops: #bounds are transposed
 		ct = 0
 		for c in range(reg[0][1], reg[1][1]):
 			for r in range(reg[0][0], reg[3][0]):
@@ -96,7 +100,7 @@ def get_ortho_guesses(img, top_ortho_regions, H, SQ_SIZE):
 
 	#identify squares that pass threshold for possibly having a piece
 	#aiming for perfect recall (mark all pieces at expense of accuracy)
-	mark_thresh = SQ_SIZE #thresh to mark current sqr
+	mark_thresh = SQ_SIZE #pixel threshold to mark current sqr as significant
 	flat_piece_binary = [0 for i in range(64)]
 	for i in range(64):
 		cc = canny_cts[i]
@@ -110,22 +114,22 @@ def get_ortho_guesses(img, top_ortho_regions, H, SQ_SIZE):
 
 """
 use solvePnPRansac, projectPoints on 9x9 array of sqr intersections
-to estimate piece height
+to estimate piece height in pixels given piece height in sqrs
 return estimated height for every square of board
 """
-def estimate_bounds(img, square_bounds, piece_height, graphics_IO=None):
+def estimate_bounds(src, sqr_corners, piece_height, graphics_IO=None):
 	#get imgpts of chessboard intersections
-	board_corners = []	#left to right, top to bottom
+	full_board_corners = []	#left to right, top to bottom
 	for r in range(8):
-		sqrs = square_bounds[r*8:(r+1)*8]
-		for sq in sqrs:
-			board_corners.append([sq[0][0],sq[0][1]])
-		board_corners.append([sqrs[-1][1][0],sqrs[-1][1][1]])
-	last_row = square_bounds[-8:]
-	for sq in last_row:
-		board_corners.append([sq[3][0], sq[3][1]])
-	board_corners.append([last_row[-1][2][0],last_row[-1][2][1]])
-	board_corners = np.asarray(board_corners) #81x2
+		sqrs = sqr_corners[r*8:(r+1)*8]
+		for sqr in sqrs:
+			full_board_corners.append([sqr[0][0],sqr[0][1]])
+		full_board_corners.append([sqrs[-1][1][0],sqrs[-1][1][1]])
+	last_row = sqr_corners[-8:]
+	for sqr in last_row:
+		full_board_corners.append([sqr[3][0], sqr[3][1]])
+	full_board_corners.append([last_row[-1][2][0],last_row[-1][2][1]])
+	full_board_corners = np.asarray(full_board_corners) #81x2
 
 	#81x2 of coords (0,0) -> (9,9)
 	objp = np.zeros((81,3), np.float32)
@@ -133,11 +137,11 @@ def estimate_bounds(img, square_bounds, piece_height, graphics_IO=None):
 	coords[:,:,[1,0]] = coords[:,:,[0,1]]
 	objp[:,:2] = coords.reshape(-1,2)
 
-	#solvePnPRansac with board_corners and objp
-	img_r, img_c = img.shape[:-1]
-	camera_matrix = np.asarray([[img_c, 0, img_c/2],[0, img_c, img_r/2],[0, 0, 1]])
+	#solvePnPRansac with full_board_corners and objp
+	src_r, src_c = src.shape[:-1]
+	camera_matrix = np.asarray([[src_c, 0, src_c/2],[0, src_c, src_r/2],[0, 0, 1]])
 	dist_coeffs = np.zeros((4,1))
-	retval, rvec, tvec, inliers = cv2.solvePnPRansac(objp, board_corners, camera_matrix, dist_coeffs)
+	retval, rvec, tvec, inliers = cv2.solvePnPRansac(objp, full_board_corners, camera_matrix, dist_coeffs)
 
 	#find front face of 3D bounding box
 	desired_bounds = []
@@ -156,10 +160,10 @@ def estimate_bounds(img, square_bounds, piece_height, graphics_IO=None):
 	#reshape to group top coords
 	pix_bounds = []
 	for i in range(0, len(bounds_proj), 4):
-		my_group = []
+		top_group = []
 		for shift in range(4):
-			my_group.append(bounds_proj[i+shift][0])
-		pix_bounds.append(my_group)
+			top_group.append(bounds_proj[i+shift][0])
+		pix_bounds.append(top_group)
 
 	#for bounding boxes ui, find full 3D bounds
 	if graphics_IO:
@@ -179,12 +183,12 @@ def estimate_bounds(img, square_bounds, piece_height, graphics_IO=None):
 
 		disp_pix_bounds = []
 		for i in range(0, len(disp_bounds_proj), 8):
-			my_group = []
+			box_group = []
 			for shift in range(8):
-				my_group.append(tuple(disp_bounds_proj[i+shift][0]))
-			disp_pix_bounds.append(my_group)
+				box_group.append(tuple(disp_bounds_proj[i+shift][0]))
+			disp_pix_bounds.append(box_group)
 
-		disp = img.copy()
+		disp = src.copy()
 		for bound in disp_pix_bounds:
 			for i in range(4): #draw front face
 				cv2.line(disp, bound[i%4], bound[(i+1)%4], (255,0,0), 1) #teal: (255,195,0)
@@ -197,108 +201,104 @@ def estimate_bounds(img, square_bounds, piece_height, graphics_IO=None):
 
 	return pix_bounds
 
-def corners_to_imgs(img, poss_pieces, square_bounds, piece_height, SQ_SIZE, graphics_IO=None):
-	imgs = []
+def get_sqr_imgs(src, sqr_corners, ortho_guesses, TARGET_SIZE, graphics_IO=None):
+	sqr_imgs = []
 	indices = []
-	bounds = estimate_bounds(img, square_bounds, piece_height, graphics_IO)
+	piece_height = TARGET_SIZE[0]//TARGET_SIZE[1] #2 squares tall
+	bounds = estimate_bounds(src, sqr_corners, piece_height, graphics_IO)
 
-	#for orthophoto ui img
-	subfolder = None
+	#for orthophoto ui imgs
+	ortho_dir = None
 	if graphics_IO:
 		# https://www.pyimagesearch.com/2016/03/07/transparent-overlays-with-opencv/
-		overlay = img.copy()
-		disp = img.copy()
+		overlay = src.copy()
+		disp = src.copy()
 		alpha = 0.40
 
-		for i in range(len(square_bounds)):
-			if not poss_pieces[i]: continue
-			corners = square_bounds[i].astype(int) #cw from top-left
+		for i in range(len(sqr_corners)):
+			if not ortho_guesses[i]: continue
+			corners = sqr_corners[i].astype(int) #cw from top-left
 			cv2.fillConvexPoly(overlay, corners, (50,200,255))
 
 		cv2.addWeighted(overlay, alpha, disp, 1-alpha, 0, disp)
-		# cv2.imshow("disp", disp)
-		# cv2.waitKey()
 		cv2.imwrite(os.path.join(graphics_IO[1], "orthophoto_guesses.jpg"), disp)
 
-		#for unsheared_sqrs below
-		subfolder = os.path.join(graphics_IO[1], "unsheared_sqrs")
-		if not os.path.exists(subfolder):
-			os.mkdir(subfolder)
+		#for unsheared sqrs (below)
+		ortho_dir = os.path.join(graphics_IO[1], "unsheared_sqrs")
+		if not os.path.exists(ortho_dir):
+			os.mkdir(ortho_dir)
 		else:
-			for file in os.listdir(subfolder):
-				os.remove(os.path.join(subfolder, file))
+			for file in os.listdir(ortho_dir):
+				os.remove(os.path.join(ortho_dir, file))
 
 	#crop square out of full image
-	for i in range(len(square_bounds)):
-		if not poss_pieces[i]: continue
+	for i in range(len(sqr_corners)):
+		if not ortho_guesses[i]: continue
 
-		corners = square_bounds[i] #cw from top-left
-		shear_box = bounds[i]
+		corners = sqr_corners[i] #cw from top-left
+		sheared = bounds[i]
 
 		#perspective transform to normalize parallelogram to rectangle
-		pix_height = piece_height*SQ_SIZE
-		dims = (SQ_SIZE, pix_height)
-		dst_box = [(0,0), (dims[0],0), dims, (0,dims[1])] #cw, xy origin top-left
-		H, _ = cv2.findHomography(np.array(shear_box), np.array(dst_box))
-		unshear = cv2.warpPerspective(img, H, dims)
+		unsheared_sz = (TARGET_SIZE[1], TARGET_SIZE[0])
+		dst_box = [(0,0), (unsheared_sz[0],0), unsheared_sz, (0,unsheared_sz[1])] #cw, xy origin top-left
+		H, _ = cv2.findHomography(np.array(sheared), np.array(dst_box))
+		unsheared = cv2.warpPerspective(src, H, unsheared_sz)
 
 		#add rectangle to img list
-		imgs.append(unshear)
+		sqr_imgs.append(unsheared)
 		indices.append(i)
 
 		#for ui
 		if graphics_IO:
 			arrow = cv2.imread(os.path.join(graphics_IO[0], "arrow_blank.png"))
 
-			small_sz = (112, 224)
-			disp_unshear = unshear.copy()
-			disp_unshear = cv2.resize(disp_unshear, dsize=small_sz, interpolation=cv2.INTER_CUBIC)
+			small_sz = (TARGET_SIZE[1], TARGET_SIZE[0])
+			disp_unsheared = unsheared.copy()
+			disp_unsheared = cv2.resize(disp_unsheared, dsize=small_sz, interpolation=cv2.INTER_CUBIC)
 
 			#get outer bounding box
-			tl_r = min([p[1] for p in shear_box])
-			tl_c = min([p[0] for p in shear_box])
-			tr_r = max([p[1] for p in shear_box])
-			tr_c = max([p[0] for p in shear_box])
+			tl_r = min([p[1] for p in sheared])
+			tl_c = min([p[0] for p in sheared])
+			tr_r = max([p[1] for p in sheared])
+			tr_c = max([p[0] for p in sheared])
 
-			para = img[max(tl_r,0):tr_r,max(tl_c,0):tr_c]
+			para = src[max(tl_r,0):tr_r,max(tl_c,0):tr_c]
 			para = cv2.resize(para, dsize=small_sz, interpolation=cv2.INTER_CUBIC)
 
-			l_st = (150, 150)
-			r_st = (150, 700)
+			l_st = (150, 200)
+			r_st = (150, 600)
 			arrow[l_st[0]:l_st[0]+small_sz[1],l_st[1]:l_st[1]+small_sz[0]] = para
-			arrow[r_st[0]:r_st[0]+small_sz[1],r_st[1]:r_st[1]+small_sz[0]] = disp_unshear
+			arrow[r_st[0]:r_st[0]+small_sz[1],r_st[1]:r_st[1]+small_sz[0]] = disp_unsheared
 
-			cv2.imwrite(os.path.join(subfolder, "sq_{}.jpg".format(i)), arrow)
+			cv2.imwrite(os.path.join(ortho_dir, "sq_{}.jpg".format(i)), arrow)
 
-	return imgs, indices
+	return sqr_imgs, indices
 
 """
-for given file, corners of board...
-1. segment board into squares
-2. use orthophoto to identify poss pieces
-3. use projectPoints to estimate piece height
+for given chessboard image and corners of board...
+1. segments board into squares
+2. uses orthophoto to identify poss pieces
+3. uses projectPoints to estimate piece height
 
-return list of img arrays
+returns (list of individual sqr imgs, indices of imgs, ortho_guesses)
 """
-def split_chessboard(img, corners, graphics_IO=None):
+def split_chessboard(src, board_corners, TARGET_SIZE, graphics_IO=None):
 	#downsize large resolutions
 	scale_to = (960, 720)
-	old_shape = img.shape
-	if img.size > scale_to[0]*scale_to[1]:
-		img = ResizeWithAspectRatio(img, width=scale_to[1])
+	old_shape = src.shape
+	if src.size > scale_to[0]*scale_to[1]:
+		src = ResizeWithAspectRatio(src, width=scale_to[1])
 		for i in range(4):
-			corners[i] = (int(corners[i][0] * scale_to[1] / old_shape[1]), int(corners[i][1] * scale_to[1] / old_shape[1]))
+			board_corners[i] = (int(board_corners[i][0] * scale_to[1] / old_shape[1]), int(board_corners[i][1] * scale_to[1] / old_shape[1]))
 
-	corners = order_points(corners)
+	board_corners = order_points(board_corners)
 
 	#segment board
-	SQ_SIZE = 112
-	sqr_corners, top_ortho_regions, H = regioned_segment_board(img, corners, SQ_SIZE, graphics_IO)
+	sqr_corners, ortho_tops, H = regioned_segment_board(src, board_corners, TARGET_SIZE[1], graphics_IO)
 
 	#use orthophoto to find poss piece locations
-	ortho_guesses = get_ortho_guesses(img, top_ortho_regions, H, SQ_SIZE)
+	ortho_guesses = get_ortho_guesses(src, ortho_tops, H, TARGET_SIZE[1])
 	ortho_guesses = ortho_guesses.flatten()
 
 	#turn corner coords into list of imgs
-	piece_height = 2 #squares tall
-	return (*corners_to_imgs(img, ortho_guesses, sqr_corners, piece_height, SQ_SIZE, graphics_IO), ortho_guesses)
+	return (*get_sqr_imgs(src, sqr_corners, ortho_guesses, TARGET_SIZE, graphics_IO), ortho_guesses)

@@ -9,7 +9,7 @@ from PIL import Image, ImageTk
 import numpy as np
 
 from square_splitter import split_chessboard, order_points
-from piece_classifier import local_load_model, pred_squares
+from piece_classifier import local_load_model, get_pred_board
 sys.path.insert(1, "../board_detection")
 import board_locator, board_segmentation
 
@@ -47,7 +47,7 @@ class DataCollectionDisp(tk.Frame):
 		self.board_ids = []
 		self.board = []
 
-		pred_board = pred_squares(TARGET_SIZE, piece_detection_model, squares, indices) #get nnet preds
+		pred_board = get_pred_board(piece_detection_model, TARGET_SIZE, squares, indices) #get nnet preds
 		#rotate board for std display (white on bottom)
 		#converting to numpy and back takes 0.0 s (rounded to 3 digits)
 		pred_board = np.asarray(pred_board)
@@ -295,12 +295,11 @@ def save_squares(file, outer_dir, lattice_point_model, root, board_corners):
 	corners = find_board(img, file, board_corners)
 
 	#take corners, split image into subimgs of viable squares & their indices
-	squares, indices, _ = split_chessboard(img, corners)
+	squares, indices, _ = split_chessboard(img, corners, TARGET_SIZE)
 	#label squares with pieces, save
 	label_subimgs(img, squares, indices, save_dir, root)
 
 def locate_corners(files, cache_file_path, lattice_point_model):
-
 	cache = {}
 	if os.path.exists(cache_file_path):
 		with open(cache_file_path, "r") as infile:
