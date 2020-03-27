@@ -295,7 +295,7 @@ def save_squares(file, outer_dir, lattice_point_model, root, board_corners):
 	corners = find_board(img, file, board_corners)
 
 	#take corners, split image into subimgs of viable squares & their indices
-	squares, indices = split_chessboard(img, corners)
+	squares, indices, _ = split_chessboard(img, corners)
 	#label squares with pieces, save
 	label_subimgs(img, squares, indices, save_dir, root)
 
