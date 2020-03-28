@@ -12,6 +12,10 @@ from square_splitter import split_chessboard, order_points
 from piece_classifier import local_load_model, get_pred_board
 sys.path.insert(1, "../board_detection")
 import board_locator, board_segmentation
+sys.path.insert(2, "../chess_logic")
+import pgn_reader, pgn_helper
+
+TARGET_SIZE = (224, 112)
 
 immortals = {}
 notation = {"white_pawn":"P", "white_knight":"N", "white_bishop":"B", "white_rook":"R", "white_queen":"Q", "white_king":"K",
@@ -19,11 +23,6 @@ notation = {"white_pawn":"P", "white_knight":"N", "white_bishop":"B", "white_roo
 rev_notation = {v:k for k, v in notation.items()}
 
 hotkeys = {"<space>":"toggle", "x":"clear", "q":"pawn", "a":"knight", "s":"bishop", "d":"rook", "w":"queen", "e":"king"}
-
-print("loading piece detection model...")
-piece_detection_model = local_load_model("../models/piece_detection_model.h5")
-TARGET_SIZE = (224, 112)
-print("piece detection model loaded")
 
 class DataCollectionDisp(tk.Frame):
 	def __init__(self, parent, img, squares, indices, save_dir):
@@ -284,20 +283,34 @@ def label_subimgs(img, squares, indices, save_dir, root):
 	window = DataCollectionDisp(root, img, squares, indices, save_dir)
 	root.mainloop()
 
-def save_squares(file, outer_dir, lattice_point_model, root, board_corners):
+def save_squares(file, outer_dir, board_corners, root=None, board=None):
 	#setup file IO
 	save_dir = os.path.join(outer_dir, file[file.rfind("/")+1:file.rfind(".")])
 	os.mkdir(save_dir)
-	print("output dir: {}".format(save_dir))
 	img = cv2.imread(file)
 
 	#find corners of board
 	corners = find_board(img, file, board_corners)
 
 	#take corners, split image into subimgs of viable squares & their indices
-	squares, indices = split_chessboard(img, corners, TARGET_SIZE)
+	squares, indices, _ = split_chessboard(img, corners, TARGET_SIZE)
 	#label squares with pieces, save
-	label_subimgs(img, squares, indices, save_dir, root)
+	if root and not board:
+		label_subimgs(img, squares, indices, save_dir, root)
+	elif board and not root:
+		for r in range(8):
+			for c in range(8):
+				indx = r * 8 + c
+				#this if statement is not efficient
+				if indx in indices:
+					i = indices.index(indx)
+					img = squares[i]
+
+					filename = "{}-{}.jpg".format(indx, board[r][c])
+					full_path = os.path.join(save_dir, filename)
+					cv2.imwrite(full_path, img)
+	else:
+		exit("Need either data labelling UI or pgn file.")
 
 def locate_corners(files, cache_file_path, lattice_point_model):
 	cache = {}
@@ -338,7 +351,7 @@ def main():
 	print("Loaded in {} s".format(time.time() - st_load_time))
 
 	global corners
-	img_dir_path = sys.argv[1]
+	img_dir_path = sys.argv[1] # input dir
 
 	# make dir of current time for subimgs
 	now = datetime.now()
@@ -358,19 +371,53 @@ def main():
 			filepath = os.path.join(img_dir_path, file)
 			files.append(filepath)
 
+	files.sort()
 	board_corners = locate_corners(files, "cache.txt", lattice_point_model)
 
-	# save squares of each file
-	for file in files:
-		ct += 1
-		print("img {}/{}".format(ct, len(files)))
-		print("file: {}".format(file))
+	pgn_file = sys.argv[3] if len(sys.argv) > 3 else None # pgn file
+	white_on_left = sys.argv[4] if len(sys.argv) > 4 else True # are white pieces on left of camera frame?
 
-		root = tk.Tk()
-		root.title("Data Collection")
-		save_squares(file, save_dir, lattice_point_model, root, board_corners)
-		corners = []  # clear for next board
-		os.rename(file, os.path.join(img_dir_path, "*{}".format(os.path.basename(file))))  # mark as done
+	if pgn_file:
+		print("Labelling images from input pgn file...")
+		boards = pgn_reader.pgn_to_boards(pgn_file)
+		if len(boards) != len(files):
+			exit("Mismatched pgn_file and board img dir.")
+
+		for i in range(len(files)):
+			file = files[i]
+			board = boards[i]
+			#convert board to correct format
+			board = np.resize(np.asarray(board), (8,8))
+			if white_on_left:
+				board = np.rot90(board, 3)
+			else:
+				board = np.rot90(board)
+				
+			rot_board = [[None for j in range(8)] for i in range(8)]
+			for i in range(8):
+				for j in range(8):
+					rot_board[i][j] = str(board[i][j]) if str(board[i][j]) != "-" else "x"
+			pgn_helper.display(board)
+
+			save_squares(file, save_dir, board_corners, board=rot_board)
+			corners = []  # clear for next board
+			os.rename(file, os.path.join(img_dir_path, "*{}".format(os.path.basename(file))))  # mark as done
+	else:
+		print("loading piece detection model...")
+		piece_detection_model = local_load_model("../models/piece_detection_model.h5")
+		print("piece detection model loaded")
+
+		# save squares of each file
+		for file in files:
+			ct += 1
+			print("img {}/{}".format(ct, len(files)))
+			print("file: {}".format(file))
+
+			root = tk.Tk()
+			root.title("Data Collection")
+			save_squares(file, save_dir, board_corners, root=root)
+			corners = []  # clear for next board
+			os.rename(file, os.path.join(img_dir_path, "*{}".format(os.path.basename(file))))  # mark as done
 
 	# mark whole dir as done
 	last_dir_i = img_dir_path[0:len(img_dir_path) - 1].rfind("/")

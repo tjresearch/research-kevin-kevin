@@ -8,7 +8,6 @@ def clean_pgn(filename):
         print("input .pgn file")
         return
     lines = open(filename, "r").read().split("\n")
-    # print(lines)
 
     game_info = []
     comments = []
@@ -38,20 +37,19 @@ def clean_pgn(filename):
             lines[l] = lines[l][:line.index("{")-1]
 
         no_com.append(lines[l].replace('\n', '')) #reformatted line
+
     move_txt = ' '.join(no_com)
-    # print(move_txt)
     for c in range(len(move_txt)):
         if move_txt[c] == ".": #indicator of move #
             next = move_txt.find(".", c+1)
             if next == -1:
                 next = len(move_txt)
             moves = move_txt[c+1:next].strip().split(" ")[:2]
-            # print(moves)
             num_move_list.append(moves)
     return num_move_list
 
 """
-useful for clean_pgn
+apply to clean_pgn
 """
 def flatten_move_list(num_move_list):
     flat = []
@@ -305,3 +303,15 @@ def make_move(b, move, wtm):
     board[end[0]][end[1]] = board[start[0]][start[1]]
     board[start[0]][start[1]] = "-"
     return board
+
+"""
+takes pgn file and turns it into a list of board states
+"""
+def pgn_to_boards(pgn_file):
+    num_move_list = flatten_move_list(clean_pgn(pgn_file))
+    wtm = True
+    boards = [FEN_to_board()]
+    for move in num_move_list:
+        boards.append(make_move(boards[-1], move, wtm))
+        wtm = not wtm
+    return boards
