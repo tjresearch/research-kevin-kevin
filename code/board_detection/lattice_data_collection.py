@@ -43,7 +43,7 @@ def collect_data(img, model, out_dir):
 	update_display(img, lattice_dict, "image")
 	c = cv2.waitKey()
 
-	if c != ord("y"):
+	if c != ord(" "):
 		return
 
 	for point in lattice_dict:
@@ -59,7 +59,7 @@ def collect_data(img, model, out_dir):
 			cv2.imwrite(os.path.join(save_dir, file_id), subimg)
 
 
-model = board_locator.load_model("models/lattice_points_model.json", "models/lattice_points_model.h5")
+model = board_locator.load_model("../models/lattice_points_model.json", "../models/lattice_points_model.h5")
 
 file_dir = sys.argv[1]
 out_dir = sys.argv[2]
