@@ -3,14 +3,6 @@ import math
 import cv2
 
 
-def inverse_warp_point(point, H):
-	H = np.linalg.inv(H)
-	denom = H[2][0] * point[0] + H[2][1] * point[1] + H[2][2]
-
-	return (H[0][0] * point[0] + H[0][1] * point[1] + H[0][2]) / denom, (
-			H[1][0] * point[0] + H[1][1] * point[1] + H[1][2]) / denom
-
-
 def get_line_eq_mb(p1, p2):
 	if p1[0] == p2[0]:
 		return None, p1[0]

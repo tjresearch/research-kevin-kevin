@@ -32,30 +32,32 @@ def regioned_segment_board(img, corners, SQ_SIZE, graphics_IO=None):
 	dst_size = SQ_SIZE * 8
 	dst_points = [(SQ_SIZE, SQ_SIZE), (SQ_SIZE, dst_size - SQ_SIZE), (dst_size - SQ_SIZE, dst_size - SQ_SIZE), (dst_size - SQ_SIZE, SQ_SIZE)]
 	H = utils.find_homography(corners, dst_points)
+	H_inv = np.linalg.inv(H)
 
 	sqr_corners = []
 	top_ortho_regions = []
-	for i in range(8):
-		for j in range(8):
-			raw_corners = ((i * SQ_SIZE, j * SQ_SIZE),
-					   (i * SQ_SIZE, (j + 1) * SQ_SIZE),
-					   ((i + 1) * SQ_SIZE, (j + 1) * SQ_SIZE),
-					   ((i + 1) * SQ_SIZE, j * SQ_SIZE))
+	for r in range(8):
+		for c in range(8):
+			raw_corners = np.float32([[c * SQ_SIZE, r * SQ_SIZE],
+					   [c * SQ_SIZE, (r + 1) * SQ_SIZE],
+					   [(c + 1) * SQ_SIZE, (r + 1) * SQ_SIZE],
+					   [(c + 1) * SQ_SIZE, r * SQ_SIZE]])
 
-			warped_corners = [utils.inverse_warp_point(raw_corners[k], H) for k in range(4)]
+			warped_corners = cv2.perspectiveTransform(np.expand_dims(raw_corners, axis=1), H_inv)
+			warped_corners = warped_corners[:, 0]
 
 			#square tucked in by margins
 			#top right bot left
 			margin = [int(SQ_SIZE*pct) for pct in (0.15, 0.15, 0.5, 0.15)]
 			region_corners = (
-				(raw_corners[0][0]+margin[0], raw_corners[0][1]+margin[1]),
-				(raw_corners[1][0]+margin[0], raw_corners[1][1]-margin[1]),
-				(raw_corners[2][0]-margin[2], raw_corners[2][1]-margin[3]),
-				(raw_corners[3][0]-margin[2], raw_corners[3][1]+margin[3])
+				(raw_corners[0, 0]+margin[0], raw_corners[0, 1]+margin[1]),
+				(raw_corners[1, 0]+margin[0], raw_corners[1, 1]-margin[1]),
+				(raw_corners[2, 0]-margin[2], raw_corners[2, 1]-margin[3]),
+				(raw_corners[3, 0]-margin[2], raw_corners[3, 1]+margin[3])
 			)
-			# warped_region_corners = [utils.inverse_warp_point(region_corners[k], H) for k in range(4)]
-			sqr_corners.append(np.array(warped_corners))
-			top_ortho_regions.append(np.array(region_corners))
+
+			sqr_corners.append(warped_corners)
+			top_ortho_regions.append(np.array(region_corners).astype(int))
 
 	if graphics_IO:
 		out_dir = graphics_IO[1]
