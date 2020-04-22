@@ -40,6 +40,8 @@ def validate_lattice_points(model, lattice_points, img):
 	poss_images = np.array(poss_images)
 	conf = np.argmax(model.predict(poss_images[..., np.newaxis]), axis=1)
 
+	del poss_images
+
 	return poss_points, conf
 
 
@@ -54,6 +56,19 @@ def get_intersections(lines):
 				except OverflowError:
 					pass
 	return intersections
+
+
+def get_grid_from_corners(corners, SQ_SIZE=100):
+	dst_size = SQ_SIZE * 8
+	dst_points = [(SQ_SIZE, SQ_SIZE), (SQ_SIZE, dst_size - SQ_SIZE), (dst_size - SQ_SIZE, dst_size - SQ_SIZE),
+				  (dst_size - SQ_SIZE, SQ_SIZE)]
+	H = utils.find_homography(dst_points, corners)
+	warped_grid = np.zeros((49, 1, 2), np.float32)
+	for r in range(7):
+		for c in range(7):
+			warped_grid[r * 7 + c, 0] = (r + 1) * SQ_SIZE, (c + 1) * SQ_SIZE
+	grid = cv2.perspectiveTransform(warped_grid, H)
+	return grid[:, 0], warped_grid[:, 0]
 
 
 def cluster_points(points, max_dist=10):
@@ -248,7 +263,21 @@ def find_chessboard(img, lattice_point_model, out_dir="", prev=(None, None)):
 
 	else:
 		prev_frame, prev_corners = prev
-		new_corners, status, _ = cv2.calcOpticalFlowPyrLK(prev_frame, img, np.array(prev_corners).astype(np.float32), None)
+		corners_of_interest = [0, 6, 48, 42]
+
+		grid, warped_grid = get_grid_from_corners(prev_corners)
+
+		new_grid, status, _ = cv2.calcOpticalFlowPyrLK(prev_frame, img, np.array(grid).astype(np.float32), None)
+		new_corners = new_grid[corners_of_interest]
+
+		if not np.all(status[corners_of_interest]):
+			good_indices = np.argwhere(status == 1)
+			H = utils.find_homography(warped_grid[good_indices], new_grid[good_indices])
+			for i in range(4):
+				if not status[corners_of_interest[i]]:
+					warped = warped_grid[corners_of_interest[i]]
+					new_corners[i] = cv2.perspectiveTransform(warped, H)
+
 		new_corners = list(map(tuple, np.round(new_corners).astype(np.uint32).tolist()))
 
 		new_lines = []

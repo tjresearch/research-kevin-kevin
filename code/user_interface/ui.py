@@ -400,6 +400,8 @@ class Display(tk.Frame):
 			self.process_button.configure(text="Process")
 			self.process_button["text"] = "Process"
 			self.process_stop.set()
+			self.prev_corners = None
+			self.prev_raw_image = None
 
 	def process_handler(self):
 		self.processing = True

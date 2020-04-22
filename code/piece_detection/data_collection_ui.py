@@ -25,7 +25,7 @@ rev_notation = {v:k for k, v in notation.items()}
 hotkeys = {"<space>":"toggle", "x":"clear", "q":"pawn", "a":"knight", "s":"bishop", "d":"rook", "w":"queen", "e":"king"}
 
 class DataCollectionDisp(tk.Frame):
-	def __init__(self, parent, img, squares, indices, save_dir):
+	def __init__(self, parent, img, squares, indices, save_dir, piece_detection_model):
 
 		self.parent = parent
 		tk.Frame.__init__(self, parent)
@@ -279,11 +279,11 @@ def find_board(img, file, board_corners):
 
 	return corners
 
-def label_subimgs(img, squares, indices, save_dir, root):
-	window = DataCollectionDisp(root, img, squares, indices, save_dir)
+def label_subimgs(img, squares, indices, save_dir, root, piece_detection_model):
+	window = DataCollectionDisp(root, img, squares, indices, save_dir, piece_detection_model)
 	root.mainloop()
 
-def save_squares(file, outer_dir, board_corners, root=None, board=None):
+def save_squares(file, outer_dir, board_corners, piece_detection_model=None, root=None, board=None):
 	#setup file IO
 	save_dir = os.path.join(outer_dir, file[file.rfind("/")+1:file.rfind(".")])
 	os.mkdir(save_dir)
@@ -296,7 +296,7 @@ def save_squares(file, outer_dir, board_corners, root=None, board=None):
 	squares, indices, _ = split_chessboard(img, corners, TARGET_SIZE)
 	#label squares with pieces, save
 	if root and not board:
-		label_subimgs(img, squares, indices, save_dir, root)
+		label_subimgs(img, squares, indices, save_dir, root, piece_detection_model)
 	elif board and not root:
 		for r in range(8):
 			for c in range(8):
@@ -323,6 +323,8 @@ def locate_corners(files, cache_file_path, lattice_point_model):
 	else:
 		cache_file = open(cache_file_path, "w")
 
+	prev_corners = None
+	prev_frame = None
 	out_dict = {}
 	for i in range(len(files)):
 		file = files[i]
@@ -333,7 +335,9 @@ def locate_corners(files, cache_file_path, lattice_point_model):
 		else:
 			st_time = time.time()
 			img = cv2.imread(file)
-			lines, corners = board_locator.find_chessboard(img, lattice_point_model, out_dir="./debug")
+			lines, corners = board_locator.find_chessboard(img, lattice_point_model, out_dir="./debug", prev=(prev_frame, prev_corners))
+			prev_corners = corners
+			prev_frame = img
 			out_dict[file] = corners
 			cache_file.write("{} - {}\n".format(file, str(corners)))
 			cache_file.flush()
@@ -415,7 +419,7 @@ def main():
 
 			root = tk.Tk()
 			root.title("Data Collection")
-			save_squares(file, save_dir, board_corners, root=root)
+			save_squares(file, save_dir, board_corners, piece_detection_model, root=root)
 			corners = []  # clear for next board
 			os.rename(file, os.path.join(img_dir_path, "*{}".format(os.path.basename(file))))  # mark as done
 
