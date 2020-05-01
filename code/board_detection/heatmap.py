@@ -32,6 +32,13 @@ def color_diff_display(img, corners, diff_grid):
 	heatmap = np.zeros(img.shape[:2], np.uint8)
 	for i in range(64):
 		square = sqr_corners[i]
+
+		disp = img.copy()
+		for point in square:
+			cv2.circle(disp, (int(point[0]), int(point[1])), 3, (255, 0, 0), -1)
+		cv2.imshow("disp", disp)
+		cv2.waitKey()
+
 		int_square = np.expand_dims(np.int0(square), axis=1)
 		r = i // 8
 		c = i % 8
@@ -42,53 +49,53 @@ if __name__ == "__main__":
 	model_path = "../models"
 	lattice_model = board_locator.load_model(os.path.join(model_path, "lattice_points_model.json"), os.path.join(model_path, "lattice_points_model.h5"))
 
-	# img1_path = "./images/imgs_3_15_chung/*game_11/*000.jpeg"
-	# img2_path = "./images/imgs_3_15_chung/*game_11/*001.jpeg"
+	img1_path = "./images/imgs_3_15_chung/*game_11/*000.jpeg"
+	img2_path = "./images/imgs_3_15_chung/*game_11/*001.jpeg"
+
+	img1 = cv2.imread(img1_path)
+	img2 = cv2.imread(img2_path)
+
+	lines1, corners1 = board_locator.find_chessboard(img1, lattice_model)
+	lines2, corners2 = board_locator.find_chessboard(img2, lattice_model, prev=(img1, corners1))
+
+	diff_grid = get_color_diff_grid(img1, img2, corners1, corners2)
+
+	heatmap = color_diff_display(img2, corners2, diff_grid)
+
+	cv2.imshow("img1", img1)
+	cv2.imshow("img2", img2)
+	cv2.imshow("heatmap", heatmap)
+	cv2.waitKey()
+
+	# phone_ip = "10.0.0.25"
+	# url = "http://" + phone_ip + "/live?type=some.mp4"
 	#
-	# img1 = cv2.imread(img1_path)
-	# img2 = cv2.imread(img2_path)
+	# cap = cv2.VideoCapture(url)
 	#
-	# lines1, corners1 = board_locator.find_chessboard(img1, lattice_model)
-	# lines2, corners2 = board_locator.find_chessboard(img2, lattice_model, prev=(img1, corners1))
+	# prev_frame = None
+	# prev_corners = None
 	#
-	# diff_grid = get_color_diff_grid(img1, img2, corners1, corners2)
+	# while cap.isOpened():
+	# 	ret, frame = cap.read()
 	#
-	# heatmap = color_diff_display(img2, corners2, diff_grid)
+	# 	if ret:
+	# 		# st_time = time.time()
+	# 		lines, corners = board_locator.find_chessboard(frame, lattice_model, prev=(prev_frame, prev_corners))
+	# 		# print("Found board in {} s".format(time.time() - st_time))
 	#
-	# cv2.imshow("img1", img1)
-	# cv2.imshow("img2", img2)
-	# cv2.imshow("heatmap", heatmap)
-	# cv2.waitKey()
-
-	phone_ip = "10.0.0.25"
-	url = "http://" + phone_ip + "/live?type=some.mp4"
-
-	cap = cv2.VideoCapture(url)
-
-	prev_frame = None
-	prev_corners = None
-
-	while cap.isOpened():
-		ret, frame = cap.read()
-
-		if ret:
-			# st_time = time.time()
-			lines, corners = board_locator.find_chessboard(frame, lattice_model, prev=(prev_frame, prev_corners))
-			# print("Found board in {} s".format(time.time() - st_time))
-
-			disp = frame.copy()
-			for corner in corners:
-				cv2.circle(disp, corner, 5, (255, 0, 0), 3)
-
-			if prev_frame is not None:
-				grid = get_color_diff_grid(frame, prev_frame, corners, prev_corners)
-				heatmap = color_diff_display(frame, corners, grid)
-				cv2.imshow("heatmap", cv2.resize(heatmap, None, fx=0.75, fy=0.75))
-
-			cv2.imshow("disp", cv2.resize(disp, None, fx=0.75, fy=0.75))
-			cv2.waitKey(1)
-
-			prev_frame = frame
-			prev_corners = corners
+	# 		disp = frame.copy()
+	# 		for corner in corners:
+	# 			cv2.circle(disp, corner, 5, (255, 0, 0), 3)
+	#
+	# 		if prev_frame is not None:
+	# 			grid = get_color_diff_grid(frame, prev_frame, corners, prev_corners)
+	# 			heatmap = color_diff_display(frame, corners, grid)
+	# 			cv2.imshow("heatmap", cv2.resize(heatmap, None, fx=0.75, fy=0.75))
+	#
+	# 		cv2.imshow("disp", cv2.resize(disp, None, fx=0.75, fy=0.75))
+	# 		cv2.waitKey(1)
+	#
+	# 		prev_frame = frame
+	# 		prev_corners = corners
 
 
