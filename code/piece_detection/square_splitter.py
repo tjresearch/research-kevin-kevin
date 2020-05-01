@@ -31,27 +31,6 @@ def ResizeWithAspectRatio(image, width=None, height=None, inter=cv2.INTER_AREA):
 
 	return cv2.resize(image, dim, interpolation=inter)
 
-"""
-order four points clockwise from top-left corner
-return np array of points
-https://www.pyimagesearch.com/2014/08/25/4-point-opencv-getperspective-transform-example/
-"""
-def order_points(pts):
-	if type(pts) == list:
-		pts = np.array(pts)
-
-	rect = np.zeros((4, 2), dtype = "float32")
-
-	s = pts.sum(axis = 1)
-	rect[0] = pts[np.argmin(s)]
-	rect[2] = pts[np.argmax(s)]
-
-	diff = np.diff(pts, axis = 1)
-	rect[1] = pts[np.argmin(diff)]
-	rect[3] = pts[np.argmax(diff)]
-
-	return rect
-
 # https://stackoverflow.com/questions/19363293/whats-the-fastest-way-to-increase-color-image-contrast-with-opencv-in-python-c
 def increase_color_contrast(src, clim, tgs):
 	clahe = cv2.createCLAHE(clipLimit=clim, tileGridSize=tgs) #get CLAHE from normal img
@@ -84,7 +63,7 @@ def get_ortho_guesses(src, ortho_tops, H, SQ_SIZE):
 
 	#get topdown projection of Canny
 	td_size = (SQ_SIZE*8, SQ_SIZE*8)
-	topdown = cv2.transpose(cv2.warpPerspective(canny, H, td_size))
+	topdown = cv2.warpPerspective(canny, H, td_size)
 
 	#identify number of significant canny points based on white_pix_thresh
 	canny_cts = []
@@ -291,10 +270,24 @@ def split_chessboard(src, board_corners, TARGET_SIZE, graphics_IO=None):
 		for i in range(4):
 			board_corners[i] = (int(board_corners[i][0] * scale_to[1] / old_shape[1]), int(board_corners[i][1] * scale_to[1] / old_shape[1]))
 
-	board_corners = order_points(board_corners)
 
 	#segment board
 	sqr_corners, ortho_tops, H = regioned_segment_board(src, board_corners, TARGET_SIZE[1], graphics_IO)
+
+	temp = src.copy()
+	for sqr in sqr_corners[:8]:
+		# print(sqr)
+		cv2.circle(temp, tuple(sqr[0]), 3, (255, 0, 0), 5)
+	cv2.imshow("temp", temp)
+	cv2.waitKey()
+
+
+	temp2 = src.copy()
+	for ortho in ortho_tops[:8]:
+		cv2.circle(temp2, tuple(ortho[0]), 3, (0, 255, 0), 5)
+	cv2.imshow("temp2", temp2)
+	cv2.waitKey()
+
 
 	#use orthophoto to find poss piece locations
 	ortho_guesses = get_ortho_guesses(src, ortho_tops, H, TARGET_SIZE[1])
