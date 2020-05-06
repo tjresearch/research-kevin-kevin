@@ -30,6 +30,7 @@ called by split_chessboard() in piece_detection/square_splitter.py
 """
 def regioned_segment_board(img, corners, SQ_SIZE, graphics_IO=None):
 	dst_size = SQ_SIZE * 8
+	#ccw, xy origin top-left
 	dst_points = [(SQ_SIZE, SQ_SIZE), (SQ_SIZE, dst_size - SQ_SIZE), (dst_size - SQ_SIZE, dst_size - SQ_SIZE), (dst_size - SQ_SIZE, SQ_SIZE)]
 	H = utils.find_homography(corners, dst_points)
 	H_inv = np.linalg.inv(H)
@@ -38,6 +39,7 @@ def regioned_segment_board(img, corners, SQ_SIZE, graphics_IO=None):
 	top_ortho_regions = []
 	for r in range(8):
 		for c in range(8):
+			#ccw, xy origin top-left
 			raw_corners = np.float32([[c * SQ_SIZE, r * SQ_SIZE],
 					   [c * SQ_SIZE, (r + 1) * SQ_SIZE],
 					   [(c + 1) * SQ_SIZE, (r + 1) * SQ_SIZE],
@@ -47,13 +49,13 @@ def regioned_segment_board(img, corners, SQ_SIZE, graphics_IO=None):
 			warped_corners = warped_corners[:, 0]
 
 			#square tucked in by margins
-			#top right bot left
-			margin = [int(SQ_SIZE*pct) for pct in (0.15, 0.15, 0.5, 0.15)]
+			#top left bot right, xy
+			margin = [int(SQ_SIZE*pct) for pct in (0.15, 0.15, 0.50, 0.15)]
 			region_corners = (
-				(raw_corners[0, 0]+margin[0], raw_corners[0, 1]+margin[1]),
-				(raw_corners[1, 0]+margin[0], raw_corners[1, 1]-margin[1]),
-				(raw_corners[2, 0]-margin[2], raw_corners[2, 1]-margin[3]),
-				(raw_corners[3, 0]-margin[2], raw_corners[3, 1]+margin[3])
+				(raw_corners[0, 0]+margin[1], raw_corners[0, 1]+margin[0]),
+				(raw_corners[1, 0]+margin[1], raw_corners[1, 1]-margin[2]),
+				(raw_corners[2, 0]-margin[3], raw_corners[2, 1]-margin[2]),
+				(raw_corners[3, 0]-margin[3], raw_corners[3, 1]+margin[0])
 			)
 
 			sqr_corners.append(warped_corners)

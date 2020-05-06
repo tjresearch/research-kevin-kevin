@@ -31,7 +31,7 @@ print("Loaded in {} s".format(time.time() - st_load_time))
 # Load piece models
 print("Loading piece model...")
 st_load_time = time.time()
-# piece_model = identify_pieces.local_load_model(os.path.join(model_dir, "piece_detection_model.h5"))
+# piece_model = piece_classifier.local_load_model(os.path.join(model_dir, "piece_detection_model.h5"))
 piece_model = None
 print("Loaded in {} s".format(time.time() - st_load_time))
 
@@ -90,11 +90,12 @@ print("-"*60)
 # print("Saving graphics to {}".format(graphics_IO[1]))
 graphics_IO = None
 
-board = piece_classifier.classify_pieces(img, corners, piece_model, TARGET_SIZE, graphics_IO, prev_state)
-pgn_helper.display(board)
+board, ortho_guesses = piece_classifier.classify_pieces(img, corners, piece_model, TARGET_SIZE, graphics_IO, prev_state)
+print(ortho_guesses)
 print()
 print(board)
 print()
+pgn_helper.display(board)
 
 print("any key to close")
 cv2.waitKey()

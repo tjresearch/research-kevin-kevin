@@ -158,6 +158,14 @@ optional arg: prev state--in same form as output of this method (array of ltrs)
 """
 def classify_pieces(src, board_corners, nnet, TARGET_SIZE, prev_state=None, graphics_IO=None):
 	sqr_imgs, indices, ortho_guesses = split_chessboard(src, board_corners, TARGET_SIZE, graphics_IO)
+	# print(len(sqr_imgs))
+	# print(len(indices))
+	# print(len(ortho_guesses))
+	
+	for i in range(len(sqr_imgs)):
+		print(indices[i])
+		cv2.imshow("img", sqr_imgs[i])
+		cv2.waitKey()
 
 	#compute possible next moves from prev state, flatten to 1D list
 	flat_poss = []

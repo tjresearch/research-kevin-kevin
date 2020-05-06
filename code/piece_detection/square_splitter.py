@@ -65,17 +65,29 @@ def get_ortho_guesses(src, ortho_tops, H, SQ_SIZE):
 	td_size = (SQ_SIZE*8, SQ_SIZE*8)
 	topdown = cv2.warpPerspective(canny, H, td_size)
 
+	disp = topdown.copy()
+
 	#identify number of significant canny points based on white_pix_thresh
 	canny_cts = []
 	white_pix_thresh = topdown[topdown!=0].mean() #take upper half of canny pix
 	# white_pix_thresh = topdown.mean() #take upper half of ALL pix
-	for reg in ortho_tops: #bounds are transposed
+
+	for reg in ortho_tops:
+		cv2.line(disp, tuple(reg[0]), tuple(reg[1]), (255, 255, 255))
+		cv2.line(disp, tuple(reg[1]), tuple(reg[2]), (255, 255, 255))
+		cv2.line(disp, tuple(reg[2]), tuple(reg[3]), (255, 255, 255))
+		cv2.line(disp, tuple(reg[3]), tuple(reg[0]), (255, 255, 255))
+
 		ct = 0
-		for c in range(reg[0][1], reg[1][1]):
-			for r in range(reg[0][0], reg[3][0]):
-				if topdown[r][c] > white_pix_thresh: #thresh set above
+		#regions in ortho tops are in x, y
+		for r in range(reg[0][1], reg[1][1]):
+			for c in range(reg[0][0], reg[3][0]):
+				if topdown[r][c] > white_pix_thresh:
 					ct += 1
 		canny_cts.append(ct)
+
+	cv2.imshow("td", disp)
+	cv2.waitKey()
 
 	#identify squares that pass threshold for possibly having a piece
 	#aiming for perfect recall (mark all pieces at expense of accuracy)
@@ -89,6 +101,7 @@ def get_ortho_guesses(src, ortho_tops, H, SQ_SIZE):
 			flat_piece_binary[i] = 0
 
 	piece_binary = np.asarray(flat_piece_binary).reshape(-1, 8)
+	print(piece_binary)
 	return piece_binary
 
 """
@@ -210,6 +223,9 @@ def get_sqr_imgs(src, sqr_corners, ortho_guesses, TARGET_SIZE, graphics_IO=None)
 			for file in os.listdir(ortho_dir):
 				os.remove(os.path.join(ortho_dir, file))
 
+	cv2.imshow("pre splice src", src)
+	cv2.waitKey()
+
 	#crop square out of full image
 	for i in range(len(sqr_corners)):
 		if not ortho_guesses[i]: continue
@@ -218,8 +234,9 @@ def get_sqr_imgs(src, sqr_corners, ortho_guesses, TARGET_SIZE, graphics_IO=None)
 		sheared = bounds[i]
 
 		#perspective transform to normalize parallelogram to rectangle
+		#target size in (r,c): (224, 112) -> (112, 224) in xy
 		unsheared_sz = (TARGET_SIZE[1], TARGET_SIZE[0])
-		dst_box = [(0,0), (unsheared_sz[0],0), unsheared_sz, (0,unsheared_sz[1])] #cw, xy origin top-left
+		dst_box = [(0,0), (0, unsheared_sz[1]), unsheared_sz, (unsheared_sz[0], 0)] #ccw, xy origin top-left
 		H, _ = cv2.findHomography(np.array(sheared), np.array(dst_box))
 		unsheared = cv2.warpPerspective(src, H, unsheared_sz)
 
@@ -270,7 +287,6 @@ def split_chessboard(src, board_corners, TARGET_SIZE, graphics_IO=None):
 		for i in range(4):
 			board_corners[i] = (int(board_corners[i][0] * scale_to[1] / old_shape[1]), int(board_corners[i][1] * scale_to[1] / old_shape[1]))
 
-
 	#segment board
 	sqr_corners, ortho_tops, H = regioned_segment_board(src, board_corners, TARGET_SIZE[1], graphics_IO)
 
@@ -279,14 +295,14 @@ def split_chessboard(src, board_corners, TARGET_SIZE, graphics_IO=None):
 		# print(sqr)
 		cv2.circle(temp, tuple(sqr[0]), 3, (255, 0, 0), 5)
 	cv2.imshow("temp", temp)
-	cv2.waitKey()
+	# cv2.waitKey()
 
 
-	temp2 = src.copy()
-	for ortho in ortho_tops[:8]:
-		cv2.circle(temp2, tuple(ortho[0]), 3, (0, 255, 0), 5)
-	cv2.imshow("temp2", temp2)
-	cv2.waitKey()
+	# temp2 = src.copy()
+	# for ortho in ortho_tops[:8]:
+	# 	cv2.circle(temp2, tuple(ortho[0]), 3, (0, 255, 0), 5)
+	# cv2.imshow("temp2", temp2)
+	# cv2.waitKey()
 
 
 	#use orthophoto to find poss piece locations
