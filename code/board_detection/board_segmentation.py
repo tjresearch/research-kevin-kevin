@@ -30,7 +30,7 @@ called by split_chessboard() in piece_detection/square_splitter.py
 """
 def regioned_segment_board(img, corners, SQ_SIZE, graphics_IO=None):
 	dst_size = SQ_SIZE * 8
-	#ccw, xy origin top-left
+	#ccw from top-left, xy
 	dst_points = [(SQ_SIZE, SQ_SIZE), (SQ_SIZE, dst_size - SQ_SIZE), (dst_size - SQ_SIZE, dst_size - SQ_SIZE), (dst_size - SQ_SIZE, SQ_SIZE)]
 	H = utils.find_homography(corners, dst_points)
 	H_inv = np.linalg.inv(H)
@@ -39,7 +39,7 @@ def regioned_segment_board(img, corners, SQ_SIZE, graphics_IO=None):
 	top_ortho_regions = []
 	for r in range(8):
 		for c in range(8):
-			#ccw, xy origin top-left
+			#ccw from top-left, xy
 			raw_corners = np.float32([[c * SQ_SIZE, r * SQ_SIZE],
 					   [c * SQ_SIZE, (r + 1) * SQ_SIZE],
 					   [(c + 1) * SQ_SIZE, (r + 1) * SQ_SIZE],

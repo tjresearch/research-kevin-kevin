@@ -110,16 +110,20 @@ to estimate piece height in pixels given piece height in sqrs
 return estimated height for every square of board
 """
 def estimate_bounds(src, sqr_corners, piece_height, graphics_IO=None):
-	#get imgpts of chessboard intersections
+	#turn individual square boxes into full chessboard lattice points
 	full_board_corners = []	#left to right, top to bottom
 	for r in range(8):
+		#take top left corners of each img box
 		sqrs = sqr_corners[r*8:(r+1)*8]
 		for sqr in sqrs:
 			full_board_corners.append([sqr[0][0],sqr[0][1]])
-		full_board_corners.append([sqrs[-1][1][0],sqrs[-1][1][1]])
+		#take top right corners of last sqr in each row
+		full_board_corners.append([sqrs[-1][3][0],sqrs[-1][3][1]])
+	#take bottom left corners of last row of sqrs
 	last_row = sqr_corners[-8:]
 	for sqr in last_row:
-		full_board_corners.append([sqr[3][0], sqr[3][1]])
+		full_board_corners.append([sqr[1][0], sqr[1][1]])
+	#take bottom right corners of last sqr
 	full_board_corners.append([last_row[-1][2][0],last_row[-1][2][1]])
 	full_board_corners = np.asarray(full_board_corners) #81x2
 
@@ -139,8 +143,8 @@ def estimate_bounds(src, sqr_corners, piece_height, graphics_IO=None):
 	desired_bounds = []
 	for r in range(8):
 		for c in range(8):
-			#points of interest: front pts of base, front pts of top
-			POI = [[r+0.75,c,piece_height],[r+0.75,c+1,piece_height],[r+0.75,c+1,0],[r+0.75,c,0]]
+			#ccw from top-left, xy
+			POI = [[r+0.75,c,piece_height],[r+0.75,c,0],[r+0.75,c+1,0],[r+0.75,c+1,piece_height]]
 			for pt in POI:
 				desired_bounds.append(pt)
 	desired_bounds = np.asarray(desired_bounds).astype(np.float32)
@@ -230,15 +234,19 @@ def get_sqr_imgs(src, sqr_corners, ortho_guesses, TARGET_SIZE, graphics_IO=None)
 	for i in range(len(sqr_corners)):
 		if not ortho_guesses[i]: continue
 
-		corners = sqr_corners[i] #cw from top-left
+		#ccw from top-left, xy
+		corners = sqr_corners[i]
 		sheared = bounds[i]
 
 		#perspective transform to normalize parallelogram to rectangle
 		#target size in (r,c): (224, 112) -> (112, 224) in xy
 		unsheared_sz = (TARGET_SIZE[1], TARGET_SIZE[0])
-		dst_box = [(0,0), (0, unsheared_sz[1]), unsheared_sz, (unsheared_sz[0], 0)] #ccw, xy origin top-left
+		#ccw from top-left, xy
+		dst_box = [(0,0), (0, unsheared_sz[1]), unsheared_sz, (unsheared_sz[0], 0)]
 		H, _ = cv2.findHomography(np.array(sheared), np.array(dst_box))
 		unsheared = cv2.warpPerspective(src, H, unsheared_sz)
+		cv2.imshow("unsheared", unsheared)
+		cv2.waitKey()
 
 		#add rectangle to img list
 		sqr_imgs.append(unsheared)

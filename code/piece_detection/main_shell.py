@@ -31,8 +31,8 @@ print("Loaded in {} s".format(time.time() - st_load_time))
 # Load piece models
 print("Loading piece model...")
 st_load_time = time.time()
-# piece_model = piece_classifier.local_load_model(os.path.join(model_dir, "piece_detection_model.h5"))
-piece_model = None
+piece_model = piece_classifier.local_load_model(os.path.join(model_dir, "piece_detection_model.h5"))
+# piece_model = None
 print("Loaded in {} s".format(time.time() - st_load_time))
 
 TARGET_SIZE = (224, 112)
