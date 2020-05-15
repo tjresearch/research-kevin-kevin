@@ -141,41 +141,92 @@ def get_pred_board(nnet, TARGET_SIZE, sqr_imgs, indices, flat_poss=None, graphic
 
 			cv2.imwrite(os.path.join(subfolder, "sq_{}.jpg".format(indices[i])), arrow)
 
+	# board = rotate_board_to_std(pred_board)
+	# board = [[pred_board[i][j] for j in range(8)] for i in range(8)]
+	pred_board = np.asarray(pred_board)
+	pred_board = np.resize(pred_board, (8,8))
+	board = [["-" for j in range(8)] for i in range(8)]
+	for i in range(8):
+		for j in range(8):
+			board[i][j] = str(pred_board[i][j])
+	return board #nested lists
+"""
+rotate board so white pieces on bottom
+"""
+def rotate_board_to_std(pred_board, white_on_left):
 	#rotate board for std display (white on bottom), this is fastest way
 	pred_board = np.asarray(pred_board)
 	pred_board = np.resize(pred_board, (8,8))
 	pred_board = np.rot90(pred_board)
+	if not white_on_left:
+		pred_board = np.rot90(np.rot90(pred_board))
 	board = [[None for j in range(8)] for i in range(8)]
 	for i in range(8):
 		for j in range(8):
 			board[i][j] = str(pred_board[i][j])
-
-	return board #return nested lists
+	return board
 
 """
 classify pieces in src img given: board_corners, piece_nnet, TARGET_SIZE of nnet
 optional arg: prev state--in same form as output of this method (array of ltrs)
 """
-def classify_pieces(src, board_corners, nnet, TARGET_SIZE, prev_state=None, graphics_IO=None):
+def classify_pieces(src, board_corners, nnet, TARGET_SIZE, white_on_left, prev_state=None, graphics_IO=None):
 	sqr_imgs, indices, ortho_guesses = split_chessboard(src, board_corners, TARGET_SIZE, graphics_IO)
-	# print(len(sqr_imgs))
-	# print(len(indices))
-	# print(len(ortho_guesses))
-	
-	for i in range(len(sqr_imgs)):
-		print(indices[i])
-		cv2.imshow("img", sqr_imgs[i])
-		cv2.waitKey()
 
 	#compute possible next moves from prev state, flatten to 1D list
 	flat_poss = []
+	#requires white_on_left to exist too
 	if prev_state:
 		stacked_poss = get_stacked_poss(prev_state)
 
-		#matching same orientation as board, ASSUMES WHITE ON LEFT OF FRAME
+		#matching same orientation as board
+		#!! ASSUMES WHITE ON LEFT OF FRAME
 		for c in range(8):
 			for r in range(7, -1, -1):
 				flat_poss.append(stacked_poss[r][c])
 
 	pred_board = get_pred_board(nnet, TARGET_SIZE, sqr_imgs, indices, flat_poss=flat_poss, graphics_IO=graphics_IO)
-	return pred_board, ortho_guesses
+
+	if white_on_left == None:
+		white_on_left = find_white_on_left(pred_board)
+
+	return pred_board, ortho_guesses, white_on_left
+
+"""
+figure out which side of frame white pieces are on
+"""
+def find_white_on_left(pred_board):
+	#[left side, right side]
+	white_count = [0,0]
+	black_count = [0,0]
+	for r in range(8):
+		for c in range(4):
+			ltr = pred_board[r][c]
+			if ltr != "-":
+				if ltr.isupper():
+					white_count[0] += 1
+				else:
+					black_count[0] += 1
+		for c2 in range(4, 8):
+			ltr = pred_board[r][c2]
+			if ltr != "-":
+				if ltr.isupper():
+					white_count[1] += 1
+				else:
+					black_count[1] += 1
+
+	more_white_left = white_count[0] > black_count[0]
+	more_white_right = white_count[1] > black_count[1]
+
+	print(white_count)
+	print(black_count)
+
+	if more_white_left and not more_white_right:
+		return True
+	elif more_white_right and not more_white_left:
+		return False
+	else:
+		#if more white pieces than black pieces on both sides of the board,
+		#or more black than white on both sides
+		#return which side has more white pieces overall as a guess
+		return more_white_left > more_white_right

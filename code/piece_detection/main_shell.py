@@ -88,9 +88,10 @@ print("-"*60)
 # 	os.mkdir(graphics_IO[1])
 # print("Pulling assets from {}".format(graphics_IO[0]))
 # print("Saving graphics to {}".format(graphics_IO[1]))
-graphics_IO = None
+graphics_IO = ("../assets", "../user_interface/assets")
 
-board, ortho_guesses = piece_classifier.classify_pieces(img, corners, piece_model, TARGET_SIZE, graphics_IO, prev_state)
+board, ortho_guesses, white_on_left = piece_classifier.classify_pieces(img, corners, piece_model, TARGET_SIZE, None, prev_state=None, graphics_IO=graphics_IO)
+print(white_on_left)
 print(ortho_guesses)
 print()
 print(board)
