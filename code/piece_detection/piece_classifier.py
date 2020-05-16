@@ -141,22 +141,21 @@ def get_pred_board(nnet, TARGET_SIZE, sqr_imgs, indices, flat_poss=None, graphic
 
 			cv2.imwrite(os.path.join(subfolder, "sq_{}.jpg".format(indices[i])), arrow)
 
-	# board = rotate_board_to_std(pred_board)
-	# board = [[pred_board[i][j] for j in range(8)] for i in range(8)]
 	pred_board = np.asarray(pred_board)
 	pred_board = np.resize(pred_board, (8,8))
-	board = [["-" for j in range(8)] for i in range(8)]
-	for i in range(8):
-		for j in range(8):
-			board[i][j] = str(pred_board[i][j])
-	return board #nested lists
+	# board = [["-" for j in range(8)] for i in range(8)]
+	# for i in range(8):
+	# 	for j in range(8):
+	# 		board[i][j] = str(pred_board[i][j])
+	return pred_board #numpy array
+	
 """
 rotate board so white pieces on bottom
 """
 def rotate_board_to_std(pred_board, white_on_left):
 	#rotate board for std display (white on bottom), this is fastest way
-	pred_board = np.asarray(pred_board)
-	pred_board = np.resize(pred_board, (8,8))
+	# pred_board = np.asarray(pred_board)
+	# pred_board = np.resize(pred_board, (8,8))
 	pred_board = np.rot90(pred_board)
 	if not white_on_left:
 		pred_board = np.rot90(np.rot90(pred_board))
@@ -164,13 +163,28 @@ def rotate_board_to_std(pred_board, white_on_left):
 	for i in range(8):
 		for j in range(8):
 			board[i][j] = str(pred_board[i][j])
-	return board
+	return board #nested list
+
+# https://stackoverflow.com/questions/19363293/whats-the-fastest-way-to-increase-color-image-contrast-with-opencv-in-python-c
+def increase_color_contrast(src, clim, tgs):
+	clahe = cv2.createCLAHE(clipLimit=clim, tileGridSize=tgs) #get CLAHE from normal img
+
+	lab = cv2.cvtColor(src, cv2.COLOR_BGR2LAB)  # convert from BGR to LAB color space
+	l, a, b = cv2.split(lab)  # split on 3 different channels
+
+	l2 = clahe.apply(l)  # apply CLAHE to the L-channel
+	lab = cv2.merge((l2,a,b))  # merge channels
+
+	output = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)  # convert back to BGR
+	return output
 
 """
 classify pieces in src img given: board_corners, piece_nnet, TARGET_SIZE of nnet
 optional arg: prev state--in same form as output of this method (array of ltrs)
 """
 def classify_pieces(src, board_corners, nnet, TARGET_SIZE, white_on_left, prev_state=None, graphics_IO=None):
+	src = increase_color_contrast(src, 3.5, (8,8)) #increase color contrast of original
+
 	sqr_imgs, indices, ortho_guesses = split_chessboard(src, board_corners, TARGET_SIZE, graphics_IO)
 
 	#compute possible next moves from prev state, flatten to 1D list
@@ -190,7 +204,10 @@ def classify_pieces(src, board_corners, nnet, TARGET_SIZE, white_on_left, prev_s
 	if white_on_left == None:
 		white_on_left = find_white_on_left(pred_board)
 
-	return pred_board, ortho_guesses, white_on_left
+	print(white_on_left)
+	board = rotate_board_to_std(pred_board, white_on_left)
+
+	return board, ortho_guesses, white_on_left
 
 """
 figure out which side of frame white pieces are on
@@ -201,6 +218,7 @@ def find_white_on_left(pred_board):
 	black_count = [0,0]
 	for r in range(8):
 		for c in range(4):
+			print(r, c)
 			ltr = pred_board[r][c]
 			if ltr != "-":
 				if ltr.isupper():
@@ -208,6 +226,7 @@ def find_white_on_left(pred_board):
 				else:
 					black_count[0] += 1
 		for c2 in range(4, 8):
+			print(r, c2)
 			ltr = pred_board[r][c2]
 			if ltr != "-":
 				if ltr.isupper():
@@ -215,18 +234,15 @@ def find_white_on_left(pred_board):
 				else:
 					black_count[1] += 1
 
-	more_white_left = white_count[0] > black_count[0]
-	more_white_right = white_count[1] > black_count[1]
+	left_diff = white_count[0] - black_count[0]
+	right_diff = white_count[1] - black_count[1]
 
-	print(white_count)
-	print(black_count)
-
-	if more_white_left and not more_white_right:
+	if left_diff > 0 and right_diff < 0:
 		return True
-	elif more_white_right and not more_white_left:
+	elif right_diff > 0 and left_diff < 0:
 		return False
 	else:
 		#if more white pieces than black pieces on both sides of the board,
 		#or more black than white on both sides
 		#return which side has more white pieces overall as a guess
-		return more_white_left > more_white_right
+		return white_count[0] > white_count[1]

@@ -31,18 +31,18 @@ def ResizeWithAspectRatio(image, width=None, height=None, inter=cv2.INTER_AREA):
 
 	return cv2.resize(image, dim, interpolation=inter)
 
-# https://stackoverflow.com/questions/19363293/whats-the-fastest-way-to-increase-color-image-contrast-with-opencv-in-python-c
-def increase_color_contrast(src, clim, tgs):
-	clahe = cv2.createCLAHE(clipLimit=clim, tileGridSize=tgs) #get CLAHE from normal img
-
-	lab = cv2.cvtColor(src, cv2.COLOR_BGR2LAB)  # convert from BGR to LAB color space
-	l, a, b = cv2.split(lab)  # split on 3 different channels
-
-	l2 = clahe.apply(l)  # apply CLAHE to the L-channel
-	lab = cv2.merge((l2,a,b))  # merge channels
-
-	output = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)  # convert back to BGR
-	return output
+# # https://stackoverflow.com/questions/19363293/whats-the-fastest-way-to-increase-color-image-contrast-with-opencv-in-python-c
+# def increase_color_contrast(src, clim, tgs):
+# 	clahe = cv2.createCLAHE(clipLimit=clim, tileGridSize=tgs) #get CLAHE from normal img
+#
+# 	lab = cv2.cvtColor(src, cv2.COLOR_BGR2LAB)  # convert from BGR to LAB color space
+# 	l, a, b = cv2.split(lab)  # split on 3 different channels
+#
+# 	l2 = clahe.apply(l)  # apply CLAHE to the L-channel
+# 	lab = cv2.merge((l2,a,b))  # merge channels
+#
+# 	output = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)  # convert back to BGR
+# 	return output
 
 """
 transform Canny edge version of chessboard
@@ -51,15 +51,15 @@ return 8x8 binary np array
 	piece = 1, empty = 0
 """
 def get_ortho_guesses(src, ortho_tops, H, SQ_SIZE):
-	high_contrast = increase_color_contrast(src, 3.5, (8,8))
+	# src = increase_color_contrast(src, 3.5, (8,8))
 
 	#same as canny() in line_detection.py but
 	#no lower hysteresis thresh and no medianBlur, to find black pieces
 	sigma = 0.25
-	v = np.median(high_contrast)
+	v = np.median(src)
 	lower = 0
 	upper = int(min(255, (1.0 + sigma) * v))
-	canny = cv2.Canny(high_contrast, lower, upper)
+	canny = cv2.Canny(src, lower, upper)
 
 	#get topdown projection of Canny
 	td_size = (SQ_SIZE*8, SQ_SIZE*8)
