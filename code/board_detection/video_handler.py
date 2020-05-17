@@ -13,6 +13,19 @@ SQ_SIZE = 100
 dst_size = SQ_SIZE * 8
 dst_points = [(SQ_SIZE, SQ_SIZE), (SQ_SIZE, dst_size - SQ_SIZE), (dst_size - SQ_SIZE, dst_size - SQ_SIZE), (dst_size - SQ_SIZE, SQ_SIZE)]
 
+prev_raw_frame = None
+prev_frame = None
+prev_corners = None
+prev_grid = None
+
+cur_calm_streak = 0
+good_calm_streak = 10
+first_calm = True
+last_calm_raw_frame = None
+last_calm_frame = None
+last_calm_corners = None
+idx = 0
+
 def get_color_diff_grid(img1, img2, corners1, corners2):
 	H1 = utils.find_homography(corners1, dst_points)
 	H2 = utils.find_homography(corners2, dst_points)
@@ -53,6 +66,75 @@ def save_frame(frame, save_dir):
 	filename = "{:03d}.jpg".format(len(os.listdir(save_dir)))
 	cv2.imwrite(os.path.join(save_dir, filename), frame)
 
+def update_calm(raw_frame, frame, corners):
+	global first_calm, last_calm_raw_frame, last_calm_frame, last_calm_corners
+	last_calm_raw_frame = raw_frame
+	last_calm_frame = frame
+	last_calm_corners = corners
+	cv2.imshow("last_calm", cv2.resize(last_calm_frame, None, fx=0.5, fy=0.5))
+	if first_calm:
+		if save_frames:
+			print("Saved frame {}".format(idx))
+			save_frame(raw_frame, save_dir)
+		else:
+			print(idx)
+			cv2.waitKey()
+		first_calm = False
+
+def process_frame(raw_frame):
+	global prev_raw_frame, prev_frame, prev_corners, prev_grid,\
+		cur_calm_streak, good_calm_streak, first_calm, last_calm_raw_frame, \
+		last_calm_frame, last_calm_corners, idx
+
+	frame = square_splitter.increase_color_contrast(raw_frame, 2.5, (8, 8))
+	# disp = frame.copy()
+
+	if prev_grid is not None and idx - 2 >= 0 and np.max(prev_grid - np.median(prev_grid)) > 5:
+		corners = prev_corners
+		cur_calm_streak = 0
+	else:
+		if last_calm_frame is None:
+			lines, corners = board_locator.find_chessboard(raw_frame, lattice_model, prev=(prev_raw_frame, prev_corners))
+			if cur_calm_streak >= good_calm_streak:
+				update_calm(raw_frame, frame, corners)
+		else:
+			if cur_calm_streak >= good_calm_streak:
+				if cur_calm_streak == good_calm_streak:
+					first_calm = True
+				calm_comparison = get_color_diff_grid(prev_frame, last_calm_frame, prev_corners, last_calm_corners)
+				# cv2.imshow("calm_grid", cv2.resize(color_diff_display(prev_frame, prev_corners, calm_comparison), None, fx=0.5, fy=0.5))
+				dist_from_avg = calm_comparison - np.median(calm_comparison)
+				# dist_from_avg[dist_from_avg < 0] = 0
+				if len(np.argwhere(dist_from_avg > np.mean(dist_from_avg) + np.std(dist_from_avg) * 1.5)) < 5:
+					lines, corners = board_locator.find_chessboard(raw_frame, lattice_model,
+																   prev=(last_calm_raw_frame, last_calm_corners))
+					update_calm(raw_frame, frame, corners)
+				else:
+					corners = prev_corners
+			else:
+				first_calm = False
+				corners = prev_corners
+		cur_calm_streak += 1
+
+	# print("Found board in {} s".format(time.time() - st_time))
+
+	# for corner in corners:
+	# 	cv2.circle(disp, corner, 5, (255, 0, 0), 3)
+
+	if idx - 1 >= 0:
+		grid = get_color_diff_grid(frame, prev_frame, corners, prev_corners)
+	else:
+		grid = None
+
+	prev_raw_frame = raw_frame
+	prev_frame = frame
+	prev_corners = corners
+	prev_grid = grid
+
+	# cv2.imshow("disp", cv2.resize(disp, None, fx=0.5, fy=0.5))
+
+	idx += 1
+
 if __name__ == "__main__":
 	model_path = "../models"
 	lattice_model = board_locator.load_model(os.path.join(model_path, "lattice_points_model.json"), os.path.join(model_path, "lattice_points_model.h5"))
@@ -81,7 +163,7 @@ if __name__ == "__main__":
 	# cap = cv2.VideoCapture(url)
 
 	if len(sys.argv[1:]) != 1 and len(sys.argv[1:]) != 3:
-		print("usage: heatmap.py [src video] | [save frames?] [save dir]")
+		print("usage: video_handler.py [src video] | [save frames?] [save dir]")
 
 	delay = 0
 
@@ -93,92 +175,16 @@ if __name__ == "__main__":
 	else:
 		save_frames = False
 
-	prev_raw_frame = None
-	prev_frame = None
-	prev_corners = None
-	prev_grid = None
-
-	cur_calm_streak = 0
-	good_calm_streak = 10
-	first_calm = True
-	last_calm_raw_frame = None
-	last_calm_frame = None
-	last_calm_corners = None
-	idx = 0
-
-	def update_calm(raw_frame, frame, corners):
-		global first_calm, last_calm_raw_frame, last_calm_frame, last_calm_corners
-		last_calm_raw_frame = raw_frame
-		last_calm_frame = frame
-		last_calm_corners = corners
-		cv2.imshow("last_calm", cv2.resize(last_calm_frame, None, fx=0.5, fy=0.5))
-		if first_calm:
-			if save_frames:
-				print("Saved frame {}".format(idx))
-				save_frame(raw_frame, save_dir)
-			else:
-				print(idx)
-				cv2.waitKey()
-			first_calm = False
-
-
 	while cap.isOpened():
 		ret, raw_frame = cap.read()
-		frame = square_splitter.increase_color_contrast(raw_frame, 2.5, (8, 8))
 
 		# print("Frame: {}".format(idx))
 
 		if ret:
-			disp = frame.copy()
-			# st_time = time.time()
-			if prev_grid is not None and idx - 2 >= 0 and np.max(prev_grid - np.median(prev_grid)) > 5:
-				corners = prev_corners
-				cur_calm_streak = 0
-			else:
-				if last_calm_frame is None:
-					lines, corners = board_locator.find_chessboard(raw_frame, lattice_model, prev=(prev_raw_frame, prev_corners))
-					if cur_calm_streak >= good_calm_streak:
-						update_calm(raw_frame, frame, corners)
-				else:
-					if cur_calm_streak >= good_calm_streak:
-						if cur_calm_streak == good_calm_streak:
-							first_calm = True
-						calm_comparison = get_color_diff_grid(prev_frame, last_calm_frame, prev_corners, last_calm_corners)
-						cv2.imshow("calm_grid", cv2.resize(color_diff_display(prev_frame, prev_corners, calm_comparison), None, fx=0.5, fy=0.5))
-						dist_from_avg = calm_comparison - np.median(calm_comparison)
-						# dist_from_avg[dist_from_avg < 0] = 0
-						print(len(np.argwhere(calm_comparison > np.mean(calm_comparison) + np.std(calm_comparison) * 1.5)))
-						if len(np.argwhere(dist_from_avg > np.mean(dist_from_avg) + np.std(dist_from_avg) * 1.5)) < 5:
-							lines, corners = board_locator.find_chessboard(raw_frame, lattice_model, prev=(last_calm_raw_frame, last_calm_corners))
-							update_calm(raw_frame, frame, corners)
-						else:
-							corners = prev_corners
-					else:
-						first_calm = False
-						corners = prev_corners
-				cur_calm_streak += 1
-
-			# print("Found board in {} s".format(time.time() - st_time))
-
-			for corner in corners:
-				cv2.circle(disp, corner, 5, (255, 0, 0), 3)
-
-			grid = None
-			if idx - 1 >= 0:
-				grid = get_color_diff_grid(frame, prev_frame, corners, prev_corners)
-
-			prev_raw_frame = raw_frame
-			prev_frame = frame
-			prev_corners = corners
-			prev_grid = grid
-
-			cv2.imshow("disp", cv2.resize(disp, None, fx=0.5, fy=0.5))
-
-			# cv2.waitKey(1)
+			process_frame(raw_frame)
+			cv2.imshow("raw", raw_frame)
 
 			c = cv2.waitKey(1 * delay)
-			idx += 1
-
 			if c == ord(" "):
 				delay = (delay + 1) % 2
 
