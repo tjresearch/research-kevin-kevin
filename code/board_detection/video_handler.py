@@ -50,12 +50,6 @@ def color_diff_display(img, corners, diff_grid):
 	for i in range(64):
 		square = sqr_corners[i]
 
-		# disp = img.copy()
-		# for point in square:
-		# 	cv2.circle(disp, (int(point[0]), int(point[1])), 3, (255, 0, 0), -1)
-		# cv2.imshow("disp", disp)
-		# cv2.waitKey()
-
 		int_square = np.expand_dims(np.int0(square), axis=1)
 		r = i // 8
 		c = i % 8
@@ -87,7 +81,7 @@ def process_frame(raw_frame):
 		last_calm_frame, last_calm_corners, idx
 
 	frame = square_splitter.increase_color_contrast(raw_frame, 2.5, (8, 8))
-	# disp = frame.copy()
+	disp = frame.copy()
 
 	if prev_grid is not None and idx - 2 >= 0 and np.max(prev_grid - np.median(prev_grid)) > 5:
 		corners = prev_corners
@@ -102,12 +96,11 @@ def process_frame(raw_frame):
 				if cur_calm_streak == good_calm_streak:
 					first_calm = True
 				calm_comparison = get_color_diff_grid(prev_frame, last_calm_frame, prev_corners, last_calm_corners)
-				# cv2.imshow("calm_grid", cv2.resize(color_diff_display(prev_frame, prev_corners, calm_comparison), None, fx=0.5, fy=0.5))
+				cv2.imshow("calm_grid", cv2.resize(color_diff_display(prev_frame, prev_corners, calm_comparison), None, fx=0.5, fy=0.5))
 				dist_from_avg = calm_comparison - np.median(calm_comparison)
-				# dist_from_avg[dist_from_avg < 0] = 0
+				dist_from_avg[dist_from_avg < 0] = 0
 				if len(np.argwhere(dist_from_avg > np.mean(dist_from_avg) + np.std(dist_from_avg) * 1.5)) < 5:
-					lines, corners = board_locator.find_chessboard(raw_frame, lattice_model,
-																   prev=(last_calm_raw_frame, last_calm_corners))
+					lines, corners = board_locator.find_chessboard(raw_frame, lattice_model, prev=(last_calm_raw_frame, last_calm_corners))
 					update_calm(raw_frame, frame, corners)
 				else:
 					corners = prev_corners
@@ -118,8 +111,8 @@ def process_frame(raw_frame):
 
 	# print("Found board in {} s".format(time.time() - st_time))
 
-	# for corner in corners:
-	# 	cv2.circle(disp, corner, 5, (255, 0, 0), 3)
+	for corner in corners:
+		cv2.circle(disp, corner, 5, (255, 0, 0), 3)
 
 	if idx - 1 >= 0:
 		grid = get_color_diff_grid(frame, prev_frame, corners, prev_corners)
@@ -131,7 +124,7 @@ def process_frame(raw_frame):
 	prev_corners = corners
 	prev_grid = grid
 
-	# cv2.imshow("disp", cv2.resize(disp, None, fx=0.5, fy=0.5))
+	cv2.imshow("disp", cv2.resize(disp, None, fx=0.5, fy=0.5))
 
 	idx += 1
 
@@ -182,7 +175,6 @@ if __name__ == "__main__":
 
 		if ret:
 			process_frame(raw_frame)
-			cv2.imshow("raw", raw_frame)
 
 			c = cv2.waitKey(1 * delay)
 			if c == ord(" "):

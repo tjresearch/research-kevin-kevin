@@ -275,20 +275,21 @@ def find_chessboard(img, lattice_point_model, out_dir="", prev=(None, None)):
 
 		good_indices = np.argwhere(status[:, 0] == 1)
 
-		if not np.all(status):
+		# disp = img.copy()
+		# for corner in new_grid[good_indices]:
+		# 	cv2.circle(disp, (int(corner[0, 0]), int(corner[0, 1])), 6, (0, 255, 0), -1)
+		# cv2.imshow("good corners", cv2.resize(disp, None, fx=0.5, fy=0.5))
 
-			# disp = img.copy()
-			# for corner in new_grid[good_indices]:
-			# 	cv2.circle(disp, (int(corner[0, 0]), int(corner[0, 1])), 6, (0, 255, 0), -1)
-			# cv2.imshow("good corners", disp)
-			# cv2.waitKey()
+		status[np.argwhere(err > 10)] = 0 # If a point moves more than 10 pixels, it's probably wrong
+
+		if not np.all(status):
 
 			H = utils.find_homography(warped_grid[good_indices], new_grid[good_indices])
 
 			for i in range(4):
 				if not status[corners_of_interest[i]]:
 					warped = warped_grid[corners_of_interest[i]]
-					new_corners[i] = cv2.perspectiveTransform(np.array([warped]), H)
+					new_corners[i] = cv2.perspectiveTransform(np.array([[warped]]), H)
 
 		new_corners = list(map(tuple, np.round(new_corners).astype(np.uint32).tolist()))
 
