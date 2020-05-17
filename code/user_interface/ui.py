@@ -450,7 +450,7 @@ class Display(tk.Frame):
 			first_frame = self.white_on_left == None
 			self.board, self.ortho_guesses, self.white_on_left = piece_classifier.classify_pieces(self.cur_raw_image, corners, self.piece_model, TARGET_SIZE,
 												self.white_on_left, prev_state=self.prev_state)
-			self.prev_state = board #update prev state
+			self.prev_state = self.board #update prev state
 			self.status_update("BUG MSG: ff {}, wol {}".format(first_frame, self.white_on_left))
 			if first_frame:
 				if self.white_on_left:
