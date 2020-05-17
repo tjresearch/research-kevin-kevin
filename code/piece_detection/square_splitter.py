@@ -86,8 +86,8 @@ def get_ortho_guesses(src, ortho_tops, H, SQ_SIZE):
 					ct += 1
 		canny_cts.append(ct)
 
-	cv2.imshow("td", disp)
-	cv2.waitKey()
+	# cv2.imshow("td", disp)
+	# cv2.waitKey()
 
 	#identify squares that pass threshold for possibly having a piece
 	#aiming for perfect recall (mark all pieces at expense of accuracy)
@@ -116,10 +116,10 @@ def estimate_bounds(src, sqr_corners, piece_height, graphics_IO=None):
 		sqrs = sqr_corners[r*8:(r+1)*8]
 		for sqr in sqrs:
 			full_board_corners.append([sqr[0][0],sqr[0][1]])
-		full_board_corners.append([sqrs[-1][1][0],sqrs[-1][1][1]])
+		full_board_corners.append([sqrs[-1][3][0],sqrs[-1][3][1]])
 	last_row = sqr_corners[-8:]
 	for sqr in last_row:
-		full_board_corners.append([sqr[3][0], sqr[3][1]])
+		full_board_corners.append([sqr[1][0], sqr[1][1]])
 	full_board_corners.append([last_row[-1][2][0],last_row[-1][2][1]])
 	full_board_corners = np.asarray(full_board_corners) #81x2
 
@@ -140,7 +140,7 @@ def estimate_bounds(src, sqr_corners, piece_height, graphics_IO=None):
 	for r in range(8):
 		for c in range(8):
 			#points of interest: front pts of base, front pts of top
-			POI = [[r+0.75,c,piece_height],[r+0.75,c+1,piece_height],[r+0.75,c+1,0],[r+0.75,c,0]]
+			POI = [[r+0.75,c,piece_height],[r+0.75,c,0],[r+0.75,c+1,0],[r+0.75,c+1,piece_height]]
 			for pt in POI:
 				desired_bounds.append(pt)
 	desired_bounds = np.asarray(desired_bounds).astype(np.float32)
@@ -223,8 +223,8 @@ def get_sqr_imgs(src, sqr_corners, ortho_guesses, TARGET_SIZE, graphics_IO=None)
 			for file in os.listdir(ortho_dir):
 				os.remove(os.path.join(ortho_dir, file))
 
-	cv2.imshow("pre splice src", src)
-	cv2.waitKey()
+	# cv2.imshow("pre splice src", src)
+	# cv2.waitKey()
 
 	#crop square out of full image
 	for i in range(len(sqr_corners)):
@@ -290,11 +290,11 @@ def split_chessboard(src, board_corners, TARGET_SIZE, graphics_IO=None):
 	#segment board
 	sqr_corners, ortho_tops, H = regioned_segment_board(src, board_corners, TARGET_SIZE[1], graphics_IO)
 
-	temp = src.copy()
-	for sqr in sqr_corners[:8]:
-		# print(sqr)
-		cv2.circle(temp, tuple(sqr[0]), 3, (255, 0, 0), 5)
-	cv2.imshow("temp", temp)
+	# temp = src.copy()
+	# for sqr in sqr_corners[:8]:
+	# 	# print(sqr)
+	# 	cv2.circle(temp, tuple(sqr[0]), 3, (255, 0, 0), 5)
+	# cv2.imshow("temp", temp)
 	# cv2.waitKey()
 
 

@@ -162,10 +162,10 @@ def classify_pieces(src, board_corners, nnet, TARGET_SIZE, prev_state=None, grap
 	# print(len(indices))
 	# print(len(ortho_guesses))
 	
-	for i in range(len(sqr_imgs)):
-		print(indices[i])
-		cv2.imshow("img", sqr_imgs[i])
-		cv2.waitKey()
+	# for i in range(len(sqr_imgs)):
+	# 	print(indices[i])
+	# 	cv2.imshow("img", sqr_imgs[i])
+	# 	cv2.waitKey()
 
 	#compute possible next moves from prev state, flatten to 1D list
 	flat_poss = []

@@ -27,12 +27,15 @@ def validate_lattice_points(model, lattice_points, img):
 	for lattice_point in lattice_points:
 		if 10 < lattice_point[0] < img.shape[1] - 10 and 10 < lattice_point[1] < img.shape[0] - 10:
 			subimg = img[lattice_point[1] - 10:lattice_point[1] + 11, lattice_point[0] - 10:lattice_point[0] + 11]
+			# cv2.imshow("subimg", subimg)
 
 			subimg = cv2.cvtColor(subimg, cv2.COLOR_BGR2GRAY)
 			subimg = cv2.threshold(subimg, 0, 255, cv2.THRESH_OTSU)[1]
 			subimg = cv2.Canny(subimg, 0, 255)
 
 			subimg = subimg.astype(np.float32) / 255.0
+			# cv2.imshow("processed", subimg)
+			# cv2.waitKey()
 
 			poss_points.append(lattice_point)
 			poss_images.append(subimg)
@@ -267,25 +270,25 @@ def find_chessboard(img, lattice_point_model, out_dir="", prev=(None, None)):
 
 		grid, warped_grid = get_grid_from_corners(prev_corners)
 
-		new_grid, status, _ = cv2.calcOpticalFlowPyrLK(prev_frame, img, np.array(grid).astype(np.float32), None)
+		new_grid, status, err = cv2.calcOpticalFlowPyrLK(prev_frame, img, np.array(grid).astype(np.float32), None)
 		new_corners = new_grid[corners_of_interest]
 
 		good_indices = np.argwhere(status[:, 0] == 1)
 
 		if not np.all(status):
 
-			disp = img.copy()
-			for corner in new_grid[good_indices]:
-				cv2.circle(disp, (int(corner[0, 0]), int(corner[0, 1])), 6, (0, 255, 0), -1)
-			cv2.imshow("good corners", disp)
-			cv2.waitKey()
+			# disp = img.copy()
+			# for corner in new_grid[good_indices]:
+			# 	cv2.circle(disp, (int(corner[0, 0]), int(corner[0, 1])), 6, (0, 255, 0), -1)
+			# cv2.imshow("good corners", disp)
+			# cv2.waitKey()
 
 			H = utils.find_homography(warped_grid[good_indices], new_grid[good_indices])
 
 			for i in range(4):
 				if not status[corners_of_interest[i]]:
 					warped = warped_grid[corners_of_interest[i]]
-					new_corners[i] = cv2.perspectiveTransform([warped], H)
+					new_corners[i] = cv2.perspectiveTransform(np.array([warped]), H)
 
 		new_corners = list(map(tuple, np.round(new_corners).astype(np.uint32).tolist()))
 

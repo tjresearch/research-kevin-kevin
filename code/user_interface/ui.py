@@ -447,6 +447,7 @@ class Display(tk.Frame):
 		self.status_update("> Classified pieces in {} s".format(time.time() - st_classify_time))
 
 		board_string = "".join("".join(row) for row in self.board)
+		print(board_string)
 
 		self.status_update("Querying diagram...")
 		st_query_time = time.time()
