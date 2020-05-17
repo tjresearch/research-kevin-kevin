@@ -101,7 +101,7 @@ if __name__ == "__main__":
 	cur_calm_streak = 0
 	good_calm_streak = 10
 	first_calm = True
-	last_raw_frame = None
+	last_calm_raw_frame = None
 	last_calm_frame = None
 	last_calm_corners = None
 	idx = 0
