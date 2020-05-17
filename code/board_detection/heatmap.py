@@ -9,7 +9,6 @@ import sys
 sys.path.insert(1, "../piece_detection")
 import square_splitter
 
-
 SQ_SIZE = 100
 dst_size = SQ_SIZE * 8
 dst_points = [(SQ_SIZE, SQ_SIZE), (SQ_SIZE, dst_size - SQ_SIZE), (dst_size - SQ_SIZE, dst_size - SQ_SIZE), (dst_size - SQ_SIZE, SQ_SIZE)]
@@ -25,6 +24,7 @@ def get_color_diff_grid(img1, img2, corners1, corners2):
 	split2 = np.concatenate(np.split(np.array(np.split(warped2, 8, axis=0)), 8, axis=2))
 
 	diff = np.abs(split1.astype(int) - split2.astype(int))
+
 	diff = np.mean(diff, axis=(1, 2))
 
 	diff = np.flip(np.rot90(np.reshape(diff, (8, 8))), 0)
@@ -90,6 +90,8 @@ if __name__ == "__main__":
 	if len(sys.argv[1:]) > 1:
 		save_frames = bool(sys.argv[2])
 		save_dir = sys.argv[3]
+	else:
+		save_frames = False
 
 	prev_raw_frame = None
 	prev_frame = None
@@ -97,9 +99,9 @@ if __name__ == "__main__":
 	prev_grid = None
 
 	cur_calm_streak = 0
-	good_calm_streak = 25
+	good_calm_streak = 10
 	first_calm = True
-	last_calm_raw_frame = None
+	last_raw_frame = None
 	last_calm_frame = None
 	last_calm_corners = None
 	idx = 0
@@ -122,7 +124,8 @@ if __name__ == "__main__":
 
 	while cap.isOpened():
 		ret, raw_frame = cap.read()
-		frame = square_splitter.increase_color_contrast(raw_frame, 3.5, (8, 8))
+		frame = square_splitter.increase_color_contrast(raw_frame, 2.5, (8, 8))
+
 		# print("Frame: {}".format(idx))
 
 		if ret:
@@ -143,8 +146,9 @@ if __name__ == "__main__":
 						calm_comparison = get_color_diff_grid(prev_frame, last_calm_frame, prev_corners, last_calm_corners)
 						cv2.imshow("calm_grid", cv2.resize(color_diff_display(prev_frame, prev_corners, calm_comparison), None, fx=0.5, fy=0.5))
 						dist_from_avg = calm_comparison - np.median(calm_comparison)
-						dist_from_avg[dist_from_avg < 0] = 0
-						if len(np.argwhere(dist_from_avg > np.mean(dist_from_avg) + np.std(dist_from_avg) * 1.25)) < 5:
+						# dist_from_avg[dist_from_avg < 0] = 0
+						print(len(np.argwhere(calm_comparison > np.mean(calm_comparison) + np.std(calm_comparison) * 1.5)))
+						if len(np.argwhere(dist_from_avg > np.mean(dist_from_avg) + np.std(dist_from_avg) * 1.5)) < 5:
 							lines, corners = board_locator.find_chessboard(raw_frame, lattice_model, prev=(last_calm_raw_frame, last_calm_corners))
 							update_calm(raw_frame, frame, corners)
 						else:
