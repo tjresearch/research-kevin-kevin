@@ -49,6 +49,8 @@ class Display(tk.Frame):
 
 		self.board = None
 		self.ortho_guesses = None
+		self.prev_state = None
+		self.white_on_left = None #need button for this
 
 		self.intermediate_index = 0
 		self.intermediate_image_order = ["raw.jpg",
@@ -440,10 +442,21 @@ class Display(tk.Frame):
 		self.status_update("Classifying pieces...")
 		st_classify_time = time.time()
 		if self.mode == "image":
-			self.board, self.ortho_guesses = piece_classifier.classify_pieces(self.cur_raw_image, corners, self.piece_model, TARGET_SIZE,
-												graphics_IO=("../assets", "./assets/intermediate_images"))
+			self.board, self.ortho_guesses, self.white_on_left = piece_classifier.classify_pieces(self.cur_raw_image, corners, self.piece_model, TARGET_SIZE,
+												self.white_on_left, prev_state=None, graphics_IO=("../assets", "./assets/intermediate_images"))
+			self.status_update("BUG MSG: wol {}".format(self.white_on_left))
+			self.white_on_left = None #clear for still imgs
 		else:
-			self.board, self.ortho_guesses = piece_classifier.classify_pieces(self.cur_raw_image, corners, self.piece_model, TARGET_SIZE)
+			first_frame = self.white_on_left == None
+			self.board, self.ortho_guesses, self.white_on_left = piece_classifier.classify_pieces(self.cur_raw_image, corners, self.piece_model, TARGET_SIZE,
+												self.white_on_left, prev_state=self.prev_state)
+			self.prev_state = board #update prev state
+			self.status_update("BUG MSG: ff {}, wol {}".format(first_frame, self.white_on_left))
+			if first_frame:
+				if self.white_on_left:
+					self.status_update("White pieces on left of frame")
+				else:
+					self.status_update("White pieces on right of frame")
 		self.status_update("> Classified pieces in {} s".format(time.time() - st_classify_time))
 
 		board_string = "".join("".join(row) for row in self.board)
