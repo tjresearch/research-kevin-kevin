@@ -182,7 +182,7 @@ def increase_color_contrast(src, clim, tgs):
 classify pieces in src img given: board_corners, piece_nnet, TARGET_SIZE of nnet
 optional arg: prev state--in same form as output of this method (array of ltrs)
 """
-def classify_pieces(src, board_corners, nnet, TARGET_SIZE, white_on_left, prev_state=None, graphics_IO=None):
+def classify_pieces(src, board_corners, nnet, TARGET_SIZE, white_on_left=None, prev_state=None, graphics_IO=None):
 	src = increase_color_contrast(src, 3.5, (8,8)) #increase color contrast of original
 
 	sqr_imgs, indices, ortho_guesses = split_chessboard(src, board_corners, TARGET_SIZE, graphics_IO)
@@ -204,7 +204,7 @@ def classify_pieces(src, board_corners, nnet, TARGET_SIZE, white_on_left, prev_s
 	if white_on_left == None:
 		white_on_left = find_white_on_left(pred_board)
 
-	print(white_on_left)
+	# print(white_on_left)
 	board = rotate_board_to_std(pred_board, white_on_left)
 
 	return board, ortho_guesses, white_on_left
@@ -218,7 +218,7 @@ def find_white_on_left(pred_board):
 	black_count = [0,0]
 	for r in range(8):
 		for c in range(4):
-			print(r, c)
+			# print(r, c)
 			ltr = pred_board[r][c]
 			if ltr != "-":
 				if ltr.isupper():
@@ -226,7 +226,7 @@ def find_white_on_left(pred_board):
 				else:
 					black_count[0] += 1
 		for c2 in range(4, 8):
-			print(r, c2)
+			# print(r, c2)
 			ltr = pred_board[r][c2]
 			if ltr != "-":
 				if ltr.isupper():

@@ -261,13 +261,14 @@ def split_chessboard(src, board_corners, TARGET_SIZE, graphics_IO=None):
 	#downsize large resolutions
 	scale_to = (960, 720)
 	old_shape = src.shape
+	scaled_corners = []
 	if src.size > scale_to[0]*scale_to[1]:
 		src = ResizeWithAspectRatio(src, width=scale_to[1])
 		for i in range(4):
-			board_corners[i] = (int(board_corners[i][0] * scale_to[1] / old_shape[1]), int(board_corners[i][1] * scale_to[1] / old_shape[1]))
+			scaled_corners.append((int(board_corners[i][0] * scale_to[1] / old_shape[1]), int(board_corners[i][1] * scale_to[1] / old_shape[1])))
 
 	#segment board
-	sqr_corners, ortho_tops, H = regioned_segment_board(src, board_corners, TARGET_SIZE[1], graphics_IO)
+	sqr_corners, ortho_tops, H = regioned_segment_board(src, scaled_corners, TARGET_SIZE[1], graphics_IO)
 
 	#use orthophoto to find poss piece locations
 	ortho_guesses = get_ortho_guesses(src, ortho_tops, H, TARGET_SIZE[1])

@@ -5,9 +5,13 @@ import board_locator
 import board_segmentation
 import utils
 import sys
+from threading import Thread
 
 sys.path.insert(1, "../piece_detection")
+import square_splitter
 import piece_classifier
+
+TARGET_SIZE = (224, 112)
 
 SQ_SIZE = 100
 dst_size = SQ_SIZE * 8
@@ -29,6 +33,8 @@ last_calm_raw_frame = None
 last_calm_frame = None
 last_calm_corners = None
 idx = 0
+
+disp_scale = 0.5
 
 def get_color_diff_grid(img1, img2, corners1, corners2):
 	H1 = utils.find_homography(corners1, dst_points)
@@ -70,25 +76,33 @@ def save_frame(frame, save_dir, corners):
 		cache_file.write("{} - {}\n".format(filename, str(corners)))
 		cache_file.flush()
 
-def update_calm(raw_frame, frame, corners, save_dir, show_process):
+def process_frame(frame, corners, piece_model):
+	board, ortho_guesses, _ = piece_classifier.classify_pieces(frame, corners, piece_model, TARGET_SIZE)
+	print("\n".join("".join(row) for row in board))
+
+def update_calm(raw_frame, frame, corners, piece_model, save_dir, show_process):
 	global first_calm, last_calm_raw_frame, last_calm_frame, last_calm_corners
 	last_calm_raw_frame = raw_frame
 	last_calm_frame = frame
 	last_calm_corners = corners
 	if show_process:
-		cv2.imshow("last_calm", cv2.resize(last_calm_frame, None, fx=0.5, fy=0.5))
+		cv2.imshow("last_calm", cv2.resize(last_calm_frame, None, fx=disp_scale, fy=disp_scale))
 	if first_calm:
 		if save_dir:
 			print("Saved frame {}".format(idx), end="")
 			if show_process:
-				cv2.imshow("last_saved", cv2.resize(raw_frame, None, fx=0.5, fy=0.5))
+				cv2.imshow("last_saved", cv2.resize(raw_frame, None, fx=disp_scale, fy=disp_scale))
 			save_frame(raw_frame, save_dir, corners)
 		else:
+			classify_thread = Thread(target=lambda : process_frame(raw_frame, corners, piece_model))
+			classify_thread.daemon = True
+			classify_thread.start()
 			print(idx)
+			print("---------------")
 			cv2.waitKey()
 		first_calm = False
 
-def process_frame(raw_frame, save_dir, show_process):
+def process_video_frame(raw_frame, save_dir, lattice_model, piece_model, show_process):
 	global prev_raw_frame, prev_frame, prev_corners, prev_grid,\
 		cur_calm_streak, good_calm_streak, first_calm, last_calm_raw_frame, \
 		last_calm_frame, last_calm_corners, idx, cur_noise_streak, min_noise_streak
@@ -108,7 +122,7 @@ def process_frame(raw_frame, save_dir, show_process):
 			_, corners = board_locator.find_chessboard(raw_frame, lattice_model, prev=(prev_raw_frame, prev_corners))
 
 			if cur_calm_streak >= good_calm_streak:
-				update_calm(raw_frame, frame, corners, save_dir, show_process)
+				update_calm(raw_frame, frame, corners, piece_model, save_dir, show_process)
 		else:
 			if cur_calm_streak >= good_calm_streak:
 				if cur_calm_streak == good_calm_streak and cur_noise_streak > min_noise_streak:
@@ -120,7 +134,7 @@ def process_frame(raw_frame, save_dir, show_process):
 				# if the color change grid has less than 7 outliers; 6 is the maximum number of significant changes for a single move
 				if len(np.argwhere(calm_comparison > np.median(calm_comparison) + np.std(calm_comparison) * 2)) < 7:
 					lines, corners = board_locator.find_chessboard(raw_frame, lattice_model, prev=(last_calm_raw_frame, last_calm_corners))
-					update_calm(raw_frame, frame, corners, save_dir, show_process)
+					update_calm(raw_frame, frame, corners, piece_model, save_dir, show_process)
 				else:
 					corners = prev_corners
 			else:
@@ -132,7 +146,7 @@ def process_frame(raw_frame, save_dir, show_process):
 
 	if show_process:
 		for corner in corners:
-			cv2.circle(disp, corner, 5, (255, 0, 0), 3)
+			cv2.circle(disp, corner, 3, (255, 0, 0), 2)
 
 	if idx - 1 >= 0:
 		grid = get_color_diff_grid(frame, prev_frame, corners, prev_corners)
@@ -145,13 +159,14 @@ def process_frame(raw_frame, save_dir, show_process):
 	prev_grid = grid
 
 	if show_process:
-		cv2.imshow("disp", cv2.resize(disp, None, fx=0.5, fy=0.5))
+		cv2.imshow("disp", cv2.resize(disp, None, fx=disp_scale, fy=disp_scale))
 
 	idx += 1
 
 if __name__ == "__main__":
 	model_path = "../models"
 	lattice_model = board_locator.load_model(os.path.join(model_path, "lattice_points_model.json"), os.path.join(model_path, "lattice_points_model.h5"))
+	piece_model = piece_classifier.load_model(os.path.join(model_path, "piece_detection_model.h5"))
 
 	# phone_ip = "10.0.0.25"
 	# url = "http://" + phone_ip + "/live?type=some.mp4"
@@ -183,8 +198,6 @@ if __name__ == "__main__":
 	if len(sys.argv) >= 3:
 		show_process = int(sys.argv[2]) #0 or 1
 
-	print(show_process)
-	print(save_dir)
 	while cap.isOpened():
 		ret, raw_frame = cap.read()
 
@@ -192,7 +205,7 @@ if __name__ == "__main__":
 		# print("Frame: {}".format(idx))
 
 		if ret:
-			process_frame(raw_frame, save_dir, show_process)
+			process_video_frame(raw_frame, save_dir, lattice_model, piece_model, show_process)
 
 			c = cv2.waitKey(1 * delay)
 			if c == ord(" "):
