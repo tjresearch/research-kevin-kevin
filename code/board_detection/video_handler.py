@@ -117,7 +117,7 @@ def process_frame(raw_frame, save_dir, show_process):
 				# cv2.imshow("calm_grid", cv2.resize(color_diff_display(prev_frame, prev_corners, calm_comparison), None, fx=0.5, fy=0.5))
 				dist_from_avg = calm_comparison - np.median(calm_comparison)
 
-				#if number of squares that change is LESS than 7??
+				# if the color change grid has less than 7 outliers; 6 is the maximum number of significant changes for a single move
 				if len(np.argwhere(calm_comparison > np.median(calm_comparison) + np.std(calm_comparison) * 2)) < 7:
 					lines, corners = board_locator.find_chessboard(raw_frame, lattice_model, prev=(last_calm_raw_frame, last_calm_corners))
 					update_calm(raw_frame, frame, corners, save_dir, show_process)
