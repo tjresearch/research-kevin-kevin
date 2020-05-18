@@ -7,7 +7,7 @@ import utils
 import sys
 
 sys.path.insert(1, "../piece_detection")
-import square_splitter
+import piece_classifier
 
 SQ_SIZE = 100
 dst_size = SQ_SIZE * 8
@@ -93,7 +93,7 @@ def process_frame(raw_frame, save_dir, show_process):
 		cur_calm_streak, good_calm_streak, first_calm, last_calm_raw_frame, \
 		last_calm_frame, last_calm_corners, idx, cur_noise_streak, min_noise_streak
 
-	frame = square_splitter.increase_color_contrast(raw_frame, 2, (8, 8))
+	frame = piece_classifier.increase_color_contrast(raw_frame, 2, (8, 8))
 	if show_process:
 		disp = frame.copy()
 
@@ -159,18 +159,17 @@ if __name__ == "__main__":
 	# cap = cv2.VideoCapture(url)
 
 	if len(sys.argv) < 2 or len(sys.argv) > 4:
-		print("usage: video_handler.py [src video] | [save dir] | [show process]")
+		print("usage: video_handler.py [src video] | [show process] | [save dir]")
 
 	delay = 0
 
 	cap = cv2.VideoCapture(sys.argv[1])
 	# cap.set(cv2.CAP_PROP_POS_FRAMES, 7500)
 
+	save_dir = None
 	show_process = False
 	if len(sys.argv) == 4:
-		show_process = True
-	if len(sys.argv) >= 3:
-		save_dir = sys.argv[2]
+		save_dir = sys.argv[3]
 
 		save_dir_files = {*os.listdir(save_dir)}-{'.DS_Store'}
 		if 'cached_corners.txt' not in save_dir_files:
@@ -181,9 +180,11 @@ if __name__ == "__main__":
 
 		if len(save_dir_files):
 			print("\nWARNING: save_dir not empty!\n")
-	else:
-		save_dir = None
+	if len(sys.argv) >= 3:
+		show_process = int(sys.argv[2]) #0 or 1
 
+	print(show_process)
+	print(save_dir)
 	while cap.isOpened():
 		ret, raw_frame = cap.read()
 
