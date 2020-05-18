@@ -326,6 +326,12 @@ def locate_corners(files, cache_file_path, lattice_point_model):
 	prev_corners = None
 	prev_frame = None
 	out_dict = {}
+
+	"""
+	modify so files does not need full path (break into dir and filenames)
+	since video_handler.py saves corner cache as filenames only
+	"""
+
 	for i in range(len(files)):
 		file = files[i]
 		print("Locating corners for file {}/{} - {}".format(i + 1, len(files), file))
@@ -396,7 +402,7 @@ def main():
 				board = np.rot90(board, 3)
 			else:
 				board = np.rot90(board)
-				
+
 			rot_board = [[None for j in range(8)] for i in range(8)]
 			for i in range(8):
 				for j in range(8):
