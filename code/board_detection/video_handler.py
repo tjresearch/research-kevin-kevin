@@ -106,8 +106,7 @@ def process_frame(raw_frame):
 					first_calm = True
 				calm_comparison = get_color_diff_grid(prev_frame, last_calm_frame, prev_corners, last_calm_corners)
 				# cv2.imshow("calm_grid", cv2.resize(color_diff_display(prev_frame, prev_corners, calm_comparison), None, fx=0.5, fy=0.5))
-				dist_from_avg = calm_comparison - np.median(calm_comparison)
-				if len(np.argwhere(calm_comparison > np.mean(calm_comparison) + np.std(calm_comparison) * 2)) < 7:
+				if len(np.argwhere(calm_comparison > np.median(calm_comparison) + np.std(calm_comparison) * 2)) < 7:
 					lines, corners = board_locator.find_chessboard(raw_frame, lattice_model, prev=(last_calm_raw_frame, last_calm_corners))
 					update_calm(raw_frame, frame, corners)
 				else:
@@ -139,24 +138,6 @@ def process_frame(raw_frame):
 if __name__ == "__main__":
 	model_path = "../models"
 	lattice_model = board_locator.load_model(os.path.join(model_path, "lattice_points_model.json"), os.path.join(model_path, "lattice_points_model.h5"))
-
-	# img1_path = "./images/imgs_3_15_chung/*game_11/*000.jpeg"
-	# img2_path = "./images/imgs_3_15_chung/*game_11/*001.jpeg"
-	#
-	# img1 = cv2.imread(img1_path)
-	# img2 = cv2.imread(img2_path)
-	#
-	# lines1, corners1 = board_locator.find_chessboard(img1, lattice_model)
-	# lines2, corners2 = board_locator.find_chessboard(img2, lattice_model, prev=(img1, corners1))
-	#
-	# diff_grid = get_color_diff_grid(img1, img2, corners1, corners2)
-	#
-	# heatmap = color_diff_display(img2, corners2, diff_grid)
-	#
-	# cv2.imshow("img1", img1)
-	# cv2.imshow("img2", img2)
-	# cv2.imshow("heatmap", heatmap)
-	# cv2.waitKey()
 
 	# phone_ip = "10.0.0.25"
 	# url = "http://" + phone_ip + "/live?type=some.mp4"
