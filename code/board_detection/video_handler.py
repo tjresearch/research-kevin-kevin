@@ -60,10 +60,15 @@ def color_diff_display(img, corners, diff_grid):
 		cv2.fillConvexPoly(heatmap, int_square, int(diff_grid[r, c] / 50 * 255))
 	return heatmap
 
-def save_frame(frame, save_dir):
-	filename = "{:03d}.jpg".format(len(os.listdir(save_dir)))
+def save_frame(frame, save_dir, corners):
+	#save frame, print update
+	filename = "{:03d}.jpg".format(len(os.listdir(save_dir))-1)
 	cv2.imwrite(os.path.join(save_dir, filename), frame)
 	print(" as {}".format(filename))
+	#save corners to cached_corners.txt in save_dir
+	with open(os.path.join(save_dir, 'cached_corners.txt'), 'a+') as cache_file:
+		cache_file.write("{} - {}\n".format(filename, str(corners)))
+		cache_file.flush()
 
 def update_calm(raw_frame, frame, corners, save_dir, show_process):
 	global first_calm, last_calm_raw_frame, last_calm_frame, last_calm_corners
@@ -77,7 +82,7 @@ def update_calm(raw_frame, frame, corners, save_dir, show_process):
 			print("Saved frame {}".format(idx), end="")
 			if show_process:
 				cv2.imshow("last_saved", cv2.resize(raw_frame, None, fx=0.5, fy=0.5))
-			save_frame(raw_frame, save_dir)
+			save_frame(raw_frame, save_dir, corners)
 		else:
 			print(idx)
 			cv2.waitKey()
@@ -102,8 +107,6 @@ def process_frame(raw_frame, save_dir, show_process):
 		if last_calm_frame is None:
 			_, corners = board_locator.find_chessboard(raw_frame, lattice_model, prev=(prev_raw_frame, prev_corners))
 
-			#add corner saving here
-
 			if cur_calm_streak >= good_calm_streak:
 				update_calm(raw_frame, frame, corners, save_dir, show_process)
 		else:
@@ -113,6 +116,8 @@ def process_frame(raw_frame, save_dir, show_process):
 				calm_comparison = get_color_diff_grid(prev_frame, last_calm_frame, prev_corners, last_calm_corners)
 				# cv2.imshow("calm_grid", cv2.resize(color_diff_display(prev_frame, prev_corners, calm_comparison), None, fx=0.5, fy=0.5))
 				dist_from_avg = calm_comparison - np.median(calm_comparison)
+
+				#if number of squares that change is LESS than 7??
 				if len(np.argwhere(calm_comparison > np.mean(calm_comparison) + np.std(calm_comparison) * 2)) < 7:
 					lines, corners = board_locator.find_chessboard(raw_frame, lattice_model, prev=(last_calm_raw_frame, last_calm_corners))
 					update_calm(raw_frame, frame, corners, save_dir, show_process)
@@ -184,7 +189,15 @@ if __name__ == "__main__":
 		show_process = True
 	if len(sys.argv) >= 3:
 		save_dir = sys.argv[2]
-		if len({*os.listdir(save_dir)}-{'.DS_Store'}):
+
+		save_dir_files = {*os.listdir(save_dir)}-{'.DS_Store'}
+		if 'cached_corners.txt' not in save_dir_files:
+			print("Creating cached_corners.txt in {}".format(save_dir))
+			#create file to save corners in later
+			f = open(os.path.join(save_dir, 'cached_corners.txt'), 'w+')
+			f.close()
+
+		if len(save_dir_files):
 			print("\nWARNING: save_dir not empty!\n")
 	else:
 		save_dir = None
