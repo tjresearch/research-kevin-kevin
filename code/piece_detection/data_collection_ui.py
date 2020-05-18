@@ -8,10 +8,10 @@ from datetime import datetime
 from PIL import Image, ImageTk
 import numpy as np
 
-from square_splitter import split_chessboard, order_points
-from piece_classifier import local_load_model, get_pred_board
+from square_splitter import split_chessboard
+from piece_classifier import local_load_model, get_pred_board, increase_color_contrast
 sys.path.insert(1, "../board_detection")
-import board_locator, board_segmentation
+import board_locator, board_segmentation, utils
 sys.path.insert(2, "../chess_logic")
 import pgn_reader, pgn_helper
 
@@ -260,7 +260,7 @@ def find_board(img, file, board_corners):
 					print("corners cleared")
 
 			disp = img.copy()
-			corners = order_points(corners)
+			corners = utils.sorted_ccw(corners)
 
 			for corner in corners:
 				cv2.circle(disp, (int(corner[0]), int(corner[1])), 3, (255, 0, 0), 2)
@@ -291,6 +291,9 @@ def save_squares(file, outer_dir, board_corners, piece_detection_model=None, roo
 
 	#find corners of board
 	corners = find_board(img, file, board_corners)
+
+	#ADD CLAHE
+	img = increase_color_contrast(img, 3.5, (8,8))
 
 	#take corners, split image into subimgs of viable squares & their indices
 	squares, indices, _ = split_chessboard(img, corners, TARGET_SIZE)
@@ -328,15 +331,23 @@ def locate_corners(files, cache_file_path, lattice_point_model):
 	out_dict = {}
 
 	"""
-	modify so files does not need full path (break into dir and filenames)
+	modifIED so files does not need full path
 	since video_handler.py saves corner cache as filenames only
 	"""
 
 	for i in range(len(files)):
 		file = files[i]
+		basename = os.path.basename(file)
+		if basename == file: basename = None
 		print("Locating corners for file {}/{} - {}".format(i + 1, len(files), file))
-		if file in cache:
-			out_dict[file] = cache[file]
+		if basename in cache or file in cache:
+			print(cache)
+			print(basename)
+			print(file)
+			if basename in cache:
+				out_dict[basename] = cache[basename]
+			else:
+				out_dict[file] = cache[file]
 			print("File in cache - skipping...")
 		else:
 			st_time = time.time()
@@ -360,6 +371,8 @@ def main():
 												   os.path.join(model_dir, "lattice_points_model.h5"))
 	print("Loaded in {} s".format(time.time() - st_load_time))
 
+	print("usage: python dcu.py [input_dir] [output_dir] [pgn_file] [white_on_left] [cache_file_path]")
+
 	global corners
 	img_dir_path = sys.argv[1] # input dir
 
@@ -371,6 +384,10 @@ def main():
 	os.mkdir(save_dir)
 	print("save dir: {}".format(save_dir))
 
+	pgn_file = sys.argv[3] if len(sys.argv) > 3 else None # pgn file
+	white_on_left = sys.argv[4] if len(sys.argv) > 4 else True # are white pieces on left of camera frame?
+	cache_file_path = sys.argv[5] if len(sys.argv) > 5 else "cache.txt" # are white pieces on left of camera frame?
+
 	ct = 0
 
 	files = []
@@ -379,13 +396,9 @@ def main():
 			continue
 		if file.endswith(".jpg") or file.endswith(".jpeg") or file.endswith(".png"):
 			filepath = os.path.join(img_dir_path, file)
-			files.append(filepath)
-
+			files.append(file)
 	files.sort()
-	board_corners = locate_corners(files, "cache.txt", lattice_point_model)
-
-	pgn_file = sys.argv[3] if len(sys.argv) > 3 else None # pgn file
-	white_on_left = sys.argv[4] if len(sys.argv) > 4 else True # are white pieces on left of camera frame?
+	board_corners = locate_corners(files, cache_file_path, lattice_point_model)
 
 	if pgn_file:
 		print("Labelling images from input pgn file...")
