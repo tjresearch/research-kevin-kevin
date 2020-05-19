@@ -34,6 +34,9 @@ last_calm_frame = None
 last_calm_corners = None
 idx = 0
 
+cur_board = None
+new_board = None
+
 disp_scale = 0.5
 
 def get_color_diff_grid(img1, img2, corners1, corners2):
@@ -76,17 +79,28 @@ def save_frame(frame, save_dir, corners):
 		cache_file.write("{} - {}\n".format(filename, str(corners)))
 		cache_file.flush()
 
-def process_frame(frame, corners, piece_model):
-	board, ortho_guesses, _ = piece_classifier.classify_pieces(frame, corners, piece_model, TARGET_SIZE)
-	print("\n".join("".join(row) for row in board))
+def process_frame(frame, corners, piece_model, calm_comparison=None):
+	global new_board, white_on_left
+	if calm_comparison is not None:
+		peaks = np.argwhere(calm_comparison > np.median(calm_comparison) + np.std(calm_comparison)).tolist()
+		flat_peaks = []
+		for i in range(len(peaks)):
+			flat_peaks.append(peaks[i][0] * 8 + peaks[i][1])
+		board_mask, ortho_guesses, white_on_left = piece_classifier.classify_pieces(frame, corners, piece_model, TARGET_SIZE,
+																			   white_on_left=white_on_left, squares_to_process=flat_peaks)
+		for peak in peaks:
+			new_board[peak[0]][peak[1]] = board_mask[peak[0]][peak[1]]
+	else:
+		new_board, ortho_guesses, white_on_left = piece_classifier.classify_pieces(frame, corners, piece_model, TARGET_SIZE)
 
-def update_calm(raw_frame, frame, corners, piece_model, save_dir, show_process):
+def update_calm(raw_frame, frame, corners, piece_model, save_dir, show_process, calm_comparison=None):
 	global first_calm, last_calm_raw_frame, last_calm_frame, last_calm_corners
 	last_calm_raw_frame = raw_frame
 	last_calm_frame = frame
 	last_calm_corners = corners
 	if show_process:
-		cv2.imshow("last_calm", cv2.resize(last_calm_frame, None, fx=disp_scale, fy=disp_scale))
+		pass
+		# cv2.imshow("last_calm", cv2.resize(last_calm_frame, None, fx=disp_scale, fy=disp_scale))
 	if first_calm:
 		if save_dir:
 			print("Saved frame {}".format(idx), end="")
@@ -94,12 +108,9 @@ def update_calm(raw_frame, frame, corners, piece_model, save_dir, show_process):
 				cv2.imshow("last_saved", cv2.resize(raw_frame, None, fx=disp_scale, fy=disp_scale))
 			save_frame(raw_frame, save_dir, corners)
 		else:
-			classify_thread = Thread(target=lambda : process_frame(raw_frame, corners, piece_model))
+			classify_thread = Thread(target=lambda : process_frame(raw_frame, corners, piece_model, calm_comparison=calm_comparison))
 			classify_thread.daemon = True
 			classify_thread.start()
-			print(idx)
-			print("---------------")
-			cv2.waitKey()
 		first_calm = False
 
 def process_video_frame(raw_frame, save_dir, lattice_model, piece_model, show_process):
@@ -134,7 +145,7 @@ def process_video_frame(raw_frame, save_dir, lattice_model, piece_model, show_pr
 				# if the color change grid has less than 7 outliers; 6 is the maximum number of significant changes for a single move
 				if len(np.argwhere(calm_comparison > np.median(calm_comparison) + np.std(calm_comparison) * 2)) < 7:
 					lines, corners = board_locator.find_chessboard(raw_frame, lattice_model, prev=(last_calm_raw_frame, last_calm_corners))
-					update_calm(raw_frame, frame, corners, piece_model, save_dir, show_process)
+					update_calm(raw_frame, frame, corners, piece_model, save_dir, show_process, calm_comparison)
 				else:
 					corners = prev_corners
 			else:
@@ -206,7 +217,10 @@ if __name__ == "__main__":
 
 		if ret:
 			process_video_frame(raw_frame, save_dir, lattice_model, piece_model, show_process)
-
+			if new_board is not None and (cur_board is None or not all(cur_board[i // 8][i % 8] == new_board[i // 8][i % 8] for i in range(64))):
+				cur_board = [[elem for elem in row] for row in new_board]
+				print("\n".join("".join(row) for row in cur_board))
+				print("----------")
 			c = cv2.waitKey(1 * delay)
 			if c == ord(" "):
 				delay = (delay + 1) % 2
