@@ -32,7 +32,7 @@ def local_load_model(nnet_path):
 """
 predict board state, given segmented and orthophoto-pared sqr imgs
 """
-def get_pred_board(nnet, TARGET_SIZE, sqr_imgs, indices, flat_poss=None, graphics_IO=None):
+def get_pred_board(nnet, TARGET_SIZE, sqr_imgs, indices, flat_poss=None, graphics_IO=None, squares_to_process=None):
 	CLASS_TO_SAN = {
 		'black_bishop':'b',
 		'black_king':'k',
@@ -50,15 +50,33 @@ def get_pred_board(nnet, TARGET_SIZE, sqr_imgs, indices, flat_poss=None, graphic
 	}
 	ALL_CLASSES = [*CLASS_TO_SAN.keys()]
 
+	if squares_to_process:
+		i = 0
+		while i < len(squares_to_process):
+			if squares_to_process[i] not in indices:
+				squares_to_process.pop(i)
+			else:
+				i += 1
+
 	#populate poss sets for given squares
 	poss_sets = []
 	if flat_poss:
-		for i in range(len(sqr_imgs)):
-			poss_sets.append(flat_poss[indices[i]])
+		if squares_to_process:
+			for i in squares_to_process:
+				poss_sets.append(flat_poss[i])
+		else:
+			for i in range(len(sqr_imgs)):
+				poss_sets.append(flat_poss[indices[i]])
 
 	#preprocess images, flatten into stack for resnet
 	input_stack = []
-	for sqr_img in sqr_imgs:
+	if squares_to_process:
+		imgs = []
+		for i in squares_to_process:
+			imgs.append(sqr_imgs[indices.index(i)])
+	else:
+		imgs = sqr_imgs
+	for sqr_img in imgs:
 		#convert sqr_img to numpy array, preprocess for resnet
 		resized = cv2.resize(sqr_img, dsize=(TARGET_SIZE[1],TARGET_SIZE[0]), interpolation=cv2.INTER_NEAREST)
 		x = preprocess_input(resized)
@@ -97,8 +115,10 @@ def get_pred_board(nnet, TARGET_SIZE, sqr_imgs, indices, flat_poss=None, graphic
 				ptr += 1
 				pred_SAN = CLASS_TO_SAN[ALL_CLASSES[cls_preds[ptr]]]
 				print(ptr, pred_SAN)
-
-		pred_board[indices[i]] = pred_SAN
+		if squares_to_process:
+			pred_board[squares_to_process[i]] = pred_SAN
+		else:
+			pred_board[indices[i]] = pred_SAN
 
 	#for ui representation of confidence intervals
 	# TODO: add poss set checking to visualization
@@ -182,7 +202,7 @@ def increase_color_contrast(src, clim, tgs):
 classify pieces in src img given: board_corners, piece_nnet, TARGET_SIZE of nnet
 optional arg: prev state--in same form as output of this method (array of ltrs)
 """
-def classify_pieces(src, board_corners, nnet, TARGET_SIZE, white_on_left=None, prev_state=None, graphics_IO=None):
+def classify_pieces(src, board_corners, nnet, TARGET_SIZE, white_on_left=None, prev_state=None, graphics_IO=None, squares_to_process=None):
 	src = increase_color_contrast(src, 3.5, (8,8)) #increase color contrast of original
 
 	sqr_imgs, indices, ortho_guesses = split_chessboard(src, board_corners, TARGET_SIZE, graphics_IO)
@@ -199,15 +219,15 @@ def classify_pieces(src, board_corners, nnet, TARGET_SIZE, white_on_left=None, p
 			for r in range(7, -1, -1):
 				flat_poss.append(stacked_poss[r][c])
 
-	pred_board = get_pred_board(nnet, TARGET_SIZE, sqr_imgs, indices, flat_poss=flat_poss, graphics_IO=graphics_IO)
+	pred_board = get_pred_board(nnet, TARGET_SIZE, sqr_imgs, indices, flat_poss=flat_poss, graphics_IO=graphics_IO, squares_to_process=squares_to_process)
 
-	if white_on_left == None:
+	if white_on_left is None and squares_to_process is None:
 		white_on_left = find_white_on_left(pred_board)
 
 	# print(white_on_left)
 	board = rotate_board_to_std(pred_board, white_on_left)
 
-	return board, ortho_guesses, white_on_left
+	return pred_board, ortho_guesses, white_on_left
 
 """
 figure out which side of frame white pieces are on
