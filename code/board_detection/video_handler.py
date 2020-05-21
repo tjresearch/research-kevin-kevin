@@ -10,6 +10,8 @@ from threading import Thread
 sys.path.insert(1, "../piece_detection")
 import square_splitter
 import piece_classifier
+sys.path.insert(2, '../chess_logic')
+from pgn_helper import display
 
 TARGET_SIZE = (224, 112)
 
@@ -38,6 +40,8 @@ cur_board = None
 new_board = None
 
 disp_scale = 0.5
+
+white_on_left = None
 
 def get_color_diff_grid(img1, img2, corners1, corners2):
 	H1 = utils.find_homography(corners1, dst_points)
@@ -70,17 +74,40 @@ def color_diff_display(img, corners, diff_grid):
 	return heatmap
 
 def save_frame(frame, save_dir, corners):
-	#save frame, print update
 	filename = "{:03d}.jpg".format(len(os.listdir(save_dir))-1)
-	cv2.imwrite(os.path.join(save_dir, filename), frame)
-	print(" as {}".format(filename))
+
+	#downsize large resolutions
+	scale_to = (720, 960)
+	old_shape = frame.shape
+	scaled_corners = []
+	to_save = None
+	if frame.size > scale_to[0]*scale_to[1]:
+		to_save = square_splitter.ResizeWithAspectRatio(frame, width=scale_to[1])
+		for i in range(4):
+			scaled_corners.append((int(corners[i][0] * scale_to[1] / old_shape[1]), int(corners[i][1] * scale_to[1] / old_shape[1])))
+	else:
+		to_save = frame
+
+	#add CLAHE
+	to_save = piece_classifier.increase_color_contrast(to_save, 3.5, (8,8)) #increase color contrast of original
+
+	#save frame
+	cv2.imwrite(os.path.join(save_dir, filename), to_save)
+	print(" as {}".format(filename)) #print announcement
+
 	#save corners to cached_corners.txt in save_dir
 	with open(os.path.join(save_dir, 'cached_corners.txt'), 'a+') as cache_file:
-		cache_file.write("{} - {}\n".format(filename, str(corners)))
+		cache_file.write("{} - {}\n".format(filename, str(scaled_corners)))
 		cache_file.flush()
+	#
+	# disp = to_save.copy()
+	# for sc in scaled_corners:
+	# 	cv2.circle(disp, (int(sc[0]), int(sc[1])), 3, (255, 0, 0), 2)
+	# cv2.imshow("disp", disp)
+	# cv2.waitKey()
 
 def process_frame(frame, corners, piece_model, calm_comparison=None):
-	global new_board, white_on_left
+	global new_board, white_on_left, cur_board
 	if calm_comparison is not None:
 		peaks = np.argwhere(calm_comparison > np.median(calm_comparison) + np.std(calm_comparison)).tolist()
 		flat_peaks = []
@@ -177,7 +204,6 @@ def process_video_frame(raw_frame, save_dir, lattice_model, piece_model, show_pr
 if __name__ == "__main__":
 	model_path = "../models"
 	lattice_model = board_locator.load_model(os.path.join(model_path, "lattice_points_model.json"), os.path.join(model_path, "lattice_points_model.h5"))
-	piece_model = piece_classifier.load_model(os.path.join(model_path, "piece_detection_model.h5"))
 
 	# phone_ip = "10.0.0.25"
 	# url = "http://" + phone_ip + "/live?type=some.mp4"
@@ -209,6 +235,11 @@ if __name__ == "__main__":
 	if len(sys.argv) >= 3:
 		show_process = int(sys.argv[2]) #0 or 1
 
+	if save_dir:
+		piece_model = None
+	else:
+		piece_model = piece_classifier.load_model(os.path.join(model_path, "piece_detection_model.h5"))
+
 	while cap.isOpened():
 		ret, raw_frame = cap.read()
 
@@ -219,8 +250,9 @@ if __name__ == "__main__":
 			process_video_frame(raw_frame, save_dir, lattice_model, piece_model, show_process)
 			if new_board is not None and (cur_board is None or not all(cur_board[i // 8][i % 8] == new_board[i // 8][i % 8] for i in range(64))):
 				cur_board = [[elem for elem in row] for row in new_board]
-				print("\n".join("".join(row) for row in cur_board))
-				print("----------")
+				display(cur_board)
+				# print("\n".join("".join(row) for row in cur_board))
+				# print("----------")
 			c = cv2.waitKey(1 * delay)
 			if c == ord(" "):
 				delay = (delay + 1) % 2

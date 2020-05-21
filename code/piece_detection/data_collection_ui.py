@@ -330,24 +330,11 @@ def locate_corners(files, cache_file_path, lattice_point_model):
 	prev_frame = None
 	out_dict = {}
 
-	"""
-	modifIED so files does not need full path
-	since video_handler.py saves corner cache as filenames only
-	"""
-
 	for i in range(len(files)):
 		file = files[i]
-		basename = os.path.basename(file)
-		if basename == file: basename = None
 		print("Locating corners for file {}/{} - {}".format(i + 1, len(files), file))
-		if basename in cache or file in cache:
-			print(cache)
-			print(basename)
-			print(file)
-			if basename in cache:
-				out_dict[basename] = cache[basename]
-			else:
-				out_dict[file] = cache[file]
+		if file in cache:
+			out_dict[file] = cache[file]
 			print("File in cache - skipping...")
 		else:
 			st_time = time.time()
@@ -385,8 +372,8 @@ def main():
 	print("save dir: {}".format(save_dir))
 
 	pgn_file = sys.argv[3] if len(sys.argv) > 3 else None # pgn file
-	white_on_left = sys.argv[4] if len(sys.argv) > 4 else True # are white pieces on left of camera frame?
-	cache_file_path = sys.argv[5] if len(sys.argv) > 5 else "cache.txt" # are white pieces on left of camera frame?
+	white_on_left = int(sys.argv[4]) if len(sys.argv) > 4 else True #1 or 0, are white pieces on left of camera frame?
+	cache_file_path = sys.argv[5] if len(sys.argv) > 5 else "cache.txt" #cached corners
 
 	ct = 0
 
@@ -396,7 +383,7 @@ def main():
 			continue
 		if file.endswith(".jpg") or file.endswith(".jpeg") or file.endswith(".png"):
 			filepath = os.path.join(img_dir_path, file)
-			files.append(file)
+			files.append(filepath)
 	files.sort()
 	board_corners = locate_corners(files, cache_file_path, lattice_point_model)
 
@@ -404,6 +391,8 @@ def main():
 		print("Labelling images from input pgn file...")
 		boards = pgn_reader.pgn_to_boards(pgn_file)
 		if len(boards) != len(files):
+			print(len(boards))
+			print(len(files))
 			exit("Mismatched pgn_file and board img dir.")
 
 		for i in range(len(files)):
@@ -424,7 +413,7 @@ def main():
 
 			save_squares(file, save_dir, board_corners, board=rot_board)
 			corners = []  # clear for next board
-			os.rename(file, os.path.join(img_dir_path, "*{}".format(os.path.basename(file))))  # mark as done
+			# os.rename(file, os.path.join(img_dir_path, "*{}".format(os.path.basename(file))))  # mark as done
 	else:
 		print("loading piece detection model...")
 		piece_detection_model = local_load_model("../models/piece_detection_model.h5")
@@ -440,12 +429,12 @@ def main():
 			root.title("Data Collection")
 			save_squares(file, save_dir, board_corners, piece_detection_model, root=root)
 			corners = []  # clear for next board
-			os.rename(file, os.path.join(img_dir_path, "*{}".format(os.path.basename(file))))  # mark as done
+			# os.rename(file, os.path.join(img_dir_path, "*{}".format(os.path.basename(file))))  # mark as done
 
 	# mark whole dir as done
 	last_dir_i = img_dir_path[0:len(img_dir_path) - 1].rfind("/")
-	os.rename(img_dir_path,
-			  os.path.join(img_dir_path[:last_dir_i], "*{}".format(img_dir_path[last_dir_i + 1:])))  # mark as done
+	# os.rename(img_dir_path,
+			  # os.path.join(img_dir_path[:last_dir_i], "*{}".format(img_dir_path[last_dir_i + 1:])))  # mark as done
 
 if __name__ == "__main__":
 	main()

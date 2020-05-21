@@ -6,8 +6,87 @@ if mislabelled img found, just move its class dir
 
 import sys
 import os
-from validate_imgs import get_human_label
 import shutil
+
+"""
+return SAN of input piece and color
+"""
+def piece_label_handler(window_name):
+	while True:
+		color = "?"
+		print("select color")
+		c = chr(cv2.waitKey())
+		if c in {"w", "b"}:
+			color = c
+		elif c in {" ", "e"}:
+			color = "e"
+		elif c == "\x1b":
+			exit("escaped")
+
+		print("select piece")
+		piece = ""
+		if color != "e":
+			piece = "?"
+			c = chr(cv2.waitKey())
+			if c in {"p", "q", "r", "n", "k", "b", "e"}:
+				piece = c
+			elif c == "\x1b":
+				exit("escaped")
+
+		print("space to confirm, any other to redo")
+		if piece:
+			print("color: {}\npiece: {}".format(color, piece))
+		else:
+			print("blank square")
+
+		if chr(cv2.waitKey()) == " ":
+			break
+		elif c == "\x1b":
+			exit("escaped")
+		else:
+			print("redo")
+
+	cv2.destroyWindow(window_name)
+
+	#convert input color+piece to SAN
+	if color == "w":
+		piece = piece.upper()
+	if not piece: #blank sq
+		piece = "x"
+
+	return piece
+
+"""
+turn filename (SAN) into human-readable piece name
+"""
+def get_human_label(filename):
+    dash = filename.index('-')
+    dot = filename.index('.')
+    sq_num = filename[:dash]
+    piece = filename[dash+1:dot]
+    ext = filename[dot+1:]
+
+    if piece == "x":
+        return sq_num, "empty", ext
+    elif piece == "?":
+        return sq_num, "?", ext
+
+    label = "black_" if piece.islower() else "white_"
+
+    p = piece.lower()
+    if p == "r":
+        label += "rook"
+    elif p == "n":
+        label += "knight"
+    elif p == "b":
+        label += "bishop"
+    elif p == "k":
+        label += "king"
+    elif p == "q":
+        label += "queen"
+    elif p == "p":
+        label += "pawn"
+    return sq_num, label, ext
 
 """
 first, copy labelled_squares

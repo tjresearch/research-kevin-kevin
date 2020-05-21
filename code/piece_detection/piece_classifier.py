@@ -16,7 +16,7 @@ from tensorflow.keras.preprocessing import image
 from square_splitter import split_chessboard
 
 sys.path.insert(1, '../chess_logic')
-# from pgn_helper import display
+from pgn_helper import display
 from next_moves import get_stacked_poss
 
 """
@@ -109,6 +109,7 @@ def get_pred_board(nnet, TARGET_SIZE, sqr_imgs, indices, flat_poss=None, graphic
 
 		#move down prediction list if prediction is impossible (by chess logic)
 		if poss:
+			print(i, poss)
 			while pred_SAN not in poss:
 				if ptr >= len(raw_preds): #no possible pieces, given poss set
 					pred_SAN = "?"
@@ -203,6 +204,12 @@ classify pieces in src img given: board_corners, piece_nnet, TARGET_SIZE of nnet
 optional arg: prev state--in same form as output of this method (array of ltrs)
 """
 def classify_pieces(src, board_corners, nnet, TARGET_SIZE, white_on_left=None, prev_state=None, graphics_IO=None, squares_to_process=None):
+	if squares_to_process:
+		print(squares_to_process)
+	if prev_state:
+		print(prev_state)
+		display(prev_state)
+
 	src = increase_color_contrast(src, 3.5, (8,8)) #increase color contrast of original
 
 	sqr_imgs, indices, ortho_guesses = split_chessboard(src, board_corners, TARGET_SIZE, graphics_IO)
@@ -215,6 +222,8 @@ def classify_pieces(src, board_corners, nnet, TARGET_SIZE, white_on_left=None, p
 
 		#matching same orientation as board
 		#!! ASSUMES WHITE ON LEFT OF FRAME
+		#can I fix that by just making this loop the right way round?
+		#for r in range(8): for c in range(8):
 		for c in range(8):
 			for r in range(7, -1, -1):
 				flat_poss.append(stacked_poss[r][c])

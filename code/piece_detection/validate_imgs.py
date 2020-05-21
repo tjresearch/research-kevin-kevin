@@ -1,44 +1,11 @@
 """
-replaced by format_train_data.py
+(actually) replaced by format_train_data.py (now)
 """
 
 import sys, time
 import cv2
 import os
 import numpy as np
-from data_collection import piece_label_handler
-
-"""
-turn filename (SAN) into human-readable piece name
-"""
-def get_human_label(filename):
-    dash = filename.index('-')
-    dot = filename.index('.')
-    sq_num = filename[:dash]
-    piece = filename[dash+1:dot]
-    ext = filename[dot+1:]
-
-    if piece == "x":
-        return sq_num, "empty", ext
-    elif piece == "?":
-        return sq_num, "?", ext
-
-    label = "black_" if piece.islower() else "white_"
-
-    p = piece.lower()
-    if p == "r":
-        label += "rook"
-    elif p == "n":
-        label += "knight"
-    elif p == "b":
-        label += "bishop"
-    elif p == "k":
-        label += "king"
-    elif p == "q":
-        label += "queen"
-    elif p == "p":
-        label += "pawn"
-    return sq_num, label, ext
 
 """
 take folder of folders of images as input
