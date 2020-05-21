@@ -102,6 +102,7 @@ def get_pred_board(nnet, TARGET_SIZE, sqr_imgs, indices, flat_poss=None, graphic
 		cls_preds = raw_preds[i].argsort()[::-1] #most to least likely classes, based on pred
 		if poss_sets:
 			poss = poss_sets[i]
+			print(poss)
 		else:
 			poss = None
 		ptr = 0
@@ -115,7 +116,7 @@ def get_pred_board(nnet, TARGET_SIZE, sqr_imgs, indices, flat_poss=None, graphic
 					pred_SAN = "?"
 				ptr += 1
 				pred_SAN = CLASS_TO_SAN[ALL_CLASSES[cls_preds[ptr]]]
-				print(ptr, pred_SAN)
+
 		if squares_to_process:
 			pred_board[squares_to_process[i]] = pred_SAN
 		else:
@@ -236,7 +237,7 @@ def classify_pieces(src, board_corners, nnet, TARGET_SIZE, white_on_left=None, p
 	# print(white_on_left)
 	board = rotate_board_to_std(pred_board, white_on_left)
 
-	return pred_board, ortho_guesses, white_on_left
+	return board, ortho_guesses, white_on_left
 
 """
 figure out which side of frame white pieces are on
