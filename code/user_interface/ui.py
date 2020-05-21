@@ -15,6 +15,7 @@ import query_diagram
 
 sys.path.insert(1, "../board_detection")
 import board_locator
+import video_handler
 
 sys.path.insert(2, "../piece_detection")
 import piece_classifier
@@ -121,15 +122,18 @@ class Display(tk.Frame):
 		self.display_frame = tk.Frame(self)
 
 		self.image_label = tk.Label(self.display_frame)
+		self.image_label.focus_set()
 		self.caption = tk.Label(self.display_frame)
 
 		self.show_image("assets/intermediate_images/placeholders/raw.jpg")
 
 		self.video_controls = tk.Frame(self.display_frame)
-		self.prev_frame_button = tk.Button(self.video_controls, command=self.prev_raw_image, text="Prev Frame", height=2, width=8)
+		self.back_to_start_button = tk.Button(self.video_controls, command=self.back_to_start, text="Back to Start", heigh=2, width=8)
+		self.prev_frame_button = tk.Button(self.video_controls, command=self.prev_frame, text="Prev Frame", height=2, width=8)
 		self.pause_play_button = tk.Button(self.video_controls, command=self.pause_play, text="Pause/Play", height=2, width=8)
 		self.next_frame_button = tk.Button(self.video_controls, command=self.next_frame, text="Next Frame", height=2, width=8)
 
+		self.back_to_start_button.pack(side=tk.LEFT)
 		self.prev_frame_button.pack(side=tk.LEFT)
 		self.pause_play_button.pack(side=tk.LEFT)
 		self.next_frame_button.pack(side=tk.LEFT)
@@ -153,6 +157,8 @@ class Display(tk.Frame):
 		self.diagram_id = None
 		self.diagram_dim = 320
 		self.selected_square = None
+
+		self.update_thread = None
 
 		self.diagram_canvas = tk.Canvas(self.side_display_frame, borderwidth=0, highlightthickness=0, width=self.diagram_dim, height=self.diagram_dim)
 		self.diagram_canvas.bind("<Button-1>", self.diagram_mouse_callback)
@@ -331,6 +337,11 @@ class Display(tk.Frame):
 			self.image_label.configure(image=render)
 			self.image_label.image = render
 
+	def back_to_start(self):
+		if not self.processing:
+			self.video_cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+			self.disp_next_frame()
+
 	def pause_play(self):
 		if not self.processing:
 			if self.video_play.is_set():
@@ -366,14 +377,20 @@ class Display(tk.Frame):
 		resolution = (int(self.video_cap.get(cv2.CAP_PROP_FRAME_HEIGHT)), int(self.video_cap.get(cv2.CAP_PROP_FRAME_WIDTH)))
 		self.caption["text"] = "File: {}\nFPS: {}\nResolution {}".format(video_path, fps, resolution)
 
-		self.video_play.set()
-		self.video_thread = Thread(target=self.video_handler, args=(fps,))
+		ret, frame = self.video_cap.read()
+		if not ret:
+			showerror("Error", "Could not open video at {}".format(video_path))
+			return False
+
+		self.cur_raw_image = frame
+
+		self.video_thread = Thread(target=self.display_video_handler, args=(fps,))
 		self.video_thread.daemon = True
 		self.video_thread.start()
 
 		return True
 
-	def video_handler(self, fps):
+	def display_video_handler(self, fps):
 		try:
 			while not self.video_stop.is_set():
 				self.video_play.wait()
@@ -406,17 +423,43 @@ class Display(tk.Frame):
 			self.prev_raw_image = None
 
 	def process_handler(self):
+		self.status_update("Starting video process...")
+
 		self.processing = True
+		self.video_play.set()
 
 		if self.mode == "video" or self.mode == "live_video":
 			while not self.process_stop.is_set():
-				self.process_single_frame()
+				self.process_video_frame()
 		else:
-			self.process_single_frame()
+			self.process_image()
 
 		self.processing = False
+		self.video_play.clear()
 
-	def process_single_frame(self):
+	def update_diagram(self):
+		self.update_thread = Thread(target=self.update_diagram_handler)
+		self.update_thread.daemon = True
+		self.update_thread.start()
+
+	def update_diagram_handler(self):
+		board_string = "".join("".join(row) for row in self.board)
+
+		# self.status_update("Querying diagram...")
+		st_query_time = time.time()
+		diagram = query_diagram.diagram_from_board_string(board_string)
+		# self.status_update("> Queried diagram in {} s".format(time.time() - st_query_time))
+
+		render = ImageTk.PhotoImage(diagram)
+		if self.diagram_id is not None:
+			self.diagram_canvas.delete(self.diagram_id)
+		self.diagram_id = self.diagram_canvas.create_image((self.diagram_dim // 2, self.diagram_dim // 2), image=render)
+		immortals.append(render)
+
+		self.diagram_canvas.delete("square")
+		self.selected_square = None
+
+	def process_image(self):
 		self.status_update("Locating board...")
 		st_locate_time = time.time()
 
@@ -459,42 +502,37 @@ class Display(tk.Frame):
 					self.status_update("White pieces on right of frame")
 		self.status_update("> Classified pieces in {} s".format(time.time() - st_classify_time))
 
-		board_string = "".join("".join(row) for row in self.board)
-		print(board_string)
+		self.update_diagram()
 
-		self.status_update("Querying diagram...")
-		st_query_time = time.time()
-		diagram = query_diagram.diagram_from_board_string(board_string)
-		self.status_update("> Queried diagram in {} s".format(time.time() - st_query_time))
-
-		render = ImageTk.PhotoImage(diagram)
-		if self.diagram_id is not None:
-			self.diagram_canvas.delete(self.diagram_id)
-		self.diagram_id = self.diagram_canvas.create_image((self.diagram_dim // 2, self.diagram_dim // 2), image=render)
-		immortals.append(render)
-
-		self.diagram_canvas.delete("square")
-		self.selected_square = None
+	def process_video_frame(self):
+		video_handler.process_video_frame(self.cur_raw_image, self.lattice_point_model, self.piece_model, show_process=False)
+		if video_handler.new_board is not None and (self.board is None or
+													not all(
+														self.board[i // 8][i % 8] == video_handler.new_board[i // 8][
+															i % 8] for i in range(64))):
+			self.board = [[elem for elem in row] for row in video_handler.new_board]
+			self.update_diagram()
 
 	def diagram_mouse_callback(self, event):
-		square_size = self.diagram_dim // 8
-		r = event.y // square_size
-		c = event.x // square_size
-		square_idx = c * 8 + (7 - r) # Account for rotation of diagram
-		if self.selected_square == square_idx:
-			self.diagram_canvas.delete("square")
-			self.selected_square = None
-		elif self.diagram_id is not None:
-			if self.ortho_guesses[square_idx]:
-				x1 = c * square_size
-				y1 = r * square_size
-				x2 = x1 + square_size
-				y2 = y1 + square_size
+		if self.mode == "image":
+			square_size = self.diagram_dim // 8
+			r = event.y // square_size
+			c = event.x // square_size
+			square_idx = c * 8 + (7 - r) # Account for rotation of diagram
+			if self.selected_square == square_idx:
 				self.diagram_canvas.delete("square")
-				self.selected_square = square_idx
-				self.diagram_canvas.create_rectangle(x1, y1, x2, y2, outline="blue", width=3, tags="square")
-			else:
-				self.status_update("Square is not in orthophoto; pick a different square!")
+				self.selected_square = None
+			elif self.diagram_id is not None:
+				if self.ortho_guesses[square_idx]:
+					x1 = c * square_size
+					y1 = r * square_size
+					x2 = x1 + square_size
+					y2 = y1 + square_size
+					self.diagram_canvas.delete("square")
+					self.selected_square = square_idx
+					self.diagram_canvas.create_rectangle(x1, y1, x2, y2, outline="blue", width=3, tags="square")
+				else:
+					self.status_update("Square is not in orthophoto; pick a different square!")
 
 	def back(self):
 		if self.intermediate_index > 0:

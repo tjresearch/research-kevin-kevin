@@ -270,11 +270,13 @@ def find_chessboard(img, lattice_point_model, out_dir="", prev=(None, None)):
 
 		grid, warped_grid = get_grid_from_corners(prev_corners)
 
-		new_grid, status, err = cv2.calcOpticalFlowPyrLK(prev_frame, img, np.array(grid).astype(np.float32), None)
+		new_grid, status, _ = cv2.calcOpticalFlowPyrLK(prev_frame, img, np.array(grid).astype(np.float32), None)
 		new_corners = new_grid[corners_of_interest]
 
-		status[np.argwhere(err > np.median(err) + np.std(err) * 2)] = 0 # If a point has significant error, it's probably wrong
-		status[np.argwhere(err < np.median(err) - np.std(err) * 2)] = 0
+		err = np.linalg.norm(np.array(grid).astype(np.float32) - new_grid, axis=1)
+
+		status[np.argwhere(err > np.median(err) + np.std(err) * 1.5)] = 0 # If a point has significant error, it's probably wrong
+		status[np.argwhere(err < np.median(err) - np.std(err) * 1.5)] = 0
 		good_indices = np.argwhere(status[:, 0] == 1)
 
 
