@@ -3,15 +3,7 @@ import math
 import cv2
 
 
-def inverse_warp_point(point, H):
-	H = np.linalg.inv(H)
-	denom = H[2][0] * point[0] + H[2][1] * point[1] + H[2][2]
-
-	return (H[0][0] * point[0] + H[0][1] * point[1] + H[0][2]) / denom, (
-			H[1][0] * point[0] + H[1][1] * point[1] + H[1][2]) / denom
-
-
-def get_line(p1, p2):
+def get_line_eq_mb(p1, p2):
 	if p1[0] == p2[0]:
 		return None, p1[0]
 
@@ -19,6 +11,14 @@ def get_line(p1, p2):
 	b = p1[1] - m * p1[0]
 
 	return m, b
+
+def get_line_eq_ab(line):
+	p1, p2 = line
+
+	A = np.linalg.inv(np.array([[p1[0], p1[1]], [p2[0], p2[1]]]))
+	B = np.array([[1], [1]])
+
+	return np.round(np.matmul(A, B)[:, 0].tolist(), 10)
 
 
 def find_intersection(l1, l2):
@@ -119,12 +119,6 @@ def rho_theta_line_point_dist(line, point):
 	ptheta = math.atan2(y, x)
 	return abs(rho - pr * math.cos(ptheta - theta))
 
-cache = {}
 def line_point_dist(line, point):
-	idx = hash("dis" + str(line[0]) + str(line[1]))
-	if idx in cache:
-		mag = cache[idx]
-	else:
-		mag = np.hypot(line[0][0] - line[1][0], line[0][1] - line[1][1])
-		cache[idx] = mag
+	mag = np.hypot(line[0][0] - line[1][0], line[0][1] - line[1][1])
 	return abs(np.cross(np.array(line[1]) - np.array(line[0]), np.array(line[0]) - np.array(point))) / mag

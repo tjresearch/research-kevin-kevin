@@ -1,5 +1,6 @@
 import cv2
 import os
+import sys
 import line_detection
 import board_locator
 
@@ -28,7 +29,7 @@ def mouse_event(event, x, y, flags, params):
 		update_display(img, lattice_dict, "image")
 
 
-def collect_data(img, model):
+def collect_data(img, model, out_dir):
 	lines = line_detection.find_lines_rho_theta(img)
 	intersections = [p for p in board_locator.get_intersections(lines) if 0 <= p[0] < img.shape[1] and 0 <= p[1] < img.shape[0]]
 
@@ -42,15 +43,15 @@ def collect_data(img, model):
 	update_display(img, lattice_dict, "image")
 	c = cv2.waitKey()
 
-	if c != ord("y"):
+	if c != ord(" "):
 		return
 
 	for point in lattice_dict:
 		if 10 < point[0] < img.shape[1] - 10 and 10 < point[1] < img.shape[0] - 10:
 			if lattice_dict[point]:
-				save_dir = "images/lattice_points/yes"
+				save_dir = os.path.join(out_dir, "yes")
 			else:
-				save_dir = "images/lattice_points/no"
+				save_dir = os.path.join(out_dir, "no")
 
 			subimg = img[point[1] - 10:point[1] + 11, point[0] - 10:point[0] + 11]
 
@@ -58,12 +59,31 @@ def collect_data(img, model):
 			cv2.imwrite(os.path.join(save_dir, file_id), subimg)
 
 
-model = board_locator.load_model("models/lattice_points_model.json", "models/lattice_points_model.h5")
+model = board_locator.load_model("../models/lattice_points_model.json", "../models/lattice_points_model.h5")
 
-path = "images/chessboard4.jpg"
-img = cv2.imread(path)
+file_dir = sys.argv[1]
+out_dir = sys.argv[2]
 
-collect_data(img, model)
+files = []
+for file in os.listdir(file_dir):
+	if file.startswith("*"):
+		continue
+	else:
+		files.append(os.path.join(file_dir, file))
+
+ct = 0
+
+for file in files:
+	ct += 1
+	print("img {}/{}".format(ct, len(files)))
+	print("file: {}".format(file))
+
+	img = cv2.imread(file)
+	collect_data(img, model, out_dir)
+	os.rename(file, os.path.join(file_dir, "*{}".format(os.path.basename(file))))
+
+last_dir_i = file_dir[:len(file_dir) - 1].rfind("/")
+os.rename(file_dir, os.path.join(file_dir[:last_dir_i], "*{}".format(file_dir[last_dir_i + 1])))
 
 # url = "http://28.82.217.175/live?type=some.mp4"
 #

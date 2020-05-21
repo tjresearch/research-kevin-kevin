@@ -3,16 +3,17 @@ import sys
 import cv2
 import time
 
-sys.path.insert(1, "./board_detection")
-sys.path.insert(1, "./piece_detection")
-sys.path.insert(1, "./chess_logic")
+sys.path.insert(1, "../board_detection")
+import board_locator
 
-from board_detection import board_locator
-from piece_detection import identify_pieces
-from chess_logic import pgn_helper
+sys.path.insert(2, "../piece_detection")
+import piece_classifier
 
-if len(sys.argv) != 3:
-	print("usage: python main_shell.py [phone ip] [shared models dir]")
+sys.path.insert(3, "../chess_logic")
+import pgn_helper
+
+if len(sys.argv) != 4:
+	print("usage: python main_shell.py [phone ip] [shared models dir] [img_path]")
 	exit(1)
 
 phone_ip = sys.argv[1]
@@ -30,7 +31,7 @@ print("Loaded in {} s".format(time.time() - st_load_time))
 # Load piece models
 print("Loading piece model...")
 st_load_time = time.time()
-# piece_model = identify_pieces.local_load_model(os.path.join(model_dir, "piece_detection_model.h5"))
+# piece_model = piece_classifier.local_load_model(os.path.join(model_dir, "piece_detection_model.h5"))
 piece_model = None
 print("Loaded in {} s".format(time.time() - st_load_time))
 
@@ -39,10 +40,10 @@ TARGET_SIZE = (224, 112)
 # For single image
 cv2.namedWindow("original")
 
-img_path = "piece_detection/to_be_labelled/*1_14/*IMG_8324.jpeg"
+img_path = sys.argv[3]
 img = cv2.imread(img_path)
 cv2.imshow("original", img)
-cv2.waitKey()
+# cv2.waitKey()
 
 st_locate_time = time.time()
 lines, corners = board_locator.find_chessboard(img, lattice_point_model)
@@ -52,21 +53,22 @@ disp = img.copy()
 for corner in corners:
 	cv2.circle(disp, (int(corner[0]), int(corner[1])), 3, (255, 0, 0), 2)
 
-cv2.imshow("corners", disp)
-cv2.waitKey()
+# cv2.imshow("corners", disp)
+# cv2.waitKey()
 
-prev_state = [['-', '-', '-', '-', '-', '-', '-', '-'],
-			  ['-', '-', '-', '-', 'N', '-', '-', '-'],
-			  ['-', '-', '-', '-', '-', '-', '-', '-'],
-			  ['-', '-', '-', '-', 'R', '-', 'q', 'P'],
-			  ['-', '-', '-', 'r', '-', '-', '-', '-'],
-			  ['-', '-', '-', '-', '-', 'R', 'Q', '-'],
-			  ['-', '-', '-', 'N', '-', '-', '-', '-'],
-			  ['-', '-', '-', '-', 'B', '-', '-', '-']]
-
-print("prev state:")
-pgn_helper.display(prev_state)
-print(prev_state)
+# prev_state = [['-', '-', '-', '-', '-', '-', '-', '-'],
+# 			  ['-', '-', '-', '-', 'N', '-', '-', '-'],
+# 			  ['-', '-', '-', '-', '-', '-', '-', '-'],
+# 			  ['-', '-', '-', '-', 'R', '-', 'q', 'P'],
+# 			  ['-', '-', '-', 'r', '-', '-', '-', '-'],
+# 			  ['-', '-', '-', '-', '-', 'R', 'Q', '-'],
+# 			  ['-', '-', '-', 'N', '-', '-', '-', '-'],
+# 			  ['-', '-', '-', '-', 'B', '-', '-', '-']]
+# prev_state = None
+# print("prev state:")
+# # pgn_helper.display(prev_state)
+# print(prev_state)
+prev_state = None
 
 """
 #calling twice no work
@@ -79,19 +81,22 @@ pgn_helper.display(board)
 print("-"*60)
 """
 
-graphics_IO = ("./assets", "./graphics_out")
-if not os.path.exists(graphics_IO[0]):
-	print("missing assets folder")
-if not os.path.exists(graphics_IO[1]):
-	os.mkdir(graphics_IO[1])
-print("Pulling assets from {}".format(graphics_IO[0]))
-print("Saving graphics to {}".format(graphics_IO[1]))
+# graphics_IO = ("./assets", "./graphics_out")
+# if not os.path.exists(graphics_IO[0]):
+# 	print("missing assets folder")
+# if not os.path.exists(graphics_IO[1]):
+# 	os.mkdir(graphics_IO[1])
+# print("Pulling assets from {}".format(graphics_IO[0]))
+# print("Saving graphics to {}".format(graphics_IO[1]))
+graphics_IO = ("../assets", "../user_interface/assets")
 
-board = identify_pieces.classify_pieces(img, corners, piece_model, TARGET_SIZE, graphics_IO, prev_state)
-pgn_helper.display(board)
+board, ortho_guesses, white_on_left = piece_classifier.classify_pieces(img, corners, piece_model, TARGET_SIZE, None, prev_state=None, graphics_IO=graphics_IO)
+print(white_on_left)
+print(ortho_guesses)
 print()
 print(board)
 print()
+pgn_helper.display(board)
 
 print("any key to close")
 cv2.waitKey()

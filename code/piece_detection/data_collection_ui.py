@@ -6,17 +6,26 @@ import time
 from tkinter.messagebox import askyesno
 from datetime import datetime
 from PIL import Image, ImageTk
+import numpy as np
 
-from identify_pieces import split_chessboard, order_points
+from square_splitter import split_chessboard, order_points
+from piece_classifier import local_load_model, get_pred_board
 sys.path.insert(1, "../board_detection")
 import board_locator, board_segmentation
+sys.path.insert(2, "../chess_logic")
+import pgn_reader, pgn_helper
+
+TARGET_SIZE = (224, 112)
 
 immortals = {}
 notation = {"white_pawn":"P", "white_knight":"N", "white_bishop":"B", "white_rook":"R", "white_queen":"Q", "white_king":"K",
 			"black_pawn":"p", "black_knight":"n", "black_bishop":"b", "black_rook":"r", "black_queen":"q", "black_king":"k"}
+rev_notation = {v:k for k, v in notation.items()}
+
+hotkeys = {"<space>":"toggle", "x":"clear", "q":"pawn", "a":"knight", "s":"bishop", "d":"rook", "w":"queen", "e":"king"}
 
 class DataCollectionDisp(tk.Frame):
-	def __init__(self, parent, img, squares, indices, save_dir):
+	def __init__(self, parent, img, squares, indices, save_dir, piece_detection_model):
 
 		self.parent = parent
 		tk.Frame.__init__(self, parent)
@@ -37,14 +46,31 @@ class DataCollectionDisp(tk.Frame):
 		self.board_ids = []
 		self.board = []
 
+		pred_board = get_pred_board(piece_detection_model, TARGET_SIZE, squares, indices) #get nnet preds
+		#rotate board for std display (white on bottom)
+		#converting to numpy and back takes 0.0 s (rounded to 3 digits)
+		pred_board = np.asarray(pred_board)
+		pred_board = np.resize(pred_board, (8,8))
+		pred_board = np.rot90(pred_board, 3)
+		self.preds = [[None for j in range(8)] for i in range(8)]
+		for i in range(8):
+			for j in range(8):
+				self.preds[i][j] = pred_board[i][j]
+
 		self.init_board()
 
 		self.board_canvas.pack(side=tk.LEFT)
 		self.board_canvas.bind("<Button-1>", self.mouse_callback)
 
+		for key in hotkeys:
+			self.board_canvas.bind(key, lambda event, i=hotkeys[key]: self.hotkey_handler(event, i))
+
+		self.board_canvas.focus_set()
+
 		self.image_label = tk.Label(self.top_frame)
 
-		disp = Image.fromarray(cv2.cvtColor(cv2.resize(img, None, fx=0.75, fy=0.75), cv2.COLOR_BGR2RGB))
+		# disp = Image.fromarray(cv2.cvtColor(cv2.resize(img, None, fx=0.75, fy=0.75), cv2.COLOR_BGR2RGB))
+		disp = Image.fromarray(cv2.cvtColor(cv2.resize(img, None, fx=0.6, fy=0.6), cv2.COLOR_BGR2RGB))
 		render = ImageTk.PhotoImage(disp)
 		self.image_label.configure(image=render)
 		self.image_label.image = render
@@ -55,8 +81,8 @@ class DataCollectionDisp(tk.Frame):
 
 		self.button_frame = tk.Frame(self.middle_frame)
 
-		self.selected_piece_label = tk.Label(self.middle_frame, text="Selected piece: clear")
-		self.selected_piece_label.pack(side=tk.TOP)
+		# self.selected_piece_label = tk.Label(self.middle_frame, text="Selected: clear")
+		# self.selected_piece_label.pack(side=tk.TOP)
 
 		self.white_frame = tk.Frame(self.button_frame)
 		self.black_frame = tk.Frame(self.button_frame)
@@ -96,6 +122,10 @@ class DataCollectionDisp(tk.Frame):
 		self.pack(fill="both", expand="true")
 
 	def init_board(self):
+		# temp
+		for temp in self.preds:
+			print(temp)
+
 		for r in range(8):
 			row = []
 			row_ids = []
@@ -109,11 +139,42 @@ class DataCollectionDisp(tk.Frame):
 			self.board.append(row)
 			self.board_ids.append(row_ids)
 
+		# start board with nnet preds
+		for r in range(8):
+			for c in range(8):
+				if self.preds[r][c] == "-": continue
+				x = c * self.square_size + self.square_size // 2
+				y = r * self.square_size + self.square_size // 2
+				self.selected_piece = rev_notation[self.preds[r][c]]
+				img = Image.open("../assets/piece_images/{}.png".format(self.selected_piece))
+				img = img.resize((self.square_size, self.square_size))
+				render = ImageTk.PhotoImage(img)
+				self.board_canvas.delete(self.board_ids[r][c])
+				self.board[r][c] = notation[self.selected_piece]
+				self.board_ids[r][c] = self.board_canvas.create_image((x, y), image=render)
+				immortals[self.board_ids[r][c]] = render
+
 	def piece_button_callback(self, piece):
 		self.selected_piece = piece
-		new_text = "Selected piece: {}".format(piece if piece else "clear")
-		self.selected_piece_label.configure(text=new_text)
-		self.selected_piece_label.text = new_text
+		new_text = "Selected: {}".format(piece if piece else "clear")
+		# self.selected_piece_label.configure(text=new_text)
+		# self.selected_piece_label.text = new_text
+
+	def hotkey_handler(self, event, command):
+		if command == "toggle":
+			cur_color = self.selected_piece[:self.selected_piece.find("_")]
+			new_color = "black" if cur_color == "white" else "white"
+			self.selected_piece = new_color + self.selected_piece[self.selected_piece.find("_"):]
+		elif command == "clear":
+			self.selected_piece = ""
+		else:
+			if self.selected_piece:
+				self.selected_piece = self.selected_piece[:self.selected_piece.find("_") + 1] + command
+			else:
+				self.selected_piece = "white_{}".format(command)
+		new_text = "Selected: {}".format(self.selected_piece if self.selected_piece else "clear")
+		# self.selected_piece_label.configure(text=new_text)
+		# self.selected_piece_label.text = new_text
 
 	def mouse_callback(self, event):
 		global immortals
@@ -218,27 +279,40 @@ def find_board(img, file, board_corners):
 
 	return corners
 
-def label_subimgs(img, squares, indices, save_dir, root):
-	window = DataCollectionDisp(root, img, squares, indices, save_dir)
+def label_subimgs(img, squares, indices, save_dir, root, piece_detection_model):
+	window = DataCollectionDisp(root, img, squares, indices, save_dir, piece_detection_model)
 	root.mainloop()
 
-def save_squares(file, outer_dir, lattice_point_model, root, board_corners):
+def save_squares(file, outer_dir, board_corners, piece_detection_model=None, root=None, board=None):
 	#setup file IO
 	save_dir = os.path.join(outer_dir, file[file.rfind("/")+1:file.rfind(".")])
 	os.mkdir(save_dir)
-	print("output dir: {}".format(save_dir))
 	img = cv2.imread(file)
 
 	#find corners of board
 	corners = find_board(img, file, board_corners)
 
-	#take corners, split image into subimgs of viable squares & their indicies
-	squares, indices = split_chessboard(img, corners)
+	#take corners, split image into subimgs of viable squares & their indices
+	squares, indices, _ = split_chessboard(img, corners, TARGET_SIZE)
 	#label squares with pieces, save
-	label_subimgs(img, squares, indices, save_dir, root)
+	if root and not board:
+		label_subimgs(img, squares, indices, save_dir, root, piece_detection_model)
+	elif board and not root:
+		for r in range(8):
+			for c in range(8):
+				indx = r * 8 + c
+				#this if statement is not efficient
+				if indx in indices:
+					i = indices.index(indx)
+					img = squares[i]
+
+					filename = "{}-{}.jpg".format(indx, board[r][c])
+					full_path = os.path.join(save_dir, filename)
+					cv2.imwrite(full_path, img)
+	else:
+		exit("Need either data labelling UI or pgn file.")
 
 def locate_corners(files, cache_file_path, lattice_point_model):
-
 	cache = {}
 	if os.path.exists(cache_file_path):
 		with open(cache_file_path, "r") as infile:
@@ -249,7 +323,15 @@ def locate_corners(files, cache_file_path, lattice_point_model):
 	else:
 		cache_file = open(cache_file_path, "w")
 
+	prev_corners = None
+	prev_frame = None
 	out_dict = {}
+
+	"""
+	modify so files does not need full path (break into dir and filenames)
+	since video_handler.py saves corner cache as filenames only
+	"""
+
 	for i in range(len(files)):
 		file = files[i]
 		print("Locating corners for file {}/{} - {}".format(i + 1, len(files), file))
@@ -259,7 +341,9 @@ def locate_corners(files, cache_file_path, lattice_point_model):
 		else:
 			st_time = time.time()
 			img = cv2.imread(file)
-			lines, corners = board_locator.find_chessboard(img, lattice_point_model)
+			lines, corners = board_locator.find_chessboard(img, lattice_point_model, out_dir="./debug", prev=(prev_frame, prev_corners))
+			prev_corners = corners
+			prev_frame = img
 			out_dict[file] = corners
 			cache_file.write("{} - {}\n".format(file, str(corners)))
 			cache_file.flush()
@@ -277,7 +361,7 @@ def main():
 	print("Loaded in {} s".format(time.time() - st_load_time))
 
 	global corners
-	img_dir_path = sys.argv[1]
+	img_dir_path = sys.argv[1] # input dir
 
 	# make dir of current time for subimgs
 	now = datetime.now()
@@ -297,19 +381,53 @@ def main():
 			filepath = os.path.join(img_dir_path, file)
 			files.append(filepath)
 
+	files.sort()
 	board_corners = locate_corners(files, "cache.txt", lattice_point_model)
 
-	# save squares of each file
-	for file in files:
-		ct += 1
-		print("img {}/{}".format(ct, len(files)))
-		print("file: {}".format(file))
+	pgn_file = sys.argv[3] if len(sys.argv) > 3 else None # pgn file
+	white_on_left = sys.argv[4] if len(sys.argv) > 4 else True # are white pieces on left of camera frame?
 
-		root = tk.Tk()
-		root.title("Data Collection")
-		save_squares(file, save_dir, lattice_point_model, root, board_corners)
-		corners = []  # clear for next board
-		os.rename(file, os.path.join(img_dir_path, "*{}".format(os.path.basename(file))))  # mark as done
+	if pgn_file:
+		print("Labelling images from input pgn file...")
+		boards = pgn_reader.pgn_to_boards(pgn_file)
+		if len(boards) != len(files):
+			exit("Mismatched pgn_file and board img dir.")
+
+		for i in range(len(files)):
+			file = files[i]
+			board = boards[i]
+			#convert board to correct format
+			board = np.resize(np.asarray(board), (8,8))
+			if white_on_left:
+				board = np.rot90(board, 3)
+			else:
+				board = np.rot90(board)
+
+			rot_board = [[None for j in range(8)] for i in range(8)]
+			for i in range(8):
+				for j in range(8):
+					rot_board[i][j] = str(board[i][j]) if str(board[i][j]) != "-" else "x"
+			pgn_helper.display(board)
+
+			save_squares(file, save_dir, board_corners, board=rot_board)
+			corners = []  # clear for next board
+			os.rename(file, os.path.join(img_dir_path, "*{}".format(os.path.basename(file))))  # mark as done
+	else:
+		print("loading piece detection model...")
+		piece_detection_model = local_load_model("../models/piece_detection_model.h5")
+		print("piece detection model loaded")
+
+		# save squares of each file
+		for file in files:
+			ct += 1
+			print("img {}/{}".format(ct, len(files)))
+			print("file: {}".format(file))
+
+			root = tk.Tk()
+			root.title("Data Collection")
+			save_squares(file, save_dir, board_corners, piece_detection_model, root=root)
+			corners = []  # clear for next board
+			os.rename(file, os.path.join(img_dir_path, "*{}".format(os.path.basename(file))))  # mark as done
 
 	# mark whole dir as done
 	last_dir_i = img_dir_path[0:len(img_dir_path) - 1].rfind("/")
