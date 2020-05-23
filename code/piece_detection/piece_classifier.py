@@ -31,8 +31,9 @@ def local_load_model(nnet_path):
 
 """
 predict board state, given segmented and orthophoto-pared sqr imgs
+!to use chess logic from previous state, white_on_left and stacked_poss must both be filled
 """
-def get_pred_board(nnet, TARGET_SIZE, sqr_imgs, indices, flat_poss=None, graphics_IO=None, squares_to_process=None):
+def get_pred_board(nnet, TARGET_SIZE, sqr_imgs, indices, white_on_left=None, stacked_poss=None, graphics_IO=None, squares_to_process=None):
 	CLASS_TO_SAN = {
 		'black_bishop':'b',
 		'black_king':'k',
@@ -49,6 +50,31 @@ def get_pred_board(nnet, TARGET_SIZE, sqr_imgs, indices, flat_poss=None, graphic
 		'white_rook':'R'
 	}
 	ALL_CLASSES = [*CLASS_TO_SAN.keys()]
+
+	flat_poss = []
+	if white_on_left != None:
+		# print("stacked_poss")
+		# print(stacked_poss[0][1])
+		# print(stacked_poss[1][0])
+		# stacked_poss = rotate_board_to_std(stacked_poss, white_on_left)
+		# pred_board = np.rot90(pred_board)
+		# if not white_on_left:
+			# pred_board = np.rot90(np.rot90(pred_board))
+		# board = [[None for j in range(8)] for i in range(8)]
+		# for i in range(8):
+		# 	for j in range(8):
+		# 		board[i][j] = str(pred_board[i][j])
+		# return board #nested list
+		if white_on_left:
+			stacked_poss = [list(reversed(x)) for x in zip(*stacked_poss)]
+		else:
+			stacked_poss = [list((x)) for x in zip(*[list(reversed(x)) for x in stacked_poss])] #reverse rows, then transpose
+		# print("rot stacked_poss")
+		# print(stacked_poss[0][1])
+		# print(stacked_poss[1][0])
+		for r in range(8):
+			for c in range(8):
+				flat_poss.append(stacked_poss[r][c])
 
 	if squares_to_process:
 		i = 0
@@ -102,7 +128,6 @@ def get_pred_board(nnet, TARGET_SIZE, sqr_imgs, indices, flat_poss=None, graphic
 		cls_preds = raw_preds[i].argsort()[::-1] #most to least likely classes, based on pred
 		if poss_sets:
 			poss = poss_sets[i]
-			print(poss)
 		else:
 			poss = None
 		ptr = 0
@@ -110,17 +135,23 @@ def get_pred_board(nnet, TARGET_SIZE, sqr_imgs, indices, flat_poss=None, graphic
 
 		#move down prediction list if prediction is impossible (by chess logic)
 		if poss:
-			print(i, poss)
+			print("sqr:",squares_to_process[i])
+			print(poss)
+			print(pred_SAN)
 			while pred_SAN not in poss:
 				if ptr >= len(raw_preds): #no possible pieces, given poss set
 					pred_SAN = "?"
 				ptr += 1
 				pred_SAN = CLASS_TO_SAN[ALL_CLASSES[cls_preds[ptr]]]
+				print("shifted to", pred_SAN)
 
 		if squares_to_process:
 			pred_board[squares_to_process[i]] = pred_SAN
 		else:
 			pred_board[indices[i]] = pred_SAN
+
+	display(np.resize(np.array(pred_board),(8,8)))
+	print("raw pred_board")
 
 	#for ui representation of confidence intervals
 	# TODO: add poss set checking to visualization
@@ -208,28 +239,25 @@ def classify_pieces(src, board_corners, nnet, TARGET_SIZE, white_on_left=None, p
 	if squares_to_process:
 		print(squares_to_process)
 	if prev_state:
-		print(prev_state)
 		display(prev_state)
+		print("prev_state")
 
 	src = increase_color_contrast(src, 3.5, (8,8)) #increase color contrast of original
 
 	sqr_imgs, indices, ortho_guesses = split_chessboard(src, board_corners, TARGET_SIZE, graphics_IO)
 
 	#compute possible next moves from prev state, flatten to 1D list
-	flat_poss = []
+	stacked_poss = []
 	#requires white_on_left to exist too
 	if prev_state:
-		stacked_poss = get_stacked_poss(prev_state)
+		stacked_poss = get_stacked_poss(prev_state) #prev_state oriented std (so stacked_poss also std)
 
 		#matching same orientation as board
 		#!! ASSUMES WHITE ON LEFT OF FRAME
-		#can I fix that by just making this loop the right way round?
-		#for r in range(8): for c in range(8):
-		for c in range(8):
-			for r in range(7, -1, -1):
-				flat_poss.append(stacked_poss[r][c])
+		# for c in range(8):
+			# for r in range(7, -1, -1):
 
-	pred_board = get_pred_board(nnet, TARGET_SIZE, sqr_imgs, indices, flat_poss=flat_poss, graphics_IO=graphics_IO, squares_to_process=squares_to_process)
+	pred_board = get_pred_board(nnet, TARGET_SIZE, sqr_imgs, indices, white_on_left=white_on_left, stacked_poss=stacked_poss, graphics_IO=graphics_IO, squares_to_process=squares_to_process)
 
 	if white_on_left is None and squares_to_process is None:
 		white_on_left = find_white_on_left(pred_board)
