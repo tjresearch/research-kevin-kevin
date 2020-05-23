@@ -15,6 +15,9 @@ from pgn_helper import display
 sys.path.insert(2, "../chess_logic")
 from pgn_helper import display
 
+sys.path.insert(3, "../user_interface")
+from query_diagram import diagram_from_board_string
+
 TARGET_SIZE = (224, 112)
 
 SQ_SIZE = 100
@@ -40,6 +43,8 @@ idx = 0
 
 cur_board = None
 new_board = None
+
+cur_diagram = None
 
 white_on_left = None
 
@@ -122,7 +127,7 @@ def rotate_rc_coords(coords, white_on_left):
 def process_frame(frame, corners, piece_model, calm_comparison=None):
 	global new_board, white_on_left, cur_board
 	if calm_comparison is not None:
-		peaks = np.argwhere(calm_comparison > np.median(calm_comparison) + np.std(calm_comparison)).tolist()
+		peaks = np.argwhere(calm_comparison > np.median(calm_comparison) + np.std(calm_comparison) * 0.5).tolist()
 		flat_peaks = []
 
 		for i in range(len(peaks)):
@@ -154,7 +159,6 @@ def update_calm(raw_frame, frame, corners, piece_model, show_process, save_dir=N
 			classify_thread = Thread(target=lambda : process_frame(raw_frame, corners, piece_model, calm_comparison=calm_comparison))
 			classify_thread.daemon = True
 			classify_thread.start()
-			print(idx)
 		first_calm = False
 
 def process_video_frame(raw_frame, lattice_model, piece_model, show_process, save_dir=None):
@@ -219,6 +223,12 @@ def process_video_frame(raw_frame, lattice_model, piece_model, show_process, sav
 
 	idx += 1
 
+def show_diagram():
+	global cur_board, cur_diagram
+	board_string = "".join("".join(row) for row in cur_board)
+	diagram = diagram_from_board_string(board_string).convert("RGB")
+	cur_diagram = cv2.cvtColor(np.array(diagram), cv2.COLOR_RGB2BGR)
+
 if __name__ == "__main__":
 	model_path = "../models"
 	lattice_model = board_locator.load_model(os.path.join(model_path, "lattice_points_model.json"), os.path.join(model_path, "lattice_points_model.h5"))
@@ -252,6 +262,7 @@ if __name__ == "__main__":
 			print("\nWARNING: save_dir not empty!\n")
 	if len(sys.argv) >= 3:
 		show_process = int(sys.argv[2]) #0 or 1
+	print(show_process)
 
 	if save_dir:
 		piece_model = None
@@ -268,7 +279,11 @@ if __name__ == "__main__":
 			process_video_frame(raw_frame, lattice_model, piece_model, show_process, save_dir)
 			if new_board is not None and (cur_board is None or not all(cur_board[i // 8][i % 8] == new_board[i // 8][i % 8] for i in range(64))):
 				cur_board = [[elem for elem in row] for row in new_board]
-				display(cur_board)
+				diagram_thread = Thread(target=show_diagram)
+				diagram_thread.daemon = True
+				diagram_thread.start()
+			if cur_diagram is not None:
+				cv2.imshow("diagram", cur_diagram)
 
 			c = cv2.waitKey(1 * delay)
 			if c == ord(" "):

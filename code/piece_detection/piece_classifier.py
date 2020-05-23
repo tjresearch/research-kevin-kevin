@@ -135,23 +135,23 @@ def get_pred_board(nnet, TARGET_SIZE, sqr_imgs, indices, white_on_left=None, sta
 
 		#move down prediction list if prediction is impossible (by chess logic)
 		if poss:
-			print("sqr:",squares_to_process[i])
-			print(poss)
-			print(pred_SAN)
+			# print("sqr:",squares_to_process[i])
+			# print(poss)
+			# print(pred_SAN)
 			while pred_SAN not in poss:
 				if ptr >= len(raw_preds): #no possible pieces, given poss set
 					pred_SAN = "?"
 				ptr += 1
 				pred_SAN = CLASS_TO_SAN[ALL_CLASSES[cls_preds[ptr]]]
-				print("shifted to", pred_SAN)
+				# print("shifted to", pred_SAN)
 
 		if squares_to_process:
 			pred_board[squares_to_process[i]] = pred_SAN
 		else:
 			pred_board[indices[i]] = pred_SAN
 
-	display(np.resize(np.array(pred_board),(8,8)))
-	print("raw pred_board")
+	# display(np.resize(np.array(pred_board),(8,8)))
+	# print("raw pred_board")
 
 	#for ui representation of confidence intervals
 	# TODO: add poss set checking to visualization
@@ -236,11 +236,11 @@ classify pieces in src img given: board_corners, piece_nnet, TARGET_SIZE of nnet
 optional arg: prev state--in same form as output of this method (array of ltrs)
 """
 def classify_pieces(src, board_corners, nnet, TARGET_SIZE, white_on_left=None, prev_state=None, graphics_IO=None, squares_to_process=None):
-	if squares_to_process:
-		print(squares_to_process)
-	if prev_state:
-		display(prev_state)
-		print("prev_state")
+	# if squares_to_process:
+	# 	print(squares_to_process)
+	# if prev_state:
+	# 	display(prev_state)
+	# 	print("prev_state")
 
 	src = increase_color_contrast(src, 3.5, (8,8)) #increase color contrast of original
 
