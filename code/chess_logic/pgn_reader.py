@@ -147,14 +147,20 @@ def find_start(board, piece, end, diff=None):
 	if len(poss) == 1: return poss.pop()
 	if not diff:
 		print(poss)
-		exit("two poss start pieces")
+		exit("two poss start pieces but no differentiator")
 
-	col = ph.COL_HEADS[diff]
-	for pos in poss:
-		if col == pos[1]:
-			return pos
+	if diff in ph.COL_HEADS:
+		col = ph.COL_HEADS[diff]
+		for pos in poss:
+			if col == pos[1]:
+				return pos
+	else:
+		row = 8-int(diff)
+		for pos in poss:
+			if row == pos[0]:
+				return pos
 
-	exit("start piece not found")
+	exit("error: start piece not found")
 
 """
 finds coords for halfmove for make_move()

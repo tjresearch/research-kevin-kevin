@@ -219,6 +219,7 @@ def main():
 
             break
         else:
+            ph.display(next_board)
             print("move {} good".format(i))
 
         board = next_board
