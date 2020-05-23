@@ -6,6 +6,9 @@ import pgn_helper as ph
 given one piece and current board,
 figure out all next poss positions for that piece
 doesn't handle checks
+
+st_pos in (r,c)
+board must be oriented std (white-) or black-on-bottom
 """
 def next_poss_from_st(board, st_pos):
     next_poss = set()
@@ -216,6 +219,7 @@ def main():
 
             break
         else:
+            ph.display(next_board)
             print("move {} good".format(i))
 
         board = next_board
