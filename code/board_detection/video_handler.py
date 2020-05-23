@@ -8,7 +8,7 @@ import sys
 from threading import Thread
 
 sys.path.insert(1, "../piece_detection")
-import piece_classifier
+import piece_classifier, square_splitter
 sys.path.insert(2, '../chess_logic')
 from pgn_helper import display
 
@@ -128,7 +128,7 @@ def process_frame(frame, corners, piece_model, calm_comparison=None):
 		for i in range(len(peaks)):
 			flat_peaks.append(peaks[i][0] * 8 + peaks[i][1])
 		board_mask, ortho_guesses, white_on_left = piece_classifier.classify_pieces(frame, corners, piece_model, TARGET_SIZE,
-																			   white_on_left=white_on_left, squares_to_process=flat_peaks)
+																			   prev_state=cur_board, white_on_left=white_on_left, squares_to_process=flat_peaks)
 
 		rotated_peaks = rotate_rc_coords(peaks, white_on_left)
 
@@ -183,7 +183,8 @@ def process_video_frame(raw_frame, lattice_model, piece_model, show_process, sav
 				if cur_calm_streak == good_calm_streak and cur_noise_streak > min_noise_streak:
 					first_calm = True
 				calm_comparison = get_color_diff_grid(prev_frame, last_calm_frame, prev_corners, last_calm_corners)
-				cv2.imshow("calm_grid", cv2.resize(color_diff_display(prev_frame, prev_corners, calm_comparison), None, fx=0.5, fy=0.5))
+				if show_process:
+					cv2.imshow("calm_grid", cv2.resize(color_diff_display(prev_frame, prev_corners, calm_comparison), None, fx=0.5, fy=0.5))
 				dist_from_avg = calm_comparison - np.median(calm_comparison)
 
 				# if the color change grid has less than 7 outliers; 6 is the maximum number of significant changes for a single move
@@ -233,7 +234,7 @@ if __name__ == "__main__":
 	delay = 0
 
 	cap = cv2.VideoCapture(sys.argv[1])
-	cap.set(cv2.CAP_PROP_POS_FRAMES, 12100)
+	# cap.set(cv2.CAP_PROP_POS_FRAMES, 6242)
 
 	save_dir = None
 	show_process = False
