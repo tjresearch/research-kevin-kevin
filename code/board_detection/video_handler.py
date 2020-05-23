@@ -9,8 +9,6 @@ from threading import Thread
 
 sys.path.insert(1, "../piece_detection")
 import piece_classifier
-sys.path.insert(2, '../chess_logic')
-from pgn_helper import display
 
 sys.path.insert(2, "../chess_logic")
 from pgn_helper import display
@@ -122,7 +120,7 @@ def rotate_rc_coords(coords, white_on_left):
 def process_frame(frame, corners, piece_model, calm_comparison=None):
 	global new_board, white_on_left, cur_board
 	if calm_comparison is not None:
-		peaks = np.argwhere(calm_comparison > np.median(calm_comparison) + np.std(calm_comparison)).tolist()
+		peaks = np.argwhere(calm_comparison > np.median(calm_comparison) + np.std(calm_comparison) * 0.5).tolist()
 		flat_peaks = []
 
 		for i in range(len(peaks)):
@@ -154,7 +152,6 @@ def update_calm(raw_frame, frame, corners, piece_model, show_process, save_dir=N
 			classify_thread = Thread(target=lambda : process_frame(raw_frame, corners, piece_model, calm_comparison=calm_comparison))
 			classify_thread.daemon = True
 			classify_thread.start()
-			print(idx)
 		first_calm = False
 
 def process_video_frame(raw_frame, lattice_model, piece_model, show_process, save_dir=None):
@@ -183,7 +180,8 @@ def process_video_frame(raw_frame, lattice_model, piece_model, show_process, sav
 				if cur_calm_streak == good_calm_streak and cur_noise_streak > min_noise_streak:
 					first_calm = True
 				calm_comparison = get_color_diff_grid(prev_frame, last_calm_frame, prev_corners, last_calm_corners)
-				cv2.imshow("calm_grid", cv2.resize(color_diff_display(prev_frame, prev_corners, calm_comparison), None, fx=0.5, fy=0.5))
+				if show_process:
+					cv2.imshow("calm_grid", cv2.resize(color_diff_display(prev_frame, prev_corners, calm_comparison), None, fx=0.5, fy=0.5))
 				dist_from_avg = calm_comparison - np.median(calm_comparison)
 
 				# if the color change grid has less than 7 outliers; 6 is the maximum number of significant changes for a single move
@@ -233,7 +231,7 @@ if __name__ == "__main__":
 	delay = 0
 
 	cap = cv2.VideoCapture(sys.argv[1])
-	cap.set(cv2.CAP_PROP_POS_FRAMES, 12100)
+	# cap.set(cv2.CAP_PROP_POS_FRAMES, 12100)
 
 	save_dir = None
 	show_process = False
@@ -251,6 +249,7 @@ if __name__ == "__main__":
 			print("\nWARNING: save_dir not empty!\n")
 	if len(sys.argv) >= 3:
 		show_process = int(sys.argv[2]) #0 or 1
+	print(show_process)
 
 	if save_dir:
 		piece_model = None

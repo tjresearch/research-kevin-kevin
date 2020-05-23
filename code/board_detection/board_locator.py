@@ -158,6 +158,7 @@ def polyscore(corners, lattice_points, centroid, alpha, beta):
 
 
 def find_chessboard(img, lattice_point_model, out_dir="", prev=(None, None)):
+	global frames
 	if prev[0] is None or prev[1] is None:
 		lines = line_detection.find_lines_rho_theta(img, out_dir)
 

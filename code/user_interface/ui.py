@@ -20,6 +20,9 @@ import video_handler
 sys.path.insert(2, "../piece_detection")
 import piece_classifier
 
+sys.path.insert(3, "../chess_logic")
+from pgn_helper import display
+
 supported_image_formats = [".bmp", ".pbm", ".pgm", ".ppm", ".sr", ".ras", ".jpeg", ".jpg", ".jpe", ".jp2", ".tiff", ".tif", ".png"]
 supported_video_formats = [".avi", ".flv", ".wmv", ".mov", ".mp4"]
 TARGET_SIZE = (224, 112)
@@ -122,7 +125,6 @@ class Display(tk.Frame):
 		self.display_frame = tk.Frame(self)
 
 		self.image_label = tk.Label(self.display_frame)
-		self.image_label.focus_set()
 		self.caption = tk.Label(self.display_frame)
 
 		self.show_image("assets/intermediate_images/placeholders/raw.jpg")
@@ -300,6 +302,7 @@ class Display(tk.Frame):
 			print("Caught a RuntimeError")
 		self.live_cap.release()
 		self.live_video_stop.clear()
+		self.live_video_thread.join()
 
 	def start_display(self):
 		self.display_thread = Thread(target=self.display_handler)
@@ -402,6 +405,7 @@ class Display(tk.Frame):
 			print("Caught a RuntimeError")
 		self.video_cap.release()
 		self.video_stop.clear()
+		self.video_thread.join()
 
 	def process(self):
 		if not self.processing:
@@ -445,10 +449,10 @@ class Display(tk.Frame):
 	def update_diagram_handler(self):
 		board_string = "".join("".join(row) for row in self.board)
 
-		# self.status_update("Querying diagram...")
+		self.status_update("Querying diagram...")
 		st_query_time = time.time()
 		diagram = query_diagram.diagram_from_board_string(board_string)
-		# self.status_update("> Queried diagram in {} s".format(time.time() - st_query_time))
+		self.status_update("> Queried diagram in {} s".format(time.time() - st_query_time))
 
 		render = ImageTk.PhotoImage(diagram)
 		if self.diagram_id is not None:
@@ -506,6 +510,10 @@ class Display(tk.Frame):
 
 	def process_video_frame(self):
 		video_handler.process_video_frame(self.cur_raw_image, self.lattice_point_model, self.piece_model, show_process=False)
+		if video_handler.new_board is not None:
+			display(video_handler.new_board)
+		else:
+			print(None)
 		if video_handler.new_board is not None and (self.board is None or
 													not all(
 														self.board[i // 8][i % 8] == video_handler.new_board[i // 8][

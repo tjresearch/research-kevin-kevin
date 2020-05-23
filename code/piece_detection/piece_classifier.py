@@ -205,11 +205,11 @@ classify pieces in src img given: board_corners, piece_nnet, TARGET_SIZE of nnet
 optional arg: prev state--in same form as output of this method (array of ltrs)
 """
 def classify_pieces(src, board_corners, nnet, TARGET_SIZE, white_on_left=None, prev_state=None, graphics_IO=None, squares_to_process=None):
-	if squares_to_process:
-		print(squares_to_process)
-	if prev_state:
-		print(prev_state)
-		display(prev_state)
+	# if squares_to_process:
+	# 	print(squares_to_process)
+	# if prev_state:
+	# 	print(prev_state)
+	# 	display(prev_state)
 
 	src = increase_color_contrast(src, 3.5, (8,8)) #increase color contrast of original
 
