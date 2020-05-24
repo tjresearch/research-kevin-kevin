@@ -9,8 +9,6 @@ from threading import Thread
 
 sys.path.insert(1, "../piece_detection")
 import piece_classifier, square_splitter
-sys.path.insert(2, '../chess_logic')
-from pgn_helper import display
 
 sys.path.insert(2, "../chess_logic")
 from pgn_helper import display
@@ -147,13 +145,13 @@ def update_calm(raw_frame, frame, corners, piece_model, show_process, save_dir=N
 	last_calm_raw_frame = raw_frame
 	last_calm_frame = frame
 	last_calm_corners = corners
-	if show_process:
-		cv2.imshow("last_calm", cv2.resize(last_calm_frame, None, fx=disp_scale, fy=disp_scale))
+	# if show_process:
+	# 	cv2.imshow("last_calm", cv2.resize(last_calm_frame, None, fx=disp_scale, fy=disp_scale))
 	if first_calm:
 		if save_dir:
 			print("Saved frame {}".format(idx), end="")
-			if show_process:
-				cv2.imshow("last_saved", cv2.resize(raw_frame, None, fx=disp_scale, fy=disp_scale))
+			# if show_process:
+			# 	cv2.imshow("last_saved", cv2.resize(raw_frame, None, fx=disp_scale, fy=disp_scale))
 			save_frame(raw_frame, save_dir, corners)
 		else:
 			classify_thread = Thread(target=lambda : process_frame(raw_frame, corners, piece_model, calm_comparison=calm_comparison))
@@ -187,8 +185,8 @@ def process_video_frame(raw_frame, lattice_model, piece_model, show_process, sav
 				if cur_calm_streak == good_calm_streak and cur_noise_streak > min_noise_streak:
 					first_calm = True
 				calm_comparison = get_color_diff_grid(prev_frame, last_calm_frame, prev_corners, last_calm_corners)
-				if show_process:
-					cv2.imshow("calm_grid", cv2.resize(color_diff_display(prev_frame, prev_corners, calm_comparison), None, fx=0.5, fy=0.5))
+				# if show_process:
+				# 	cv2.imshow("calm_grid", cv2.resize(color_diff_display(prev_frame, prev_corners, calm_comparison), None, fx=0.5, fy=0.5))
 				dist_from_avg = calm_comparison - np.median(calm_comparison)
 
 				# if the color change grid has less than 7 outliers; 6 is the maximum number of significant changes for a single move
@@ -230,21 +228,23 @@ def show_diagram():
 	cur_diagram = cv2.cvtColor(np.array(diagram), cv2.COLOR_RGB2BGR)
 
 if __name__ == "__main__":
-	model_path = "../models"
-	lattice_model = board_locator.load_model(os.path.join(model_path, "lattice_points_model.json"), os.path.join(model_path, "lattice_points_model.h5"))
-
-	# phone_ip = "10.0.0.25"
-	# url = "http://" + phone_ip + "/live?type=some.mp4"
-	#
-	# cap = cv2.VideoCapture(url)
-
 	if len(sys.argv) < 2 or len(sys.argv) > 4:
-		print("usage: video_handler.py [src video] | [show process] | [save dir]")
+		print("Usage: video_handler.py [src video/phone_ip] | [show process] | [save dir]")
 
 	delay = 0
 
-	cap = cv2.VideoCapture(sys.argv[1])
-	# cap.set(cv2.CAP_PROP_POS_FRAMES, 6242)
+	#handle input args
+	cap = None
+	if sys.argv[1].endswith(".mp4"):
+		print("Video file given.")
+		cap = cv2.VideoCapture(sys.argv[1])
+		# cap.set(cv2.CAP_PROP_POS_FRAMES, 6242)
+	else:
+		print("IP given (live video).")
+		phone_ip = sys.argv[1]
+		url = "http://" + phone_ip + "/live?type=some.mp4"
+		print(url)
+		cap = cv2.VideoCapture(url)
 
 	save_dir = None
 	show_process = False
@@ -264,6 +264,9 @@ if __name__ == "__main__":
 		show_process = int(sys.argv[2]) #0 or 1
 	print(show_process)
 
+	#load models
+	model_path = "../models"
+	lattice_model = board_locator.load_model(os.path.join(model_path, "lattice_points_model.json"), os.path.join(model_path, "lattice_points_model.h5"))
 	if save_dir:
 		piece_model = None
 	else:
