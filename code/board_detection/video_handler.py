@@ -12,6 +12,7 @@ import piece_classifier, square_splitter
 
 sys.path.insert(2, "../chess_logic")
 from pgn_helper import display
+from pgn_writer import find_pgn_move
 
 sys.path.insert(3, "../user_interface")
 from query_diagram import diagram_from_board_string
@@ -49,6 +50,8 @@ white_on_left = None
 disp_scale = 0.5
 
 white_on_left = None
+
+pgn_moves = []
 
 def get_color_diff_grid(img1, img2, corners1, corners2):
 	H1 = utils.find_homography(corners1, dst_points)
@@ -280,14 +283,36 @@ if __name__ == "__main__":
 
 		if ret:
 			process_video_frame(raw_frame, lattice_model, piece_model, show_process, save_dir)
+
 			if new_board is not None and (cur_board is None or not all(cur_board[i // 8][i % 8] == new_board[i // 8][i % 8] for i in range(64))):
+				if cur_board:
+					display(new_board) #show result of process_video_frame
+					#find pgn notation of move, print full pgn move list
+					pgn_moves.append(find_pgn_move(cur_board, new_board))
+					for i in range(0, len(pgn_moves)-1, 2):
+						print("{}. {} {}".format(i//2+1, pgn_moves[i], pgn_moves[i+1]))
+					if len(pgn_moves)%2:
+						print("{}. {}".format(len(pgn_moves)//2+1, pgn_moves[-1]))
+
+				#update cur_board, graphical display
 				cur_board = [[elem for elem in row] for row in new_board]
 				diagram_thread = Thread(target=show_diagram)
 				diagram_thread.daemon = True
 				diagram_thread.start()
+
 			if cur_diagram is not None:
 				cv2.imshow("diagram", cur_diagram)
 
 			c = cv2.waitKey(1 * delay)
 			if c == ord(" "):
 				delay = (delay + 1) % 2
+
+	#save pgn moves to file
+	filename = sys.argv[1]+".pgn" #file goes to same dir as input src of vid, current dir if IP
+	print("Saving .pgn file to", filename)
+	with open(filename, "w+") as f:
+		for i in range(0, len(pgn_moves)-1, 2):
+			f.write("{}. {} {}\n".format(i//2+1, pgn_moves[i], pgn_moves[i+1]))
+		if len(pgn_moves)%2:
+			f.write("{}. {}".format(len(pgn_moves)//2+1, pgn_moves[-1]))
+	f.close()
