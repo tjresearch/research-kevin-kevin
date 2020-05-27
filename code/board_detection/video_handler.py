@@ -273,7 +273,11 @@ if __name__ == "__main__":
 	if save_dir:
 		piece_model = None
 	else:
+		import time
+		print("Loading piece classification model...")
+		st = time.time()
 		piece_model = piece_classifier.load_model(os.path.join(model_path, "piece_detection_model.h5"))
+		print("Piece detection model loaded in {} seconds.".format(round(time.time()-st), 3))
 
 	while cap.isOpened():
 		ret, raw_frame = cap.read()
