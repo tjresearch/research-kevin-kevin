@@ -9,8 +9,6 @@ from threading import Thread
 
 sys.path.insert(1, "../piece_detection")
 import piece_classifier, square_splitter
-sys.path.insert(2, '../chess_logic')
-from pgn_helper import display
 
 sys.path.insert(2, "../chess_logic")
 from pgn_helper import display
@@ -188,7 +186,7 @@ def process_video_frame(raw_frame, lattice_model, piece_model, show_process, sav
 					first_calm = True
 				calm_comparison = get_color_diff_grid(prev_frame, last_calm_frame, prev_corners, last_calm_corners)
 				if show_process:
-					cv2.imshow("calm_grid", cv2.resize(color_diff_display(prev_frame, prev_corners, calm_comparison), None, fx=0.5, fy=0.5))
+					cv2.imshow("calm_grid", cv2.resize(color_diff_display(prev_frame, prev_corners, calm_comparison), None, fx=disp_scale, fy=disp_scale))
 				dist_from_avg = calm_comparison - np.median(calm_comparison)
 
 				# if the color change grid has less than 7 outliers; 6 is the maximum number of significant changes for a single move
@@ -204,9 +202,9 @@ def process_video_frame(raw_frame, lattice_model, piece_model, show_process, sav
 
 	# print("Found board in {} s".format(time.time() - st_time))
 
-	if show_process:
-		for corner in corners:
-			cv2.circle(disp, corner, 3, (255, 0, 0), 2)
+	# if show_process:
+	# 	for corner in corners:
+	# 		cv2.circle(disp, corner, 3, (255, 0, 0), 2)
 
 	if idx - 1 >= 0:
 		grid = get_color_diff_grid(frame, prev_frame, corners, prev_corners)

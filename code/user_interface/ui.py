@@ -449,6 +449,7 @@ class Display(tk.Frame):
 	def update_diagram_handler(self):
 		board_string = "".join("".join(row) for row in self.board)
 
+		print(board_string)
 		self.status_update("Querying diagram...")
 		st_query_time = time.time()
 		diagram = query_diagram.diagram_from_board_string(board_string)
