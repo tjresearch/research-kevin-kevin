@@ -26,6 +26,8 @@ def plot(data_generator, images):
     for r in range(rows):
         for c in range(cols):
             axes[r, c].imshow(image_iterator.next()[0].astype('int'))
+            axes[r,c].get_xaxis().set_visible(False)
+            axes[r,c].get_yaxis().set_visible(False)
     show()
 
 filename = sys.argv[1]
@@ -47,8 +49,8 @@ data_generator = ImageDataGenerator(
     height_shift_range=0.1,
     zoom_range=0.3,
 
-    brightness_range=(0.8, 1.0),
-    channel_shift_range=50.0,
+    brightness_range=(0.75,1),
+    channel_shift_range=90,
 
     horizontal_flip=True,
 )

@@ -53,29 +53,17 @@ def get_pred_board(nnet, TARGET_SIZE, sqr_imgs, indices, white_on_left=None, sta
 
 	flat_poss = []
 	if white_on_left != None:
-		# print("stacked_poss")
-		# print(stacked_poss[0][1])
-		# print(stacked_poss[1][0])
-		# stacked_poss = rotate_board_to_std(stacked_poss, white_on_left)
-		# pred_board = np.rot90(pred_board)
-		# if not white_on_left:
-			# pred_board = np.rot90(np.rot90(pred_board))
-		# board = [[None for j in range(8)] for i in range(8)]
-		# for i in range(8):
-		# 	for j in range(8):
-		# 		board[i][j] = str(pred_board[i][j])
-		# return board #nested list
+		#rotate stacked_poss to match the frame (and squares_to_process)
 		if white_on_left:
 			stacked_poss = [list(reversed(x)) for x in zip(*stacked_poss)]
 		else:
 			stacked_poss = [list((x)) for x in zip(*[list(reversed(x)) for x in stacked_poss])] #reverse rows, then transpose
-		# print("rot stacked_poss")
-		# print(stacked_poss[0][1])
-		# print(stacked_poss[1][0])
+		#flatten stacked_poss
 		for r in range(8):
 			for c in range(8):
 				flat_poss.append(stacked_poss[r][c])
 
+	#mark squares_to_process empty if not in orthophoto indices
 	if squares_to_process:
 		i = 0
 		while i < len(squares_to_process):
@@ -121,6 +109,32 @@ def get_pred_board(nnet, TARGET_SIZE, sqr_imgs, indices, white_on_left=None, sta
 			for file in os.listdir(subfolder):
 				os.remove(os.path.join(subfolder, file))
 
+	#find highest-conf king for each side
+	#that fits in poss set, if availible
+	#and only if looking at full board
+	king_cls = (ALL_CLASSES.index("white_king"), ALL_CLASSES.index("black_king"))
+	king_SAN = (CLASS_TO_SAN["white_king"], CLASS_TO_SAN["black_king"])
+	king_sqrs = None
+	if not squares_to_process:
+		max_conf = [-1, -1]
+		king_sqrs = [0, 0]
+		for sqr_i in range(len(raw_preds)):
+			# print(sqr_i)
+			raw_pred = raw_preds[sqr_i]
+			for i in range(2):
+				# print(i)
+				cls = king_cls[i]
+				conf = raw_pred[cls]
+				if conf > max_conf[i]:
+					if not poss_sets or king_SAN[i] in poss_sets[sqr_i]:
+						max_conf[i] = conf
+						king_sqrs[i] = sqr_i
+
+		#remove all kings from other poss sets once max found
+		for i in range(len(poss_sets)):
+			if i in king_sqrs: continue
+			poss_sets[i] -= {"K", "k"}
+
 	#feed raw_preds through poss set checks, adjust raw_preds as needed
 	#get SAN and fill pred_board
 	pred_board = ["-" for i in range(64)] #flattened 8x8 chessboard
@@ -144,6 +158,16 @@ def get_pred_board(nnet, TARGET_SIZE, sqr_imgs, indices, white_on_left=None, sta
 				ptr += 1
 				pred_SAN = CLASS_TO_SAN[ALL_CLASSES[cls_preds[ptr]]]
 				# print("shifted to", pred_SAN)
+		#if king sqrs exist but poss_set doesn't, do similar shift
+		elif king_sqrs:
+			#if marked as king, but not max king conf,
+			#shift to 2nd-highest conf
+			#ensuring only highest-conf king is marked as such
+			while pred_SAN in king_SAN:
+				b = king_SAN.index(pred_SAN)
+				if i == king_sqrs[b]: break
+				ptr += 1
+				pred_SAN = CLASS_TO_SAN[ALL_CLASSES[cls_preds[ptr]]]
 
 		if squares_to_process:
 			pred_board[squares_to_process[i]] = pred_SAN

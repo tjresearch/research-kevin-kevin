@@ -57,7 +57,13 @@ def get_ortho_guesses(src, ortho_tops, H, SQ_SIZE):
 	white_pix_thresh = topdown[topdown!=0].mean() #take upper half of canny pix
 	# white_pix_thresh = topdown.mean() #take upper half of ALL pix
 
+	# disp = topdown.copy()
+	# disp = cv2.cvtColor(disp,cv2.COLOR_GRAY2RGB)
+	#
 	for reg in ortho_tops:
+	# 	for i in range(4):
+	# 		cv2.line(disp, tuple(reg[i%4]), tuple(reg[(i+1)%4]), (0,255,0), 2)
+
 		ct = 0
 		#regions in ortho tops are in x, y
 		for r in range(reg[0][1], reg[1][1]):
@@ -65,6 +71,9 @@ def get_ortho_guesses(src, ortho_tops, H, SQ_SIZE):
 				if topdown[r][c] > white_pix_thresh:
 					ct += 1
 		canny_cts.append(ct)
+
+	# cv2.imshow("disp", disp)
+	# cv2.waitKey()
 
 	#identify squares that pass threshold for possibly having a piece
 	#aiming for perfect recall (mark all pieces at expense of accuracy)
