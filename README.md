@@ -2,7 +2,7 @@
 
 AutoPGN is an automatic chess-move transcriber. It notates the moves played in a prerecorded chess game, in real-time, using computer vision and machine learning, then outputs a PGN file that can be copy-pasted into other chess software. It also updates a graphical representation of the board as it runs.
 
-![live_demo_thumbnail](readme_images/live_demo_thumbnail_crop.png)
+![live_demo_thumbnail](readme_images/live_demo_thumbnail.png)
 
 Paper: https://drive.google.com/file/d/12eamkGZ2owfkUtRWU2UreRRwwqyMmgmF/view?usp=sharing
 
@@ -25,10 +25,10 @@ code/
 `assets/`
  - Input images for the image-based UI in `user_interface/`
 
-`board_detection/` 
+`board_detection/`
  - Hough transform-based board detection
  - Board segmentation code
- - Lattice point CNN train script 
+ - Lattice point CNN train script
 
 `board_detection/video_handler.py`
  - Main method: takes video of chess game as input, outputs .pgn file
@@ -44,18 +44,18 @@ code/
  - Requires installation of gsutil
 
 `models/`
- - Directory to house model files 
+ - Directory to house model files
 
 `piece_detection/`
  - Piece detection CNN train scripts
  - Data augmentation utility scripts
- - Data collection utils 
+ - Data collection utils
  - Command-line video handler
 
 `user_interface/`
  - Image-based UI (output debug images saved to `user_interface/assets`)
  - Query script for graphical chessboard representation
- - Deprecated wifi-camera based input scripts (requires installation of [IPCamera](https://apps.apple.com/us/app/ipcamera-high-end-networkcam/id570912928) on iPhone) 
+ - Deprecated wifi-camera based input scripts (requires installation of [IPCamera](https://apps.apple.com/us/app/ipcamera-high-end-networkcam/id570912928) on iPhone)
 
 ## Getting Started
 
