@@ -34,7 +34,7 @@ chmod +x download_models.sh
 ./download_models.sh
 ```
 
-Alternatively, manually install the necessary models by clicking the links below to download, then manually moving the files into `code/models/`.
+Alternatively, manually install the necessary models by clicking the links below to download, then moving the downloaded files into `code/models/`. *Do not change any filenames.*
  - [Lattice Point CNN Structure](https://storage.googleapis.com/autopgn-assets/models/lattice_points_model.h5)
  - [Lattice Point CNN Values](https://storage.googleapis.com/autopgn-assets/models/lattice_points_model.json)
  - [Piece Classification CNN](https://storage.googleapis.com/autopgn-assets/models/piece_detection_model.h5) (>650 MB)
