@@ -28,9 +28,10 @@ Some of the scripts in this repo are not vital to the main method (e.g. model tr
 
 ### Downloading Models
 
-After installing the desired dependencies, clone this repo, and `cd` into it. Then, to download the necessary Keras models automatically, run:
+After installing the desired dependencies, clone this repo, and `cd` into `code/`. Then, to download the necessary Keras models to `models/` automatically, run:
 ```
-./code/download_models.sh
+chmod +x download_models.sh
+./download_models.sh
 ```
 
 Alternatively, manually install the necessary models by clicking the links below to download, then manually moving the files into `code/models/`.
