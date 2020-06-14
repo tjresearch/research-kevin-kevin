@@ -53,7 +53,7 @@ cd code/user_interface/
 python ui.py
 ```
 
-![ui_thumbnail_2](readme_images/ui_thumbnail.png)
+![ui_thumbnail_2](readme_images/ui_thumbnail_2.png)
 
 To play around with the system, use `piece_detection/main_shell.py`. This script is the least polished, but allows the user to add OpenCV `imshow` statements, unlike the previous two options.
 ```
