@@ -1,7 +1,7 @@
 """
-this script makes validate_imgs unnecessary
-if mislabelled img found, just move its class dir
-(not used in final product)
+turn output of data_collection_ui.py into Keras-compatible class dirs
+will rename sqr imgs to [square #]_[original_imgname]
+Usage: python format_train_data.py dcu_output_dir
 """
 
 import sys
@@ -88,16 +88,6 @@ def get_human_label(filename):
         label += "pawn"
     return sq_num, label, ext
 
-"""
-first, copy labelled_squares
-then, remove high_split/low_split info
-
-next, run this to:
-    rename imgs to [square #]_[original_imgname]
-    sort into folders by class (black_rook, etc)
-
-then delete "?" directory
-"""
 def main():
     input_dir = sys.argv[1]
     output_dir = "formatted_train_data"

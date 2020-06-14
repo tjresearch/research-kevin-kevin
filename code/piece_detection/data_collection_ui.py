@@ -1,3 +1,8 @@
+"""
+script that gets labelled indiv sqr imgs from full board imgs
+can be used with pgn file + sequential input dir + cached board corners for full automation
+"""
+
 import tkinter as tk
 import sys
 import cv2
@@ -373,7 +378,7 @@ def main():
 
 	pgn_file = sys.argv[3] if len(sys.argv) > 3 else None # pgn file
 	white_on_left = int(sys.argv[4]) if len(sys.argv) > 4 else True #1 or 0, are white pieces on left of camera frame?
-	cache_file_path = sys.argv[5] if len(sys.argv) > 5 else "cache.txt" #cached corners
+	cache_file_path = sys.argv[5] if len(sys.argv) > 5 else "cache.txt" #cached corner locations
 
 	ct = 0
 

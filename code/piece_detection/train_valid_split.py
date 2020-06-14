@@ -1,5 +1,7 @@
 """
 splits class separated data into train/validation subsets
+input_dir - output of format_train_data.py
+valid_pct - desired pct of dataset for validation subset (0.2 = 20% of imgs in valid set)
 """
 
 import sys

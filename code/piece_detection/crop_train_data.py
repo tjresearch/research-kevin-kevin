@@ -1,7 +1,8 @@
 """
+DEPRECATED
 utility that crops width of formatted train data
 (run after calling format_train_data.py)
-(not used in final product)
+Usage: python crop_train_data.py input_dir_of_sqr_imgs
 """
 import sys
 import os

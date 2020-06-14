@@ -1,5 +1,8 @@
 """
-script to reduce size of larger classes
+script to reduce size of larger classes (post format_train_data.py)
+input_dir - output dir of format_train_data.py
+output_dir - new reduced dir, cannot exist beforehand
+red_num - desired max # of imgs in class
 """
 
 import sys

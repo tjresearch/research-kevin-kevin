@@ -1,6 +1,6 @@
 """
 piece identification =
-square_splitter.py -> piece_classifier.py
+square_splitter.py + piece_classifier.py
 """
 
 import sys, time

@@ -1,3 +1,7 @@
+"""
+GUI-less version of user_interface/ui.py
+"""
+
 import os
 import sys
 import cv2

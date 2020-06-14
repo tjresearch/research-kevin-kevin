@@ -13,8 +13,6 @@ for each square:
 3. space to confirm
 4. square saved as {sq_num}-{piece_in_SAN}.jpg
 	(in a subfolder of the given output_dir)
-
-uses orthophoto, canny, pose-estimation
 """
 
 from datetime import datetime

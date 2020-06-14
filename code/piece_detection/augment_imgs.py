@@ -1,5 +1,6 @@
 """
 utility script to view data augmentations
+Usage: python augment_imgs.py filepath_to_single_sqr_img
 """
 
 import sys, time
