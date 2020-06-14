@@ -1,46 +1,75 @@
 # AutoPGN
 
-AutoPGN is an automatic chess-move transcriber. It locates a chessboard on an image, segments it into individual squares, then recognizes the piece (or lack thereof) on each square with computer vision and machine learning.
+AutoPGN is an automatic chess-move transcriber. It notates the moves played in a prerecorded chess game, in real-time, using computer vision and machine learning, then outputs a PGN file that can be copy-pasted into other chess software. It also updates a graphical representation of the board as it runs.
+
+Paper: https://drive.google.com/file/d/12eamkGZ2owfkUtRWU2UreRRwwqyMmgmF/view?usp=sharing
+
+Live Demo: https://youtu.be/WzbYgsyceso
 
 ## Code Overview:
 
 ```bash
 code/
-├── board_detection
-├── piece_detection
-├── preprocessing
-└── user_interface
+├── assets/
+├── board_detection/
+    └── video_handler.py
+├── chess_logic/
+├── download_models.sh
+├── models/
+├── piece_detection/
+└── user_interface/
 ```
 
-`board_detection`: Hough line-based board detection, lattice point CNN
+`assets/`
+ - Input images for the image-based UI in `user_interface/`
 
-`piece_detection`: piece labelling utilities, piece detection CNN
+`board_detection/` 
+ - Hough transform-based board detection
+ - Board segmentation code
+ - Lattice point CNN train script 
 
-`preprocessing`: demos that broadcast and record ipCamera input
+`board_detection/video_handler.py`
+ - Main method: takes video of chess game as input, outputs .pgn file
+ - Option to save calm frames & board corners to save_dir/ arg (used for data collection)
+ - Usage: `video_handler.py [src video/phone_ip] [show process] [save dir]`
 
-`user_interface`: PGN reader & writer, sample .pgn files
+`chess_logic/`
+ - PGN move transcription engine
+ - Sample I/O .pgn files
 
-## Requirements:
+`download_models.sh`
+ - Script to download lattice point CNN and piece detection CNN to `models/` from GCloud
 
- - python 3.6
- - matplotlib 3.1.1
+`models/`
+ - Directory to house model files 
+
+`piece_detection/`
+ - Piece detection CNN train scripts
+ - Data augmentation utility scripts
+ - Data collection utils 
+ - Command-line video handler
+
+`user_interface/`
+ - Image-based UI (output debug images saved to `user_interface/assets`)
+ - Query script for graphical chessboard representation
+ - Deprecated wifi-camera based input scripts (requires installation of [IPCamera](https://apps.apple.com/us/app/ipcamera-high-end-networkcam/id570912928)) 
+
+## Getting Started
+
+### Dependencies
+
+AutoPGN is written in `python 3.6`. To run the main method, found in `board_detection/video_handler.py`, install the following packages:
  - numpy 1.17
  - opencv-python 4.1.0
- - scikit-learn 0.21.3
  - tensorflow 2.0.0
+ - scikit-learn 0.21.3
 
-## Installation Instructions:
+Some of the utility scripts in this repo are not part of the main video handling method. To run every script in this repo, install these additional packages:
+ - matplotlib 3.1.1
 
-1. Install required packages with pip (see above).
-2. Download [ipCamera app](https://apps.apple.com/us/app/ipcamera-high-end-networkcam/id570912928) for iPhone.
-3. Clone this repo.
+### Running AutoPGN
 
-## Run Instructions:
 
-1. Open ipCamera on iPhone.
-2. Note URL on app.
-
-Currently, there's no working product, but putting the url from step 2 as a command-line arg of  `board_detection/live_line_detection.py` shows the board detection working live, when linked to the ipCamera app.
 
 ## Sample Output:
 
