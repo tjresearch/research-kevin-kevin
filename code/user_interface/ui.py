@@ -1,3 +1,9 @@
+"""
+GUI single-frame, no move transcription system
+saves intermediate debug imgs to user_interface/assets/
+untested with video
+"""
+
 import tkinter as tk
 import cv2
 import time

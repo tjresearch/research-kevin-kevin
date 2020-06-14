@@ -1,3 +1,7 @@
+"""
+utility script to convert FEN strings to graphical board states
+"""
+
 import requests
 import shutil
 from PIL import Image
