@@ -1,3 +1,7 @@
+"""
+DEPRECATED
+"""
+
 import sys, time
 import cv2
 
@@ -13,7 +17,7 @@ url = "http://" + phone_ip + "/live"
 print(url)
 cap = cv2.VideoCapture(url)
 if (cap.isOpened()== False):
-    print("Usage: python3 video_feed.py phone_ip_addr [record]")
+    print("Usage: python video_feed.py phone_ip_addr [record_feed]")
 
 record_bool = sys.argv[2] if len(sys.argv)>2 else False
 

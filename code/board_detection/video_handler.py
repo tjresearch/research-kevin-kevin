@@ -232,7 +232,7 @@ def show_diagram():
 
 if __name__ == "__main__":
 	if len(sys.argv) < 2 or len(sys.argv) > 4:
-		print("Usage: video_handler.py [src video/phone_ip] | [show process] | [save dir]")
+		print("Usage: video_handler.py src_video|phone_ip [show process] [save dir]")
 
 	delay = 0
 
@@ -273,7 +273,11 @@ if __name__ == "__main__":
 	if save_dir:
 		piece_model = None
 	else:
+		import time
+		print("Loading piece classification model...")
+		st = time.time()
 		piece_model = piece_classifier.load_model(os.path.join(model_path, "piece_detection_model.h5"))
+		print("Piece detection model loaded in {} seconds.".format(round(time.time()-st), 3))
 
 	while cap.isOpened():
 		ret, raw_frame = cap.read()

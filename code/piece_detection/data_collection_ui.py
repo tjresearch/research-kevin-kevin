@@ -358,7 +358,7 @@ def main():
 												   os.path.join(model_dir, "lattice_points_model.h5"))
 	print("Loaded in {} s".format(time.time() - st_load_time))
 
-	print("usage: python dcu.py [input_dir] [output_dir] [pgn_file] [white_on_left] [cache_file_path]")
+	print("Usage: python dcu.py input_img_dir output_dir [pgn_file] [white_on_left] [cache_file_path]")
 
 	global corners
 	img_dir_path = sys.argv[1] # input dir

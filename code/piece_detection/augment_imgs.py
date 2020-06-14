@@ -1,6 +1,5 @@
 """
 utility script to view data augmentations
-(not used in final product)
 """
 
 import sys, time
@@ -10,7 +9,7 @@ import numpy as np
 # modified from https://towardsdatascience.com/exploring-image-data-augmentation-with-keras-and-tensorflow-a8162d89b844
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from matplotlib.pyplot import imread, imshow, subplots, show
-from keras.applications.resnet50 import preprocess_input #https://stackoverflow.com/questions/47555829/preprocess-input-method-in-keras
+from tensorflow.keras.applications.resnet50 import preprocess_input #https://stackoverflow.com/questions/47555829/preprocess-input-method-in-keras
 
 def plot(data_generator, images):
     """

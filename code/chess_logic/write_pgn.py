@@ -8,9 +8,9 @@ import pgn_writer as writer
 import pgn_helper
 
 if len(sys.argv) < 3:
-    print("\nusage: write_pgn.py pgnfile.pgn result_ltr")
+    print("\nUsage: write_pgn.py pgnfile.pgn result_ltr")
     print("->result_ltr: w[hite] b[lack] t[ie] i[ncomplete]")
-    exit("")
+    exit(0)
 
 #read input file
 pgn_file = sys.argv[1] #will only work if pgn file is in directory

@@ -1,5 +1,5 @@
 """
-script to merge data (by class) after format_train_data.py has been called
+script to merge two datasets (by class) after format_train_data.py has been called
 """
 
 import sys, os
