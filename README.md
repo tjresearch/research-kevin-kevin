@@ -16,7 +16,7 @@ AutoPGN is written in Python 3. To run the main methods (listed under ["Running 
  - NumPy 1.17+
  - OpenCV 4.1+ (Homebrew installation recommended for Mac users)
  - scikit-learn 0.20+
- - matplotlib 3.0+
+ - Matplotlib 3.0+
  - TensorFlow 2.0+
  - tkinter 8.5+ (often pre-installed with Python)
 
