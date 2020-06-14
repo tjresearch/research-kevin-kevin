@@ -2,6 +2,8 @@
 
 AutoPGN is an automatic chess-move transcriber. It notates the moves played in a prerecorded chess game, in real-time, using computer vision and machine learning, then outputs a PGN file that can be copy-pasted into other chess software. It also updates a graphical representation of the board as it runs.
 
+![demo_thumbnail](readme_images/line_detect_1018.png)
+
 Paper: https://drive.google.com/file/d/12eamkGZ2owfkUtRWU2UreRRwwqyMmgmF/view?usp=sharing
 
 Live Demo: https://youtu.be/WzbYgsyceso
@@ -39,6 +41,7 @@ code/
 
 `download_models.sh`
  - Script to download lattice point CNN and piece detection CNN to `models/` from GCloud
+ - Requires installation of gsutil
 
 `models/`
  - Directory to house model files 
@@ -58,19 +61,19 @@ code/
 
 ### Dependencies
 
-AutoPGN is written in `python 3.6`. To run the main transcription method, found in `board_detection/video_handler.py`, install the following packages:
- - numpy 1.17
- - opencv-python 4.1.0
- - tensorflow 2.0.0
- - scikit-learn 0.21.3
- -
+AutoPGN is written in Python 3. To run the main transcription method, found in `board_detection/video_handler.py`, install the following packages:
+ - NumPy 1.17+
+ - OpenCV 4.1+ (Homebrew recommended for Mac users)
+ - scikit-learn 0.20+
+ - Matplotlib 3.0+
+ - TensorFlow 2.0+
+ - tkinter 8.5+ (often pre-installed with Python)
 
 For automatic model downloading, install:
- - gsutil 4.48
+ - gsutil 4.48+
 
-Some of the utility scripts in this repo are not part of the main video handling method. To run every script in this repo, install these additional packages:
- - matplotlib 3.1.1
- - 
+Some of the scripts in this repo are not vital to the main method (e.g. model training scripts, data collection utilities). To run every script in this repo, install these additional packages:
+ - Jupyter 4.4+
 
 ### Running AutoPGN
 
