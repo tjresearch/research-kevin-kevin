@@ -232,7 +232,7 @@ def show_diagram():
 
 if __name__ == "__main__":
 	if len(sys.argv) < 2 or len(sys.argv) > 4:
-		print("Usage: video_handler.py [src video/phone_ip] [show process] [save dir]")
+		print("Usage: video_handler.py src_video|phone_ip [show process] [save dir]")
 
 	delay = 0
 
