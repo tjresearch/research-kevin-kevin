@@ -13,7 +13,7 @@ sys.path.insert(3, "../chess_logic")
 import pgn_helper
 
 if len(sys.argv) != 4:
-	print("usage: python main_shell.py [phone ip] [shared models dir] [img_path]")
+	print("Usage: python main_shell.py phone_ip models_dir input_img_path")
 	exit(1)
 
 phone_ip = sys.argv[1]

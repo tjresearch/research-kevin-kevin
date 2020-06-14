@@ -1,7 +1,5 @@
 """
 splits class separated data into train/validation subsets
-usage: python train_valid_split.py [input_dir] [valid_pct]
-(not used in final product)
 """
 
 import sys
@@ -11,7 +9,7 @@ import random
 
 def main():
     if len(sys.argv) < 2:
-        exit("usage: python train_valid_split.py [input_dir] [valid_pct]")
+        exit("Usage: python train_valid_split.py input_dir validation_pct")
     input_dir = sys.argv[1]
     valid_pct = float(sys.argv[2])
 
