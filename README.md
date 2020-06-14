@@ -47,7 +47,7 @@ python video_handler.py src_video|phone_ip [show process] [save dir]
 
 ![live_demo_thumbnail_2](readme_images/live_demo_thumbnail_2.png)
 
-For a GUI-based, single frame system, use `user_interface/ui.py`. Intermediate debug images are saved to `user_interface/assets/`.
+For a GUI-based version with no move transcription, use `user_interface/ui.py`. Intermediate debug images are saved to `user_interface/assets/`.
 ```
 cd code/user_interface/
 python ui.py
