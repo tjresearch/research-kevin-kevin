@@ -57,7 +57,7 @@ python ui.py
 
 ![ui_thumbnail_2](readme_images/ui_thumbnail_2.png)
 
-To play around with the system, use `piece_detection/main_shell.py`. This script is the least polished, but allows the user to add OpenCV `imshow` statements, unlike the previous two options. Use:
+To play around with the system, use `piece_detection/main_shell.py`. This script is the least polished, but allows the user to add OpenCV `imshow` statements, unlike the previous two options.
 ```
 cd code/piece_detection/
 python main_shell.py phone_ip models_dir input_img_path
@@ -78,7 +78,7 @@ code/
 ```
 
 `assets/`
- - Input images for the image-based UI in `user_interface/`
+ - Input images for the GUI in `user_interface/`
 
 `board_detection/`
  - Hough transform-based board detection
@@ -88,7 +88,7 @@ code/
 `board_detection/video_handler.py`
  - Main method: takes video of chess game as input, outputs .pgn file
  - To save calm frames & board corners, fill optional `save_dir/` arg (for data collection)
- - Usage: `video_handler.py src_video|phone_ip [show process] [save dir]`
+ - Usage: `python video_handler.py src_video|phone_ip [show process] [save dir]`
 
 `chess_logic/`
  - PGN move transcription engine
