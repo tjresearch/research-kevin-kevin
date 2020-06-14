@@ -6,6 +6,52 @@ Paper: https://drive.google.com/file/d/12eamkGZ2owfkUtRWU2UreRRwwqyMmgmF/view?us
 
 Live Demo: https://youtu.be/WzbYgsyceso
 
+## Getting Started
+
+### Dependencies
+
+AutoPGN is written in Python 3. To run the main transcription method, found in `board_detection/video_handler.py`, install the following packages:
+ - NumPy 1.17+
+ - OpenCV 4.1+ (Homebrew recommended for Mac users)
+ - scikit-learn 0.20+
+ - Matplotlib 3.0+
+ - TensorFlow 2.0+
+ - tkinter 8.5+ (often pre-installed with Python)
+
+For automatic model downloading, install:
+ - gsutil 4.48+
+
+Some of the scripts in this repo are not vital to the main method (e.g. model training scripts, data collection utilities). To run every script in this repo, install these additional packages:
+ - Jupyter 4.4+
+
+### Running AutoPGN
+
+After installing the desired dependencies, clone this repo, and `cd` into it. Then download the necessary Keras models. This can be done automatically with gs_util by running:
+```
+./code/download_models.sh
+```
+You can also manually install the models by...
+
+[TODO]
+
+There are a few ways to run AutoPGN. For the full video-to-PGN system, as shown in the [live demo](https://youtu.be/WzbYgsyceso), use `board_detection/video_handler.py`. PGN files will be saved to `board_detection/` and will match filenames with the input video.
+```
+cd code/board_detection/
+python video_handler.py src_video|phone_ip [show process] [save dir]
+```
+
+For a GUI-based, single frame system, use `user_interface/ui.py`. Intermediate debug images are saved to `user_interface/assets/`.
+```
+cd code/user_interface/
+python ui.py
+```
+
+To play around with the system, use `piece_detection/main_shell.py`. This script is the least polished, but allows the user to add OpenCV `imshow` statements, unlike the previous two options.
+```
+cd code/piece_detection/
+python main_shell.py phone_ip models_dir input_img_path
+```
+
 ## Code Overview:
 
 ```bash
@@ -105,6 +151,8 @@ cd code/piece_detection/
 python main_shell.py phone_ip models_dir input_img_path
 ```
 
+=======
+>>>>>>> d3b67632b428e08b30c80ad945048f76843b40d3
 ## Sample Output:
 
 Board detection:
