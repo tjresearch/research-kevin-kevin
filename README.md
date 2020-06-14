@@ -39,6 +39,8 @@ Alternatively, manually install the necessary models by clicking the links below
  - [Lattice Point CNN Values](https://storage.googleapis.com/autopgn-assets/models/lattice_points_model.json)
  - [Piece Classification CNN](https://storage.googleapis.com/autopgn-assets/models/piece_detection_model.h5) (>650 MB)
 
+**Optional:** Download the lattice point dataset [here](ADD LINK HERE) and the piece classification dataset [here](https://storage.googleapis.com/autopgn-assets/new_may_dataset.zip).
+
 ### Running AutoPGN
 
 There are a few ways to run AutoPGN. For the full video-to-PGN system, as shown in the [live demo](https://youtu.be/WzbYgsyceso), use `board_detection/video_handler.py`. Output PGN files will be saved to `board_detection/` and match filenames with the input video. From this repo, enter:
