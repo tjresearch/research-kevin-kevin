@@ -10,9 +10,9 @@ Live Demo: https://youtu.be/WzbYgsyceso
 
 ### Dependencies
 
-AutoPGN is written in Python 3. To run the main transcription method, found in `board_detection/video_handler.py`, install the following packages:
+AutoPGN is written in Python 3. To run the main methods (listed under ["Running AutoPGN"](#running-autopgn)), install the following packages:
  - NumPy 1.17+
- - OpenCV 4.1+ (Homebrew recommended for Mac users)
+ - OpenCV 4.1+ (Homebrew installation recommended for Mac users)
  - scikit-learn 0.20+
  - Matplotlib 3.0+
  - TensorFlow 2.0+
