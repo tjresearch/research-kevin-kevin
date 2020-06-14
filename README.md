@@ -41,7 +41,7 @@ Alternatively, manually install the necessary models by clicking the links below
 
 ### Running AutoPGN
 
-There are a few ways to run AutoPGN. For the full video-to-PGN system, as shown in the [live demo](https://youtu.be/WzbYgsyceso), use `board_detection/video_handler.py`. Output PGN files will be saved to `board_detection/` and match filenames with the input video.
+There are a few ways to run AutoPGN. For the full video-to-PGN system, as shown in the [live demo](https://youtu.be/WzbYgsyceso), use `board_detection/video_handler.py`. Output PGN files will be saved to `board_detection/` and match filenames with the input video. From this repo, enter:
 ```
 cd code/board_detection/
 python video_handler.py src_video|phone_ip [show process] [save dir]
@@ -49,7 +49,7 @@ python video_handler.py src_video|phone_ip [show process] [save dir]
 
 ![live_demo_thumbnail_2](readme_images/live_demo_thumbnail_2.png)
 
-For a GUI-based version with no move transcription, use `user_interface/ui.py`. Intermediate debug images are saved to `user_interface/assets/`.
+For a GUI-based version with no move transcription, use `user_interface/ui.py`. Intermediate debug images are saved to `user_interface/assets/`. Run the following:
 ```
 cd code/user_interface/
 python ui.py
@@ -57,7 +57,7 @@ python ui.py
 
 ![ui_thumbnail_2](readme_images/ui_thumbnail_2.png)
 
-To play around with the system, use `piece_detection/main_shell.py`. This script is the least polished, but allows the user to add OpenCV `imshow` statements, unlike the previous two options.
+To play around with the system, use `piece_detection/main_shell.py`. This script is the least polished, but allows the user to add OpenCV `imshow` statements, unlike the previous two options. Use:
 ```
 cd code/piece_detection/
 python main_shell.py phone_ip models_dir input_img_path
