@@ -108,6 +108,6 @@ code/
  - Command-line video handler
 
 `user_interface/`
- - Image-based UI (output debug images saved to `user_interface/assets`)
+ - GUI (output debug images saved to `user_interface/assets`)
  - Query script for graphical chessboard representation
  - Deprecated wifi-camera based input scripts (requires installation of [IPCamera](https://apps.apple.com/us/app/ipcamera-high-end-networkcam/id570912928) on iPhone)
