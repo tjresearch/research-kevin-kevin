@@ -2,6 +2,8 @@
 
 AutoPGN is an automatic chess-move transcriber. It notates the moves played in a prerecorded chess game, in real-time, using computer vision and machine learning, then outputs a PGN file that can be copy-pasted into other chess software. It also updates a graphical representation of the board as it runs.
 
+[ADD GIF HERE]
+
 Paper: https://drive.google.com/file/d/12eamkGZ2owfkUtRWU2UreRRwwqyMmgmF/view?usp=sharing
 
 Live Demo: https://youtu.be/WzbYgsyceso
@@ -107,8 +109,3 @@ code/
  - Image-based UI (output debug images saved to `user_interface/assets`)
  - Query script for graphical chessboard representation
  - Deprecated wifi-camera based input scripts (requires installation of [IPCamera](https://apps.apple.com/us/app/ipcamera-high-end-networkcam/id570912928) on iPhone)
-
-## Sample Output:
-
-Board detection:
-![board detection](readme_images/line_detect_1018.png)
