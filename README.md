@@ -33,9 +33,10 @@ After installing the desired dependencies, clone this repo, and `cd` into it. Th
 ./code/download_models.sh
 ```
 
-Alternatively, manually install the necessary models by...
-
-[TODO]
+Alternatively, manually install the necessary models by clicking the links below to download, then manually moving the files into `code/models/`.
+ - [Lattice Point CNN Structure](https://storage.googleapis.com/autopgn-assets/models/lattice_points_model.h5)
+ - [Lattice Point CNN Values](https://storage.googleapis.com/autopgn-assets/models/lattice_points_model.json)
+ - [Piece Classification CNN](https://storage.googleapis.com/autopgn-assets/models/piece_detection_model.h5) (>650 MB)
 
 ### Running AutoPGN
 
