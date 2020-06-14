@@ -2,7 +2,7 @@
 
 AutoPGN is an automatic chess-move transcriber. It notates the moves played in a prerecorded chess game, in real-time, using computer vision and machine learning, then outputs a PGN file that can be copy-pasted into other chess software. It also updates a graphical representation of the board as it runs.
 
-![live_demo_thumbnail](readme_images/live_demo_thumbnail.png)
+![live_demo_thumbnail](readme_images/live_demo_thumbnail_2.png)
 
 Paper: https://drive.google.com/file/d/12eamkGZ2owfkUtRWU2UreRRwwqyMmgmF/view?usp=sharing
 
