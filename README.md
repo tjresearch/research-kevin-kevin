@@ -24,10 +24,14 @@ code/
  - Input images for the image-based UI in `user_interface/`
 
 `board_detection/` 
- - **main method: `board_detection/video_handler.py`**
  - Hough transform-based board detection
  - Board segmentation code
  - Lattice point CNN train script 
+
+`board_detection/video_handler.py`
+ - Main method: takes video of chess game as input, outputs .pgn file
+ - Option to save calm frames & board corners to save_dir/ arg (used for data collection)
+ - Usage: `video_handler.py [src video/phone_ip] [show process] [save dir]`
 
 `chess_logic/`
  - PGN move transcription engine
