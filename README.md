@@ -2,8 +2,6 @@
 
 AutoPGN is an automatic chess-move transcriber. It notates the moves played in a prerecorded chess game, in real-time, using computer vision and machine learning, then outputs a PGN file that can be copy-pasted into other chess software. It also updates a graphical representation of the board as it runs.
 
-![live_demo_thumbnail](readme_images/live_demo_thumbnail.png)
-
 Paper: https://drive.google.com/file/d/12eamkGZ2owfkUtRWU2UreRRwwqyMmgmF/view?usp=sharing
 
 Live Demo: https://youtu.be/WzbYgsyceso
@@ -91,11 +89,15 @@ cd code/board_detection/
 python video_handler.py src_video|phone_ip [show process] [save dir]
 ```
 
+![live_demo_thumbnail](readme_images/live_demo_thumbnail_2.png)
+
 For a GUI-based, single frame system, use `user_interface/ui.py`. Intermediate debug images are saved to `user_interface/assets/`.
 ```
 cd code/user_interface/
 python ui.py
 ```
+
+![ui_thumbnail](readme_images/ui_thumbnail.png)
 
 To play around with the system, use `piece_detection/main_shell.py`. This script is the least polished, but allows the user to add OpenCV `imshow` statements, unlike the previous two options.
 ```
