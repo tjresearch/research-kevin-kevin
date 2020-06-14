@@ -85,7 +85,7 @@ code/
 
 `board_detection/video_handler.py`
  - Main method: takes video of chess game as input, outputs .pgn file
- - Option to save calm frames & board corners to save_dir/ arg (used for data collection)
+ - To save calm frames & board corners, fill optional `save_dir/` arg (for data collection)
  - Usage: `video_handler.py src_video|phone_ip [show process] [save dir]`
 
 `chess_logic/`
