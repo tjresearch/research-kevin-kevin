@@ -1,3 +1,6 @@
+# Contains all the functions realted to straight line detection, lots of these functions are taken
+# from Czyzewski, et al.
+
 import cv2
 import os
 import math

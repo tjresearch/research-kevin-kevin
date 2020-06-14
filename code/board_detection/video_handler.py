@@ -1,3 +1,5 @@
+# Handles recognition with a video, notably move detection and occlusion detection
+
 import numpy as np
 import cv2
 import os
@@ -28,11 +30,11 @@ prev_frame = None
 prev_corners = None
 prev_grid = None
 
+fps = None
+
 cur_calm_streak = 0
-good_calm_streak = 15
 
 cur_noise_streak = 0
-min_noise_streak = 10
 
 first_calm = True
 last_calm_raw_frame = None
@@ -162,10 +164,13 @@ def update_calm(raw_frame, frame, corners, piece_model, show_process, save_dir=N
 			classify_thread.start()
 		first_calm = False
 
-def process_video_frame(raw_frame, lattice_model, piece_model, show_process, save_dir=None):
+def process_video_frame(raw_frame, fps, lattice_model, piece_model, show_process, save_dir=None):
 	global prev_raw_frame, prev_frame, prev_corners, prev_grid,\
-		cur_calm_streak, good_calm_streak, first_calm, last_calm_raw_frame, \
-		last_calm_frame, last_calm_corners, idx, cur_noise_streak, min_noise_streak
+		cur_calm_streak, first_calm, last_calm_raw_frame, \
+		last_calm_frame, last_calm_corners, idx, cur_noise_streak
+
+	good_calm_streak = int(fps * 0.6)
+	min_noise_streak = int(fps * 0.4)
 
 	frame = piece_classifier.increase_color_contrast(raw_frame, 2, (8, 8))
 	if show_process:
@@ -249,6 +254,8 @@ if __name__ == "__main__":
 		print(url)
 		cap = cv2.VideoCapture(url)
 
+	fps = cap.get(cv2.CAP_PROP_FPS)
+
 	save_dir = None
 	show_process = False
 	if len(sys.argv) == 4:
@@ -286,7 +293,7 @@ if __name__ == "__main__":
 		# print("Frame: {}".format(idx))
 
 		if ret:
-			process_video_frame(raw_frame, lattice_model, piece_model, show_process, save_dir)
+			process_video_frame(raw_frame, fps, lattice_model, piece_model, show_process, save_dir)
 
 			if new_board is not None and (cur_board is None or not all(cur_board[i // 8][i % 8] == new_board[i // 8][i % 8] for i in range(64))):
 				if cur_board:

@@ -13,7 +13,7 @@ output vid and .jpgs saved to local folder /assets
 """
 
 phone_ip = sys.argv[1]
-url = "http://" + phone_ip + "/live"
+url = "http://" + phone_ip + "/live?type=some.mp4"
 print(url)
 cap = cv2.VideoCapture(url)
 if (cap.isOpened()== False):
@@ -28,7 +28,7 @@ print("resolution", resolution)
 
 if record_bool:
     fourcc = cv2.VideoWriter_fourcc(*"MJPG")
-    out = cv2.VideoWriter("./assets/output.avi", fourcc, FPS, resolution)
+    out = cv2.VideoWriter("./assets/output.avi", fourcc, 25, resolution)
 
 while cap.isOpened(): #Joshua's doc says while True but I think that's a typo
     ret, frame = cap.read()

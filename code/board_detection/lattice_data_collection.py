@@ -1,3 +1,6 @@
+# Data collection script for lattice points. Shows an image with dots, the user clicks
+# each dot to toggle it as a positive or negative example
+
 import cv2
 import os
 import sys

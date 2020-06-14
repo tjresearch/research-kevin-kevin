@@ -1,3 +1,5 @@
+# Contains basic geometric functions that are used in multiple scripts
+
 import numpy as np
 import math
 import cv2

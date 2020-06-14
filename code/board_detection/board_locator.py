@@ -1,3 +1,5 @@
+# Module that contains all of the functions related to locating the board, also handles tracking when using a video
+
 import numpy as np
 import itertools
 import pyclipper

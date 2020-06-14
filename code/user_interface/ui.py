@@ -39,6 +39,8 @@ class Display(tk.Frame):
 		self.live_video_stop = Event()
 		self.live_video_play = Event()
 
+		self.fps = None
+
 		self.video_cap = None
 		self.video_thread = None
 		self.video_stop = Event()
@@ -278,9 +280,9 @@ class Display(tk.Frame):
 			showerror("Error", "Could not connect capture device at {}".format(ip))
 			return False
 
-		fps = self.live_cap.get(cv2.CAP_PROP_FPS)
+		self.fps = self.live_cap.get(cv2.CAP_PROP_FPS)
 		resolution = (int(self.live_cap.get(cv2.CAP_PROP_FRAME_HEIGHT)), int(self.live_cap.get(cv2.CAP_PROP_FRAME_WIDTH)))
-		self.caption["text"] = "IP: {}\nFPS: {}\nResolution {}".format(ip, fps, resolution)
+		self.caption["text"] = "IP: {}\nFPS: {}\nResolution {}".format(ip, self.fps, resolution)
 
 		self.live_video_play.set()
 		self.live_video_thread = Thread(target=self.live_video_handler)
@@ -376,9 +378,9 @@ class Display(tk.Frame):
 		if not self.video_cap.isOpened():
 			showerror("Error", "Could not open video at {}".format(video_path))
 			return False
-		fps = self.video_cap.get(cv2.CAP_PROP_FPS)
+		self.fps = self.video_cap.get(cv2.CAP_PROP_FPS)
 		resolution = (int(self.video_cap.get(cv2.CAP_PROP_FRAME_HEIGHT)), int(self.video_cap.get(cv2.CAP_PROP_FRAME_WIDTH)))
-		self.caption["text"] = "File: {}\nFPS: {}\nResolution {}".format(video_path, fps, resolution)
+		self.caption["text"] = "File: {}\nFPS: {}\nResolution {}".format(video_path, self.fps, resolution)
 
 		ret, frame = self.video_cap.read()
 		if not ret:
@@ -387,7 +389,7 @@ class Display(tk.Frame):
 
 		self.cur_raw_image = frame
 
-		self.video_thread = Thread(target=self.display_video_handler, args=(fps,))
+		self.video_thread = Thread(target=self.display_video_handler, args=(self.fps,))
 		self.video_thread.daemon = True
 		self.video_thread.start()
 
@@ -510,7 +512,7 @@ class Display(tk.Frame):
 		self.update_diagram()
 
 	def process_video_frame(self):
-		video_handler.process_video_frame(self.cur_raw_image, self.lattice_point_model, self.piece_model, show_process=False)
+		video_handler.process_video_frame(self.cur_raw_image, self.fps, self.lattice_point_model, self.piece_model, show_process=False)
 		if video_handler.new_board is not None:
 			display(video_handler.new_board)
 		else:

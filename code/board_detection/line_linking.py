@@ -1,3 +1,5 @@
+# Handles line linking; both functions that test for linkable lines and the actual linking of the lines
+
 import numpy as np
 import utils
 

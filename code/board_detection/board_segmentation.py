@@ -1,3 +1,5 @@
+# Handles the segmentation of the board into 64 separate squares
+
 import cv2
 import os
 import numpy as np
