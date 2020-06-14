@@ -41,7 +41,7 @@ Alternatively, manually install the necessary models by clicking the links below
 
 ### Running AutoPGN
 
-There are a few ways to run AutoPGN. For the full video-to-PGN system, as shown in the [live demo](https://youtu.be/WzbYgsyceso), use `board_detection/video_handler.py`. PGN files will be saved to `board_detection/` and will match filenames with the input video.
+There are a few ways to run AutoPGN. For the full video-to-PGN system, as shown in the [live demo](https://youtu.be/WzbYgsyceso), use `board_detection/video_handler.py`. Output PGN files will be saved to `board_detection/` and match filenames with the input video.
 ```
 cd code/board_detection/
 python video_handler.py src_video|phone_ip [show process] [save dir]
