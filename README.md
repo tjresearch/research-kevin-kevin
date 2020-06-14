@@ -24,15 +24,18 @@ For automatic model downloading, install:
 Some of the scripts in this repo are not vital to the main method (e.g. model training scripts, data collection utilities). To run every script in this repo, install these additional packages:
  - Jupyter 4.4+
 
-### Running AutoPGN
+### Downloading Models
 
-After installing the desired dependencies, clone this repo, and `cd` into it. Then download the necessary Keras models. This can be done automatically with gs_util by running:
+After installing the desired dependencies, clone this repo, and `cd` into it. Then, to download the necessary Keras models automatically, run:
 ```
 ./code/download_models.sh
 ```
-You can also manually install the models by...
+
+Alternatively, manually install the necessary models by...
 
 [TODO]
+
+### Running AutoPGN
 
 There are a few ways to run AutoPGN. For the full video-to-PGN system, as shown in the [live demo](https://youtu.be/WzbYgsyceso), use `board_detection/video_handler.py`. PGN files will be saved to `board_detection/` and will match filenames with the input video.
 ```
