@@ -1,5 +1,5 @@
 """
-methods for pgn_writer and pgn_reader
+helper methods/globals for pgn_writer and pgn_reader
 """
 #rows are 1-8
 #assumed 8x8 2d array

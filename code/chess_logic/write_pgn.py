@@ -1,7 +1,8 @@
 """
 converts given PGN to board states and back again
-to test find_pgn_move(), which in reality will be called elsewhere
+to test find_pgn_move(), which is called by board_detection/video_handler.py normally
 """
+
 import sys
 import pgn_reader as reader
 import pgn_writer as writer

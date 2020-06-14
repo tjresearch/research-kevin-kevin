@@ -1,7 +1,9 @@
+"""
+collection of methods that turn board states into .pgn files
+"""
+
 import pgn_helper as ph
-"""
-boards to pgn
-"""
+
 """
 reverse of alg_to_coords, returns string from tuple
 """

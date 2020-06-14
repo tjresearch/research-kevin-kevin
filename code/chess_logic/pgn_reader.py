@@ -1,3 +1,7 @@
+"""
+collection of methods that turn .pgn files into board states
+"""
+
 import pgn_helper as ph
 """
 takes pgn file input
