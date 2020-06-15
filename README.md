@@ -6,7 +6,7 @@ Paper: https://drive.google.com/file/d/12eamkGZ2owfkUtRWU2UreRRwwqyMmgmF/view?us
 
 Live Demo: https://youtu.be/WzbYgsyceso
 
-[ADD GIF HERE]
+![main_gif](readme_images/autopgn.gif)
 
 ## Getting Started
 
