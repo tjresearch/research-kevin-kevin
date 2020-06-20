@@ -39,7 +39,7 @@ Alternatively, manually install the necessary models by clicking the links below
  - [Lattice Point CNN Values](https://storage.googleapis.com/autopgn-assets/models/lattice_points_model.json)
  - [Piece Classification CNN](https://storage.googleapis.com/autopgn-assets/models/piece_detection_model.h5) (>650 MB)
 
-**Optional:** Download the lattice point dataset [here](ADD LINK HERE) and the piece classification dataset [here](https://storage.googleapis.com/autopgn-assets/new_may_dataset.zip).
+**Optional:** Download the lattice point dataset [here](https://storage.googleapis.com/autopgn-assets/lattice_point_data.zip) and the piece classification dataset [here](https://storage.googleapis.com/autopgn-assets/new_may_dataset.zip).
 
 ### Running AutoPGN
 
